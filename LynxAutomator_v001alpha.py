@@ -39,7 +39,7 @@ class BaseApp:
         self.header_label.pack(pady=5, padx=5)
 
         # Description label in the header
-        self.description_label = ctk.CTkLabel(self.header_frame, text="This application allows you to automate some processes in Iberian Lynx monitoring", font=("Helvetica", 14), wraplength=800, justify="left")
+        self.description_label = ctk.CTkLabel(self.header_frame, text="This application allows you to automate certain processes in the monitoring of the Iberian Lynx and other species", font=("Helvetica", 12), wraplength=800, justify="left")
         self.description_label.pack(pady=10, padx=10)
 
         # Create the main tab panel (top-level tabs)
@@ -1015,57 +1015,43 @@ class CSVFilterApp:
 
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
     def __init__(self, root):
-        super().__init__(root)  # Llamada correcta al constructor de la clase base
+        super().__init__(root)  # Correct call to the base class constructor
         self.root = root
-        self.pack(fill="both", expand=True)  # Asegurarse de que el frame se ajuste al tamaño de la ventana
+        self.pack(fill="both", expand=True)  # Ensure the frame adjusts to the window size
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
         
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(self)
-        self.tabview.pack(pady=20, padx=20, fill='both', expand=True)
+        # Main frame to hold all widgets
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Add tabs
-        self.tab1 = self.tabview.add("CSV")
-        self.tab2 = self.tabview.add("Destination Folder")
-
-        # Content of the "CSV" tab
-        self.label1 = ctk.CTkLabel(self.tab1, text="Select the images CSV file with URLs from Wildlife Insights", anchor="w")
+        # Label for CSV file selection
+        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the images CSV file with URLs from Wildlife Insights", anchor="w")
         self.label1.pack(pady=10)
 
-        self.csv_frame = ctk.CTkFrame(self.tab1)
-        self.csv_frame.pack(pady=5, padx=10, fill="x")
+        # Frame to hold CSV selection widgets
+        self.selection_frame = ctk.CTkFrame(self.main_frame)
+        self.selection_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_csv_btn = ctk.CTkButton(self.csv_frame, text="Browse", command=self.select_csv)
+        # Button to browse and select CSV file
+        self.select_csv_btn = ctk.CTkButton(self.selection_frame, text="Browse CSV", command=self.select_csv)
         self.select_csv_btn.pack(side="left", padx=5)
 
-        self.csv_label = ctk.CTkLabel(self.csv_frame, text="No CSV file selected", anchor="w")
+        # Label to display the selected CSV file name
+        self.csv_label = ctk.CTkLabel(self.selection_frame, text="No CSV file selected", anchor="w")
         self.csv_label.pack(side="left", padx=5)
-
-        # Content of the "Destination Folder" tab
-        self.label2 = ctk.CTkLabel(self.tab2, text="Select the destination folder for downloaded images", anchor="w")
-        self.label2.pack(pady=10)
-
-        self.folder_frame = ctk.CTkFrame(self.tab2)
-        self.folder_frame.pack(pady=5, padx=10, fill="x")
-
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse", command=self.select_folder)
-        self.select_folder_btn.pack(side="left", padx=5)
-
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
-        self.folder_label.pack(side="left", padx=5)
 
         # Add option for single or multiple folders
         self.use_multiple_folders = IntVar()
-        self.multiple_folders_checkbtn = ctk.CTkCheckBox(self.tab2, text="Save in separate folders by deployment_id", variable=self.use_multiple_folders)
+        self.multiple_folders_checkbtn = ctk.CTkCheckBox(self.main_frame, text="Save in separate folders by deployment_id", variable=self.use_multiple_folders)
         self.multiple_folders_checkbtn.pack(pady=10)
 
         # Status label for showing download progress
         self.status_var = StringVar()
-        self.status_label = ctk.CTkLabel(self, textvariable=self.status_var)
+        self.status_label = ctk.CTkLabel(self.main_frame, textvariable=self.status_var)
         self.status_label.pack(pady=10)
 
         # Buttons for processing
-        self.buttons_frame = ctk.CTkFrame(self)
+        self.buttons_frame = ctk.CTkFrame(self.main_frame)
         self.buttons_frame.pack(pady=10)
 
         self.download_btn = ctk.CTkButton(self.buttons_frame, text="Download Images", command=self.start_download, state=ctk.DISABLED)
@@ -1082,19 +1068,19 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             self.csv_label.configure(text=f"Selected CSV File: {os.path.basename(self.csv_path)}")
             self.update_download_button_state()
 
-    def select_folder(self):
-        self.folder_path = filedialog.askdirectory(title="Select Destination Folder")
-        if self.folder_path:
-            self.folder_label.configure(text=f"Selected Folder: {self.folder_path}")
-            self.update_download_button_state()
-
     def update_download_button_state(self):
-        if hasattr(self, 'csv_path') and hasattr(self, 'folder_path'):
+        if hasattr(self, 'csv_path'):
             self.download_btn.configure(state=ctk.NORMAL)
         else:
             self.download_btn.configure(state=ctk.DISABLED)
 
     def start_download(self):
+        # Open file dialog to select destination folder
+        self.folder_path = filedialog.askdirectory(title="Select Destination Folder")
+        if not self.folder_path:
+            messagebox.showerror("Error", "No folder selected.")
+            return
+
         # Ensure the destination folder exists
         if self.use_multiple_folders.get():
             deployment_folders = self.get_deployment_folders()
@@ -1162,17 +1148,24 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
                     # Ensure the deployment folder exists
                     os.makedirs(deployment_folder, exist_ok=True)
 
+                    filename = os.path.basename(url)
+                    clean_filename = self.clean_filename(filename)
+                    new_name = clean_filename.rsplit('.', 1)[0] + '.JPG'
+                    new_file = os.path.join(deployment_folder, new_name)
+
+                    # Check if the file already exists
+                    if os.path.exists(new_file):
+                        # If the file exists, skip downloading
+                        self.status_var.set(f"File already exists, skipping... {i + 1} of {total_urls}")
+                        continue
+
                     # Download the file
                     command = f"gsutil -m cp {url} \"{deployment_folder}\""
                     result = subprocess.run(command, check=True, shell=True, capture_output=True, text=True)
                     if result.returncode != 0:
                         raise subprocess.CalledProcessError(result.returncode, command, result.stdout, result.stderr)
 
-                    filename = os.path.basename(url)
-                    clean_filename = self.clean_filename(filename)
                     old_file = os.path.join(deployment_folder, filename)
-                    new_name = clean_filename.rsplit('.', 1)[0] + '.JPG'
-                    new_file = os.path.join(deployment_folder, new_name)
                     shutil.move(old_file, new_file)
 
                     # Update the status label
@@ -1190,7 +1183,7 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             self.stop_btn.configure(state=ctk.DISABLED)
             # Reset the status label
             self.status_var.set("Download process completed.")
- 
+
             
 class ExcelCombinerApp:
     def __init__(self, root):
@@ -1490,67 +1483,78 @@ class ExcelCombinerApp:
                 self.final_df.to_excel(save_path, index=False)
                 messagebox.showinfo("File Saved", f"File saved successfully to {save_path}")
 
-              
 
 class DateChangerApp:
     def __init__(self, root):
         self.root = root
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
-        
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(root)
-        self.tabview.pack(pady=20, padx=20, fill='both', expand=True)
 
-        # Add tabs
-        self.tab1 = self.tabview.add("Select Folder")
-        self.tab2 = self.tabview.add("Date Options")
+        # Frame to hold all widgets
+        self.main_frame = ctk.CTkFrame(root)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Content of the "Select Folder" tab
-        self.label1 = ctk.CTkLabel(self.tab1, text="Select the folder containing files", anchor="w")
+        # Label for folder selection
+        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the folder containing files", anchor="w")
         self.label1.pack(pady=10)
 
-        self.folder_frame = ctk.CTkFrame(self.tab1)
+        # Frame to hold folder selection widgets
+        self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse", command=self.select_folder)
+        # Button to browse and select a folder
+        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_folder)
         self.select_folder_btn.pack(side="left", padx=5)
 
+        # Label to display the selected folder name
         self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Content of the "Date Options" tab
-        self.label2 = ctk.CTkLabel(self.tab2, text="Set the Real Date (YYYY-MM-DD HH:MM:SS)", anchor="w")
-        self.label2.grid(row=0, column=0, pady=10, sticky="w")
+        # Frame to hold date options
+        self.date_frame = ctk.CTkFrame(self.main_frame)
+        self.date_frame.pack(pady=10, padx=10, fill="x")
 
-        self.real_date_entry = ctk.CTkEntry(self.tab2)
-        self.real_date_entry.grid(row=0, column=1, pady=5, padx=10, sticky="we")
+        # Label and entry for setting the real date
+        self.label2 = ctk.CTkLabel(self.date_frame, text="Set the Real Date (YYYY-MM-DD HH:MM:SS)", anchor="w")
+        self.label2.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
+        self.real_date_entry = ctk.CTkEntry(self.date_frame)
+        self.real_date_entry.grid(row=0, column=1, padx=10, pady=5, sticky="we")
+
+        # Radio buttons and labels for date options
         self.date_option = ctk.IntVar()
         self.date_option.set(1)
 
-        self.newest_date_radio = ctk.CTkRadioButton(self.tab2, text="Use newest date", variable=self.date_option, value=1)
-        self.newest_date_radio.grid(row=1, column=0, pady=5, sticky="w")
+        self.newest_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use newest date", variable=self.date_option, value=1)
+        self.newest_date_radio.grid(row=1, column=0, padx=5, pady=2, sticky="w")
 
         self.newest_date = ctk.StringVar()
-        self.newest_date_label = ctk.CTkLabel(self.tab2, textvariable=self.newest_date, anchor="w")
-        self.newest_date_label.grid(row=1, column=1, pady=5, padx=10, sticky="w")
+        self.newest_date_label = ctk.CTkLabel(self.date_frame, textvariable=self.newest_date, anchor="w")
+        self.newest_date_label.grid(row=1, column=1, padx=10, pady=2, sticky="w")
 
-        self.oldest_date_radio = ctk.CTkRadioButton(self.tab2, text="Use oldest date", variable=self.date_option, value=2)
-        self.oldest_date_radio.grid(row=2, column=0, pady=5, sticky="w")
+        self.oldest_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use oldest date", variable=self.date_option, value=2)
+        self.oldest_date_radio.grid(row=2, column=0, padx=5, pady=2, sticky="w")
 
         self.oldest_date = ctk.StringVar()
-        self.oldest_date_label = ctk.CTkLabel(self.tab2, textvariable=self.oldest_date, anchor="w")
-        self.oldest_date_label.grid(row=2, column=1, pady=5, padx=10, sticky="w")
+        self.oldest_date_label = ctk.CTkLabel(self.date_frame, textvariable=self.oldest_date, anchor="w")
+        self.oldest_date_label.grid(row=2, column=1, padx=10, pady=2, sticky="w")
 
-        self.custom_date_radio = ctk.CTkRadioButton(self.tab2, text="Use custom date", variable=self.date_option, value=3)
-        self.custom_date_radio.grid(row=3, column=0, pady=5, sticky="w")
+        self.custom_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use custom date", variable=self.date_option, value=3)
+        self.custom_date_radio.grid(row=3, column=0, padx=5, pady=2, sticky="w")
 
-        self.custom_date_entry = ctk.CTkEntry(self.tab2)
-        self.custom_date_entry.grid(row=3, column=1, pady=5, padx=10, sticky="we")
+        self.custom_date_entry = ctk.CTkEntry(self.date_frame)
+        self.custom_date_entry.grid(row=3, column=1, padx=10, pady=2, sticky="we")
 
-        # Change Dates Button at the bottom
-        self.change_dates_btn = ctk.CTkButton(root, text="Change Dates", command=self.change_dates)
-        self.change_dates_btn.pack(pady=10)
+        # Frame to hold the Change Dates and Copy buttons
+        self.button_frame = ctk.CTkFrame(self.main_frame)
+        self.button_frame.pack(pady=10)
+
+        # Change Dates button
+        self.change_dates_btn = ctk.CTkButton(self.button_frame, text="Change Dates", command=self.change_dates)
+        self.change_dates_btn.pack(side="left", padx=10)
+
+        # Copy to Folder button
+        self.copy_btn = ctk.CTkButton(self.button_frame, text="Copy to Folder", command=self.copy_to_folder)
+        self.copy_btn.pack(side="left", padx=10)
 
     def select_folder(self):
         folder = filedialog.askdirectory(title="Select Folder")
@@ -1645,6 +1649,83 @@ class DateChangerApp:
             handle.close()
         
         messagebox.showinfo("Success", "File dates updated successfully!")
+
+    def copy_to_folder(self):
+        destination_folder = filedialog.askdirectory(title="Select Destination Folder")
+        if destination_folder:
+            folder = self.selected_folder
+            files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
+
+            for file in files:
+                file_name = os.path.basename(file)
+                destination_path = os.path.join(destination_folder, file_name)
+
+                if os.path.exists(destination_path):
+                    base_name, extension = os.path.splitext(file_name)
+                    destination_path = os.path.join(destination_folder, f"{base_name}_datechanged{extension}")
+
+                # Apply date change only to the file being copied
+                self.apply_date_change_to_copy(file, destination_path)
+
+            messagebox.showinfo("Success", "Files copied successfully!")
+
+    def apply_date_change_to_copy(self, source_file, destination_file):
+        # Copy the file first
+        shutil.copy(source_file, destination_file)
+
+        # Then apply the date changes to the copied file
+        real_date = datetime.strptime(self.real_date_entry.get(), "%Y-%m-%d %H:%M:%S")
+        
+        if self.date_option.get() == 1:
+            reference_date = datetime.strptime(self.newest_date.get(), "%Y-%m-%d %H:%M:%S")
+        elif self.date_option.get() == 2:
+            reference_date = datetime.strptime(self.oldest_date.get(), "%Y-%m-%d %H:%M:%S")
+        else:
+            reference_date = datetime.strptime(self.custom_date_entry.get(), "%Y-%m-%d %H:%M:%S")
+
+        difference = real_date - reference_date
+
+        # Update EXIF dates if it's an image
+        try:
+            exif_data = piexif.load(destination_file)
+            date_time_original = exif_data['Exif'].get(piexif.ExifIFD.DateTimeOriginal)
+            if date_time_original:
+                new_exif_date = datetime.strptime(date_time_original.decode('utf-8'), "%Y:%m:%d %H:%M:%S") + difference
+                new_date_str = new_exif_date.strftime("%Y:%m:%d %H:%M:%S")
+                exif_data['Exif'][piexif.ExifIFD.DateTimeOriginal] = new_date_str.encode('utf-8')
+                exif_data['Exif'][piexif.ExifIFD.DateTimeDigitized] = new_date_str.encode('utf-8')
+                exif_data['0th'][piexif.ImageIFD.DateTime] = new_date_str.encode('utf-8')
+                exif_data = self.correct_exif_format(exif_data)
+                exif_bytes = piexif.dump(exif_data)
+                piexif.insert(exif_bytes, destination_file)
+        except:
+            pass  # Ignore if not an image
+
+        # Update file creation dates
+        handle = win32file.CreateFile(
+            destination_file, 
+            win32file.GENERIC_WRITE, 
+            0, 
+            None, 
+            win32file.OPEN_EXISTING, 
+            win32file.FILE_ATTRIBUTE_NORMAL, 
+            None
+        )
+
+        new_creation_date = datetime.fromtimestamp(os.path.getctime(destination_file)) + difference
+        new_creation_date_filetime = pywintypes.Time(new_creation_date)
+
+        (creation, access, modification) = win32file.GetFileTime(handle)
+
+        win32file.SetFileTime(handle, new_creation_date_filetime, access, modification)
+        handle.close()
+
+
+
+
+
+
+
 
 
 class ImagesRenamer:
