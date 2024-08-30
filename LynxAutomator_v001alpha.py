@@ -312,6 +312,8 @@ class WBFolderApp:
 
         self.temp_file_path = None
 
+
+
     def select_folder(self):
         # Open a dialog to select a folder
         self.folder_path = filedialog.askdirectory()
@@ -1189,71 +1191,55 @@ class ExcelCombinerApp:
     def __init__(self, root):
         self.root = root
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
-        
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(root)
-        self.tabview.pack(pady=20, padx=20, fill='both', expand=True)
 
-        # Add tabs
-        self.tab1 = self.tabview.add("Initial Excel")
-        self.tab2 = self.tabview.add("Images CSV")
-        self.tab3 = self.tabview.add("Deployments CSV")
-        self.tab4 = self.tabview.add("Destination Folder")
+        # Main frame (single large square)
+        self.main_frame = ctk.CTkFrame(root)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Content of the "Initial Excel" tab
-        self.label1 = ctk.CTkLabel(self.tab1, text="Select the Initial Excel file", anchor="w")
+        # Label for Initial Excel file
+        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the Initial Excel file", anchor="w")
         self.label1.pack(pady=10)
 
-        self.excel_frame = ctk.CTkFrame(self.tab1)
+        # Frame to hold Initial Excel selection widgets
+        self.excel_frame = ctk.CTkFrame(self.main_frame)
         self.excel_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_excel_btn = ctk.CTkButton(self.excel_frame, text="Browse", command=self.select_initial_excel)
+        self.select_excel_btn = ctk.CTkButton(self.excel_frame, text="Browse Excel", command=self.select_initial_excel)
         self.select_excel_btn.pack(side="left", padx=5)
 
         self.excel_label = ctk.CTkLabel(self.excel_frame, text="No Excel file selected", anchor="w")
         self.excel_label.pack(side="left", padx=5)
 
-        # Content of the "Images CSV" tab
-        self.label2 = ctk.CTkLabel(self.tab2, text="Select the images CSV file", anchor="w")
+        # Label for Images CSV file
+        self.label2 = ctk.CTkLabel(self.main_frame, text="Select the Images CSV file", anchor="w")
         self.label2.pack(pady=10)
 
-        self.images_frame = ctk.CTkFrame(self.tab2)
+        # Frame to hold Images CSV selection widgets
+        self.images_frame = ctk.CTkFrame(self.main_frame)
         self.images_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_images_btn = ctk.CTkButton(self.images_frame, text="Browse", command=self.select_images_csv)
+        self.select_images_btn = ctk.CTkButton(self.images_frame, text="Browse CSV", command=self.select_images_csv)
         self.select_images_btn.pack(side="left", padx=5)
 
-        self.images_label = ctk.CTkLabel(self.images_frame, text="No images CSV file selected", anchor="w")
+        self.images_label = ctk.CTkLabel(self.images_frame, text="No Images CSV file selected", anchor="w")
         self.images_label.pack(side="left", padx=5)
 
-        # Content of the "Deployments CSV" tab
-        self.label3 = ctk.CTkLabel(self.tab3, text="Select the deployments CSV file", anchor="w")
+        # Label for Deployments CSV file
+        self.label3 = ctk.CTkLabel(self.main_frame, text="Select the Deployments CSV file", anchor="w")
         self.label3.pack(pady=10)
 
-        self.deployments_frame = ctk.CTkFrame(self.tab3)
+        # Frame to hold Deployments CSV selection widgets
+        self.deployments_frame = ctk.CTkFrame(self.main_frame)
         self.deployments_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_deployments_btn = ctk.CTkButton(self.deployments_frame, text="Browse", command=self.select_deployments_csv)
+        self.select_deployments_btn = ctk.CTkButton(self.deployments_frame, text="Browse CSV", command=self.select_deployments_csv)
         self.select_deployments_btn.pack(side="left", padx=5)
 
-        self.deployments_label = ctk.CTkLabel(self.deployments_frame, text="No deployments CSV file selected", anchor="w")
+        self.deployments_label = ctk.CTkLabel(self.deployments_frame, text="No Deployments CSV file selected", anchor="w")
         self.deployments_label.pack(side="left", padx=5)
 
-        # Content of the "Destination Folder" tab
-        self.label4 = ctk.CTkLabel(self.tab4, text="Select the destination folder for the final Excel file", anchor="w")
-        self.label4.pack(pady=10)
-
-        self.folder_frame = ctk.CTkFrame(self.tab4)
-        self.folder_frame.pack(pady=5, padx=10, fill="x")
-
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse", command=self.select_folder)
-        self.select_folder_btn.pack(side="left", padx=5)
-
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
-        self.folder_label.pack(side="left", padx=5)
-
-        # Section for additional options
-        self.options_frame = ctk.CTkFrame(root)
+        # Section for options in a single line
+        self.options_frame = ctk.CTkFrame(self.main_frame)
         self.options_frame.pack(pady=10, padx=10, fill='x')
 
         # Checkbox for multiple images processing
@@ -1261,30 +1247,32 @@ class ExcelCombinerApp:
         self.multiple_images_checkbox = ctk.CTkCheckBox(self.options_frame, text="Process with Multiple Images", variable=self.multiple_images_var)
         self.multiple_images_checkbox.pack(side="left", padx=5)
 
-        # Label and entry for time threshold
+        # Label for time threshold
         self.time_threshold_label = ctk.CTkLabel(self.options_frame, text="Time threshold (seconds):", anchor="w")
         self.time_threshold_label.pack(side="left", padx=5)
 
-        self.time_threshold_entry = ctk.CTkEntry(self.options_frame)
+        # Entry for time threshold
+        self.time_threshold_entry = ctk.CTkEntry(self.options_frame, width=100)
         self.time_threshold_entry.pack(side="left", padx=5)
         self.time_threshold_entry.insert(0, "3")  # Default value
 
-        # Buttons for processing
-        self.buttons_frame = ctk.CTkFrame(root)
-        self.buttons_frame.pack(pady=10)
+        # Frame to hold process and download buttons side by side
+        self.button_frame = ctk.CTkFrame(self.main_frame)
+        self.button_frame.pack(pady=10)
 
-        self.process_btn = ctk.CTkButton(self.buttons_frame, text="Process Files", command=self.process_files, state=ctk.DISABLED)
+        # Process button
+        self.process_btn = ctk.CTkButton(self.button_frame, text="Process Files", command=self.process_files, state=ctk.DISABLED)
         self.process_btn.pack(side="left", padx=5)
 
-        self.save_file_btn = ctk.CTkButton(self.buttons_frame, text="Save File", command=self.save_file, state=ctk.DISABLED)
-        self.save_file_btn.pack(side="left", padx=5)
+        # Download button
+        self.download_btn = ctk.CTkButton(self.button_frame, text="Download Updated Excel", command=self.save_file, state=ctk.DISABLED)
+        self.download_btn.pack(side="left", padx=5)
 
         self.initial_excel_path = None
         self.images_csv_path = None
         self.deployments_csv_path = None
-        self.destination_folder = None
         self.final_df = None  # To store the final DataFrame
-
+        
     def select_initial_excel(self):
         self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if self.initial_excel_path:
@@ -1303,21 +1291,9 @@ class ExcelCombinerApp:
             self.deployments_label.configure(text=os.path.basename(self.deployments_csv_path))
         self.check_all_selected()
 
-    def select_folder(self):
-        self.destination_folder = filedialog.askdirectory()
-        if self.destination_folder:
-            self.folder_label.configure(text=self.destination_folder)
-        self.check_all_selected()
-
     def check_all_selected(self):
-        if self.initial_excel_path and self.images_csv_path and self.deployments_csv_path and self.destination_folder:
+        if self.initial_excel_path and self.images_csv_path and self.deployments_csv_path:
             self.process_btn.configure(state=ctk.NORMAL)
-
-    def process_files(self):
-        if self.multiple_images_var.get():
-            self.process_multiple_images()
-        else:
-            self.process_single_image()
 
     def process_files(self):
         try:
@@ -1549,7 +1525,7 @@ class DateChangerApp:
         self.button_frame.pack(pady=10)
 
         # Change Dates button
-        self.change_dates_btn = ctk.CTkButton(self.button_frame, text="Change Dates", command=self.change_dates)
+        self.change_dates_btn = ctk.CTkButton(self.button_frame, text="Rewrite files Change Dates", command=self.change_dates)
         self.change_dates_btn.pack(side="left", padx=10)
 
         # Copy to Folder button
