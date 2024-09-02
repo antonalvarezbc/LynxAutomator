@@ -39,7 +39,13 @@ class BaseApp:
         self.header_label.pack(pady=5, padx=5)
 
         # Description label in the header
-        self.description_label = ctk.CTkLabel(self.header_frame, text="This application allows you to automate certain processes in the monitoring of the Iberian Lynx and other species", font=("Helvetica", 12), wraplength=800, justify="left")
+        self.description_label = ctk.CTkLabel(
+            self.header_frame,
+            text="This application allows you to automate certain processes in the monitoring of the Iberian Lynx and other species",
+            font=("Helvetica", 12),
+            wraplength=800,
+            justify="left"
+        )
         self.description_label.pack(pady=10, padx=10)
 
         # Create the main tab panel (top-level tabs)
@@ -47,26 +53,29 @@ class BaseApp:
         self.main_tabs.pack(pady=20, padx=20, fill='both', expand=True)
 
         # Create frames for each main tab
-        self.camtrap_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
+        self.about_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildlife_insights_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.iberian_lynx_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
-        self.help_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
-        self.about_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
+        self.camtrap_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
+        self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # New Tab
 
+        # Add tabs to the main notebook
         self.main_tabs.add(self.about_frame, text="About")
         self.main_tabs.add(self.wildbook_frame, text="Wildbook")
         self.main_tabs.add(self.wildlife_insights_frame, text="Wildlife Insights")
+        self.main_tabs.add(self.wildlife_insights_wildbook_frame, text="Wildlife Insight - Wildbook") 
         self.main_tabs.add(self.iberian_lynx_frame, text="Iberian Lynx")
         self.main_tabs.add(self.camtrap_frame, text="Functionalities")
-        self.main_tabs.add(self.help_frame, text="Help")
 
         # Style for the tabs
         style = ttk.Style()
-        style.configure('TNotebook.Tab',
-                        font=('Helvetica', 14, 'bold'),  # Font, size, and style
-                        padding=[10, 5],  # Padding around the text
-                        relief='flat')  # No border around tabs
+        style.configure(
+            'TNotebook.Tab',
+            font=('Helvetica', 14, 'bold'),  # Font, size, and style
+            padding=[10, 5],  # Padding around the text
+            relief='flat'  # No border around tabs
+        )
 
         # About TabView
         self.about_tabs = ctk.CTkTabview(self.about_frame, width=600, height=400)
@@ -95,7 +104,6 @@ class BaseApp:
         self.wildlife_insights_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
         self.wi_downloader_tab = self.wildlife_insights_tabs.add("WI Downloader")
-        self.wi_to_wiwbe_tab = self.wildlife_insights_tabs.add("WI CSVs to BIWbE")
 
         # Iberian Lynx TabView
         self.iberian_lynx_tabs = ctk.CTkTabview(self.iberian_lynx_frame, width=600, height=400)
@@ -103,17 +111,17 @@ class BaseApp:
         
         self.lynx_feature_1_tab = self.iberian_lynx_tabs.add("Iberian Lynx Feature")
 
-        # Help TabView
-        self.help_tab = ctk.CTkTabview(self.help_frame, width=600, height=400)
-        self.help_tab.pack(pady=20, padx=20, fill='both', expand=True)
-
-        self.help_content_tab = self.help_tab.add("Help")
+        # Wildlife Insight - Wildbook TabView (New)
+        self.wildlife_insights_wildbook_tabs = ctk.CTkTabview(self.wildlife_insights_wildbook_frame, width=600, height=400)
+        self.wildlife_insights_wildbook_tabs.pack(pady=20, padx=20, fill='both', expand=True)
+        
+        self.excel_combiner_tab = self.wildlife_insights_wildbook_tabs.add("WI CSVs to BIWbE")
 
         # Integrate the class in the BaseApp
-        self.help_app = AppHelp(self.help_content_tab)
+        # self.help_app = AppHelp(self.help_content_tab)  # Removed
         self.photo_date_app = WBFolderApp(self.wiwbe_folder_tab)
         self.gcs_downloader_app = GCSDownloaderAndRenamer(self.wi_downloader_tab)
-        self.excel_combiner_app = ExcelCombinerApp(self.wi_to_wiwbe_tab)
+        self.excel_combiner_app = ExcelCombinerApp(self.excel_combiner_tab)  # Moved to new tab
         self.data_changer_app = DateChangerApp(self.date_changer_tab)
         self.frame_extractor_app = FrameExtractorApp(self.video_frame_extractor_tab)
         self.wbcatalog_app = WBCatalogApp(self.wbcatalog_tab)
@@ -122,28 +130,26 @@ class BaseApp:
         self.lynxone_app = LynxOne(self.lynx_feature_1_tab)
 
 
-        
-        # Placeholder methods for future functionality
-        self.temp_file_path = None
-
 class Presentation(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.pack(fill="both", expand=True)
-        self.create_widgets()
+    #    self.create_widgets()
 
-    def create_widgets(self):
-        self.title = "Mi Aplicación"
+    # def create_widgets(self):
+    #     self.title = "Mi Aplicación"
 
-        logo_path = "C:/Users/WWF-POR113/Desktop/PythonApps/BIWBapp/logo.png"
-        logo_image = Image.open(logo_path)
+    #     logo_path = "C:/Users/WWF-POR113/Desktop/PythonApps/BIWBapp/logo.png"
+    #     logo_image = Image.open(logo_path)
 
-        self.logo = ImageTk.PhotoImage(logo_image)
-        logo_label = tk.Label(self, image=self.logo)
-        logo_label.pack(pady=20)
+    #     self.logo = ImageTk.PhotoImage(logo_image)
+    #     logo_label = tk.Label(self, image=self.logo)
+    #     logo_label.pack(pady=20)
 
-        text_label = ctk.CTkLabel(self, text="This app is part of the LIFE+ Lynxconnect project", font=("Helvetica", 16))
-        text_label.pack(pady=10)
+    #     text_label = ctk.CTkLabel(self, text="This app is part of the LIFE+ Lynxconnect project", font=("Helvetica", 16))
+    #     text_label.pack(pady=10)
+
+
 
 class AppHelp:
     def __init__(self, parent):
@@ -236,9 +242,7 @@ class AppHelp:
         self.text_widget.configure(state="disabled")    
 
 
-
 class WBFolderApp:
-
     def __init__(self, root):
         self.root = root
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
@@ -635,78 +639,112 @@ class WBCatalogApp:
                 self.download_btn.configure(state=ctk.DISABLED)
                 self.temp_file_path = None
 
+
+
 class FrameExtractorApp:
     def __init__(self, root):
         self.root = root
-        
-        self.folder_path = None
-        self.output_folder = None
+        ctk.set_appearance_mode("System")  # Mode can be "System", "Dark", "Light"
 
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(root, width=200, height=150)
-        self.tabview.pack(pady=20, padx=20)
+        # Main frame (single large square)
+        self.main_frame = ctk.CTkFrame(root)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Add tabs
-        self.tab1 = self.tabview.add("Videos Folder")
-        self.tab2 = self.tabview.add("Output Folder")
+        # Label to prompt user action
+        self.label = ctk.CTkLabel(self.main_frame, text="Select the folder containing the videos.", anchor="w")
+        self.label.pack(pady=10)
 
-        # Content of the "Videos Folder" tab
-        self.label_videos = ctk.CTkLabel(self.tab1, text="Select the folder containing the videos:", anchor="w")
-        self.label_videos.pack(pady=10)
+        # Frame to hold folder selection widgets
+        self.folder_frame = ctk.CTkFrame(self.main_frame)
+        self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        self.videos_frame = ctk.CTkFrame(self.tab1)
-        self.videos_frame.pack(pady=5, padx=10, fill="x")
-
-        self.select_videos_btn = ctk.CTkButton(self.videos_frame, text="Browse", command=self.select_videos_folder)
+        # Button to browse and select a folder
+        self.select_videos_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_videos_folder)
         self.select_videos_btn.pack(side="left", padx=5)
 
-        self.videos_folder_label = ctk.CTkLabel(self.videos_frame, text="No folder selected", anchor="w")
-        self.videos_folder_label.pack(side="left", padx=5)
+        # Label to display the selected folder name
+        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
+        self.folder_label.pack(side="left", padx=5)
 
-        # Content of the "Output Folder" tab
-        self.label_output = ctk.CTkLabel(self.tab2, text="Select the output folder for frames:", anchor="w")
-        self.label_output.pack(pady=10)
+        # Label and entry for the interval in seconds
+        self.interval_frame = ctk.CTkFrame(self.main_frame)
+        self.interval_frame.pack(pady=10, padx=10, fill="x")
 
-        self.output_frame = ctk.CTkFrame(self.tab2)
-        self.output_frame.pack(pady=5, padx=10, fill="x")
+        self.interval_label = ctk.CTkLabel(self.interval_frame, text="Interval between frames (seconds):")
+        self.interval_label.pack(side="left", padx=5)
 
-        self.select_output_btn = ctk.CTkButton(self.output_frame, text="Browse", command=self.select_output_folder)
-        self.select_output_btn.pack(side="left", padx=5)
-
-        self.output_folder_label = ctk.CTkLabel(self.output_frame, text="No folder selected", anchor="w")
-        self.output_folder_label.pack(side="left", padx=5)
-
-        # Add the label and entry for the interval
-        ctk.CTkLabel(root, text="Interval between frames (seconds):").pack(pady=10)
         self.interval_var = ctk.DoubleVar(value=1.0)  # Default value of 1 second
-        ctk.CTkEntry(root, textvariable=self.interval_var).pack(pady=10)
+        self.interval_entry = ctk.CTkEntry(self.interval_frame, textvariable=self.interval_var, width=100)
+        self.interval_entry.pack(side="left", padx=5)
 
-        # Add the process button
-        self.process_btn = ctk.CTkButton(root, text="Extract frames", command=self.start_extraction)
-        self.process_btn.pack(pady=10)
+        # Frame to hold process and download buttons side by side
+        self.button_frame = ctk.CTkFrame(self.main_frame)
+        self.button_frame.pack(pady=10)
 
-        # Add status label
-        self.status_label = ctk.CTkLabel(root, text="")
-        self.status_label.pack(pady=10)
+        # Process button
+        self.process_btn = ctk.CTkButton(self.button_frame, text="Extract frames", command=self.start_extraction)
+        self.process_btn.pack(side="left", padx=5)
 
-    def set_exif_date(self, image_path, creation_time):
-        exif_date = creation_time.strftime("%Y:%m:%d %H:%M:%S")
-        exif_dict = piexif.load(image_path)
-        exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal] = exif_date
-        exif_dict['Exif'][piexif.ExifIFD.DateTimeDigitized] = exif_date
-        exif_bytes = piexif.dump(exif_dict)
-        piexif.insert(exif_bytes, image_path)
+        # Status label for feedback
+        self.status_label = ctk.CTkLabel(self.main_frame, text="", anchor="center", justify="center")
+        self.status_label.pack(pady=10, padx=10, fill="x")
 
-    def change_file_dates(self, file_path, creation_time):
+        # Variable to store the folder path
+        self.folder_path = None
+        
+        self.status_label = ctk.CTkLabel(self.main_frame, text="", anchor="center", justify="center")
+        self.status_label.pack(pady=10, padx=10, fill="x")
+
+    def select_videos_folder(self):
+        self.folder_path = filedialog.askdirectory(title="Select the folder with videos")
+        if self.folder_path:
+            self.folder_label.configure(text=os.path.basename(self.folder_path))
+            messagebox.showinfo("Information", f"Selected folder: {self.folder_path}")
+        else:
+            self.status_label.configure(text="Please select a folder with videos.")
+
+    def start_extraction(self):
         try:
-            os.utime(file_path, (creation_time.timestamp(), creation_time.timestamp()))
-            if platform.system() == 'Windows':
-                wintime = pywintypes.Time(creation_time.timestamp())
-                fh = win32file.CreateFile(file_path, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
-                win32file.SetFileTime(fh, wintime, wintime, wintime)
-                fh.close()
-        except Exception as e:
-            print(f"Error setting file dates: {e}")
+            interval = float(self.interval_var.get())
+            if interval <= 0:
+                raise ValueError("The interval must be greater than zero.")
+            
+            if not self.folder_path:
+                self.status_label.configure(text="Please select a folder with videos.")
+                return
+            
+            # Ask the user to select the output folder
+            self.output_folder = filedialog.askdirectory(title="Select the output folder")
+            if not self.output_folder:
+                self.status_label.configure(text="Please select an output folder.")
+                return
+
+            # Mostrar mensaje de "Processing..." antes de comenzar
+            self.status_label.configure(text="Processing...")
+            self.status_label.update_idletasks()  # Forzar actualización de la UI
+
+            total_frames = 0
+            for filename in os.listdir(self.folder_path):
+                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
+                    video_path = os.path.join(self.folder_path, filename)
+                    vidcap = cv2.VideoCapture(video_path)
+                    if vidcap.isOpened():
+                        total_frames += int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        vidcap.release()
+
+            self.status_label.configure(text="")
+
+            for filename in os.listdir(self.folder_path):
+                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
+                    video_path = os.path.join(self.folder_path, filename)
+                    self.extract_frames(video_path, interval)
+
+            # Actualizar el mensaje una vez que el procesamiento haya terminado
+            self.status_label.configure(text="Frames extracted and saved successfully.")
+
+        except ValueError as e:
+            self.status_label.configure(text=f"Error: {e}")
+
 
     def extract_frames(self, video_path, interval):
         vidcap = cv2.VideoCapture(video_path)
@@ -736,50 +774,25 @@ class FrameExtractorApp:
         vidcap.release()
         self.status_label.configure(text="Frames extracted and saved successfully.")
 
-    def select_videos_folder(self):
-        self.folder_path = filedialog.askdirectory(title="Select the folder with videos")
-        if self.folder_path:
-            self.videos_folder_label.configure(text=os.path.basename(self.folder_path))
-            messagebox.showinfo("Information", f"Selected folder: {self.folder_path}")
-        else:
-            self.status_label.configure(text="Please select a folder with videos.")
-    
-    def select_output_folder(self):
-        self.output_folder = filedialog.askdirectory(title="Select the output folder")
-        if self.output_folder:
-            self.output_folder_label.configure(text=os.path.basename(self.output_folder))
-            messagebox.showinfo("Information", f"Selected folder: {self.output_folder}")
-        else:
-            self.status_label.configure(text="Please select an output folder.")
+    def set_exif_date(self, image_path, creation_time):
+        exif_date = creation_time.strftime("%Y:%m:%d %H:%M:%S")
+        exif_dict = piexif.load(image_path)
+        exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal] = exif_date
+        exif_dict['Exif'][piexif.ExifIFD.DateTimeDigitized] = exif_date
+        exif_bytes = piexif.dump(exif_dict)
+        piexif.insert(exif_bytes, image_path)
 
-    def start_extraction(self):
+    def change_file_dates(self, file_path, creation_time):
         try:
-            interval = float(self.interval_var.get())
-            if interval <= 0:
-                raise ValueError("The interval must be greater than zero.")
-            
-            if not self.folder_path or not self.output_folder:
-                self.status_label.configure(text="Please select both input and output folders.")
-                return
+            os.utime(file_path, (creation_time.timestamp(), creation_time.timestamp()))
+            if platform.system() == 'Windows':
+                wintime = pywintypes.Time(creation_time.timestamp())
+                fh = win32file.CreateFile(file_path, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
+                win32file.SetFileTime(fh, wintime, wintime, wintime)
+                fh.close()
+        except Exception as e:
+            print(f"Error setting file dates: {e}")
 
-            total_frames = 0
-            for filename in os.listdir(self.folder_path):
-                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
-                    video_path = os.path.join(self.folder_path, filename)
-                    vidcap = cv2.VideoCapture(video_path)
-                    if vidcap.isOpened():
-                        total_frames += int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
-                        vidcap.release()
-
-            self.status_label.configure(text="")
-
-            for filename in os.listdir(self.folder_path):
-                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
-                    video_path = os.path.join(self.folder_path, filename)
-                    self.extract_frames(video_path, interval)
-
-        except ValueError as e:
-            self.status_label.configure(text=f"Error: {e}")
 
 
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
@@ -953,7 +966,7 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             # Reset the status label
             self.status_var.set("Download process completed.")
 
-            
+       
 class ExcelCombinerApp:
     def __init__(self, root):
         self.root = root
@@ -1464,13 +1477,6 @@ class DateChangerApp:
         handle.close()
 
 
-
-
-
-
-
-
-
 class ImagesRenamer:
     def __init__(self, root):
         self.root = root
@@ -1669,6 +1675,7 @@ class ImagesRenamer:
             messagebox.showinfo("Information", f"Photos have been renamed and moved to '{self.dest_folder}' successfully.")
         else:
             messagebox.showinfo("Information", "Photos have been renamed and overwritten successfully.")
+
 
 
 class LynxOne:
