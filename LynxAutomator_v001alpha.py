@@ -26,129 +26,248 @@ from tkinter import ttk
 class BaseApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("LynxAutomator")
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
         ctk.set_default_color_theme("green")  # Color theme ("blue", "green", "dark-blue")
+        
+        self.translations = {
+            "es": {
+                "title": "LynxAutomator",
+                "description": "Esta aplicación te permite automatizar ciertos procesos en el monitoreo del Lince Ibérico y otras especies",
+                "about": "Acerca de",
+                "wildbook": "Wildbook",
+                "wildlife_insights": "Wildlife Insights",
+                "wi_wildbook": "Wildlife Insight - Wildbook",
+                "iberian_lynx": "Lince Ibérico",
+                "functionalities": "Funcionalidades",
+                "presentation": "Presentación",
+                "date_changer": "Cambiador de Fecha",
+                "video_frame_extractor": "Extractor de Fotogramas de Video",
+                "images_renamer": "Renombrador de Imágenes",
+                "wiwbe_folder": "WIWbE desde Carpeta",
+                "wiwbe_catalog": "Catálogo WIWbE",
+                "wi_downloader": "Descargador WI",
+                "lynx_feature_1": "Función Lince Ibérico",
+                "wi_csvs_to_biwbe": "WI CSVs a BIWbE"
+            },
+            "pt": {
+                "title": "LynxAutomator",
+                "description": "Este aplicativo permite automatizar certos processos no monitoramento do Lince Ibérico e outras espécies",
+                "about": "Sobre",
+                "wildbook": "Wildbook",
+                "wildlife_insights": "Wildlife Insights",
+                "wi_wildbook": "Wildlife Insight - Wildbook",
+                "iberian_lynx": "Lince Ibérico",
+                "functionalities": "Funcionalidades",
+                "presentation": "Apresentação",
+                "date_changer": "Mudança de Data",
+                "video_frame_extractor": "Extractor de Quadros de Vídeo",
+                "images_renamer": "Renomeador de Imagens",
+                "wiwbe_folder": "WIWbE da Pasta",
+                "wiwbe_catalog": "Catálogo WIWbE",
+                "wi_downloader": "Downloader WI",
+                "lynx_feature_1": "Recurso Lince Ibérico",
+                "wi_csvs_to_biwbe": "WI CSVs para BIWbE"
+            },
+            "en": {
+                "title": "LynxAutomator",
+                "description": "This application allows you to automate certain processes in the monitoring of the Iberian Lynx and other species",
+                "about": "About",
+                "wildbook": "Wildbook",
+                "wildlife_insights": "Wildlife Insights",
+                "wi_wildbook": "Wildlife Insight - Wildbook",
+                "iberian_lynx": "Iberian Lynx",
+                "functionalities": "Functionalities",
+                "presentation": "Presentation",
+                "date_changer": "Date Changer",
+                "video_frame_extractor": "Video Frame Extractor",
+                "images_renamer": "Images Renamer",
+                "wiwbe_folder": "WIWbE from Folder",
+                "wiwbe_catalog": "WIWbE Catalog",
+                "wi_downloader": "WI Downloader",
+                "lynx_feature_1": "Iberian Lynx Feature",
+                "wi_csvs_to_biwbe": "WI CSVs to BIWbE"
+            }
+        }
 
-        # Create the header with large text in the middle
-        self.header_frame = ctk.CTkFrame(root)
+        # Variable para almacenar el idioma seleccionado
+        self.language = StringVar(value="Español")  # Valor predeterminado: Español
+
+        # Configurar la interfaz inicial
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        lang = "es" if self.language.get() == "Español" else "pt" if self.language.get() == "Português" else "en"
+        tr = self.translations[lang]
+
+        # Actualizar el título de la ventana
+        self.root.title(tr["title"])
+
+        # Crear el encabezado con el texto grande en el centro
+        self.header_frame = ctk.CTkFrame(self.root)
         self.header_frame.pack(pady=10, fill='x')
 
-        # Header label with slightly smaller text
-        self.header_label = ctk.CTkLabel(self.header_frame, text="LynxAutomator", font=("Helvetica", 24, "bold"))
+        # Mover el menú de selección de idioma a la esquina superior derecha
+        self.language_menu = ctk.CTkOptionMenu(
+            self.header_frame, 
+            variable=self.language, 
+            values=["Español", "Português", "English"], 
+            command=self.change_language,
+            width=120,  # Ancho reducido para hacerlo más pequeño
+            height=30   # Altura reducida para hacerlo más pequeño
+        )
+        self.language_menu.pack(pady=10, side="right", padx=10, anchor="ne")  # Se ubica en la esquina superior derecha
+
+        # Etiqueta de encabezado con texto ligeramente más pequeño
+        self.header_label = ctk.CTkLabel(self.header_frame, text=tr["title"], font=("Helvetica", 24, "bold"))
         self.header_label.pack(pady=5, padx=5)
 
-        # Description label in the header
+        # Etiqueta de descripción en el encabezado
         self.description_label = ctk.CTkLabel(
             self.header_frame,
-            text="This application allows you to automate certain processes in the monitoring of the Iberian Lynx and other species",
+            text=tr["description"],
             font=("Helvetica", 12),
             wraplength=800,
             justify="left"
         )
         self.description_label.pack(pady=10, padx=10)
 
-        # Create the main tab panel (top-level tabs)
-        self.main_tabs = ttk.Notebook(root)
+        # Crear el panel de pestañas principal (pestañas de nivel superior)
+        self.main_tabs = ttk.Notebook(self.root)
         self.main_tabs.pack(pady=20, padx=20, fill='both', expand=True)
 
-        # Create frames for each main tab
+        # Crear marcos para cada pestaña principal
         self.about_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildlife_insights_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.iberian_lynx_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.camtrap_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
-        self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # New Tab
+        self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # Nueva pestaña
 
-        # Add tabs to the main notebook
-        self.main_tabs.add(self.about_frame, text="About")
-        self.main_tabs.add(self.wildbook_frame, text="Wildbook")
-        self.main_tabs.add(self.wildlife_insights_frame, text="Wildlife Insights")
-        self.main_tabs.add(self.wildlife_insights_wildbook_frame, text="Wildlife Insight - Wildbook") 
-        self.main_tabs.add(self.iberian_lynx_frame, text="Iberian Lynx")
-        self.main_tabs.add(self.camtrap_frame, text="Functionalities")
+        # Agregar pestañas al notebook principal
+        self.main_tabs.add(self.about_frame, text=tr["about"])
+        self.main_tabs.add(self.wildbook_frame, text=tr["wildbook"])
+        self.main_tabs.add(self.wildlife_insights_frame, text=tr["wildlife_insights"])
+        self.main_tabs.add(self.wildlife_insights_wildbook_frame, text=tr["wi_wildbook"])
+        self.main_tabs.add(self.iberian_lynx_frame, text=tr["iberian_lynx"])
+        self.main_tabs.add(self.camtrap_frame, text=tr["functionalities"])
 
-        # Style for the tabs
+        # Estilo para las pestañas
         style = ttk.Style()
         style.configure(
             'TNotebook.Tab',
-            font=('Helvetica', 14, 'bold'),  # Font, size, and style
-            padding=[10, 5],  # Padding around the text
-            relief='flat'  # No border around tabs
+            font=('Helvetica', 14, 'bold'),  # Fuente, tamaño y estilo
+            padding=[10, 5],  # Espaciado alrededor del texto
+            relief='flat'  # Sin borde alrededor de las pestañas
         )
 
         # About TabView
         self.about_tabs = ctk.CTkTabview(self.about_frame, width=600, height=400)
         self.about_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.presentation_tab = self.about_tabs.add("Presentation")
+        self.presentation_tab = self.about_tabs.add(tr["presentation"])
 
         # Camtrap Functionalities TabView
         self.camtrap_tabs = ctk.CTkTabview(self.camtrap_frame, width=600, height=400)
         self.camtrap_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.date_changer_tab = self.camtrap_tabs.add("Date Changer")
-        self.video_frame_extractor_tab = self.camtrap_tabs.add("Video Frame Extractor")
-        self.images_renamer_tab = self.camtrap_tabs.add("Images Renamer") 
-
+        self.date_changer_tab = self.camtrap_tabs.add(tr["date_changer"])
+        self.video_frame_extractor_tab = self.camtrap_tabs.add(tr["video_frame_extractor"])
+        self.images_renamer_tab = self.camtrap_tabs.add(tr["images_renamer"])
 
         # Wildbook TabView
         self.wildbook_tabs = ctk.CTkTabview(self.wildbook_frame, width=600, height=400)
         self.wildbook_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.wiwbe_folder_tab = self.wildbook_tabs.add("WIWbE from Folder")
-        self.wbcatalog_tab = self.wildbook_tabs.add("WIWbE Catalog") 
+        self.wiwbe_folder_tab = self.wildbook_tabs.add(tr["wiwbe_folder"])
+        self.wbcatalog_tab = self.wildbook_tabs.add(tr["wiwbe_catalog"])
 
         # Wildlife Insights TabView
         self.wildlife_insights_tabs = ctk.CTkTabview(self.wildlife_insights_frame, width=600, height=400)
         self.wildlife_insights_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.wi_downloader_tab = self.wildlife_insights_tabs.add("WI Downloader")
+        self.wi_downloader_tab = self.wildlife_insights_tabs.add(tr["wi_downloader"])
 
         # Iberian Lynx TabView
         self.iberian_lynx_tabs = ctk.CTkTabview(self.iberian_lynx_frame, width=600, height=400)
         self.iberian_lynx_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.lynx_feature_1_tab = self.iberian_lynx_tabs.add("Iberian Lynx Feature")
+        self.lynx_feature_1_tab = self.iberian_lynx_tabs.add(tr["lynx_feature_1"])
 
-        # Wildlife Insight - Wildbook TabView (New)
+        # Wildlife Insight - Wildbook TabView (Nuevo)
         self.wildlife_insights_wildbook_tabs = ctk.CTkTabview(self.wildlife_insights_wildbook_frame, width=600, height=400)
         self.wildlife_insights_wildbook_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
-        self.excel_combiner_tab = self.wildlife_insights_wildbook_tabs.add("WI CSVs to BIWbE")
+        self.excel_combiner_tab = self.wildlife_insights_wildbook_tabs.add(tr["wi_csvs_to_biwbe"])
 
-        # Integrate the class in the BaseApp
-        # self.help_app = AppHelp(self.help_content_tab)  # Removed
-        self.photo_date_app = WBFolderApp(self.wiwbe_folder_tab)
-        self.gcs_downloader_app = GCSDownloaderAndRenamer(self.wi_downloader_tab)
-        self.excel_combiner_app = ExcelCombinerApp(self.excel_combiner_tab)  # Moved to new tab
-        self.data_changer_app = DateChangerApp(self.date_changer_tab)
-        self.frame_extractor_app = FrameExtractorApp(self.video_frame_extractor_tab)
-        self.wbcatalog_app = WBCatalogApp(self.wbcatalog_tab)
-        self.images_renamer_app = ImagesRenamer(self.images_renamer_tab) 
-        self.presentation_app = Presentation(self.presentation_tab)
-        self.lynxone_app = LynxOne(self.lynx_feature_1_tab)
+        # Integrar las clases en la BaseApp
+        self.photo_date_app = WBFolderApp(self.wiwbe_folder_tab, lang=lang)
+        self.gcs_downloader_app = GCSDownloaderAndRenamer(self.wi_downloader_tab, lang=lang)
+        self.excel_combiner_app = ExcelCombinerApp(self.excel_combiner_tab, lang=lang)
+        self.data_changer_app = DateChangerApp(self.date_changer_tab, lang=lang)
+        self.frame_extractor_app = FrameExtractorApp(self.video_frame_extractor_tab, lang=lang)
+        self.wbcatalog_app = WBCatalogApp(self.wbcatalog_tab, lang=lang)
+        self.images_renamer_app = ImagesRenamer(self.images_renamer_tab, lang=lang)
+        self.presentation_app = Presentation(self.presentation_tab, lang=lang)
+        self.lynxone_app = LynxOne(self.lynx_feature_1_tab, lang=lang)
 
+    def change_language(self, *args):
+        # Limpiar y reconstruir la interfaz cuando se cambia el idioma
+        for widget in self.root.winfo_children():
+            widget.destroy()
+            
+        self.setup_ui()
+
+        # self.language_menu = ctk.CTkOptionMenu(
+        #     self.header_frame, 
+        #     variable=self.language, 
+        #     values=["Español", "Português", "English"], 
+        #     command=self.change_language,
+        #     width=120,  # Ancho reducido para hacerlo más pequeño
+        #     height=30   # Altura reducida para hacerlo más pequeño
+        # )
+        # self.language_menu.pack(pady=10, side="right", padx=10, anchor="ne") 
 
 class Presentation(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, root, lang="es"):
+        super().__init__(root)
+        self.lang = lang  # Guardar el idioma actual
+
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "title": "LynxAutomator",
+                "description": "Esta aplicación forma parte del proyecto LIFE+ Lynxconnect"
+            },
+            "pt": {
+                "title": "LynxAutomator",
+                "description": "Este aplicativo faz parte do projeto LIFE+ Lynxconnect"
+            },
+            "en": {
+                "title": "LynxAutomator",
+                "description": "This app is part of the LIFE+ Lynxconnect project"
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
         self.pack(fill="both", expand=True)
-    #    self.create_widgets()
 
-    # def create_widgets(self):
-    #     self.title = "Mi Aplicación"
+        # # Crear widgets
+        # logo_path = "ruta/a/tu/logo.png"  # Asegúrate de actualizar esto con la ruta correcta
+        # logo_image = Image.open(logo_path)
 
-    #     logo_path = "C:/Users/WWF-POR113/Desktop/PythonApps/BIWBapp/logo.png"
-    #     logo_image = Image.open(logo_path)
+        # self.logo = ImageTk.PhotoImage(logo_image)
+        # logo_label = tk.Label(self, image=self.logo)
+        # logo_label.pack(pady=20)
 
-    #     self.logo = ImageTk.PhotoImage(logo_image)
-    #     logo_label = tk.Label(self, image=self.logo)
-    #     logo_label.pack(pady=20)
-
-    #     text_label = ctk.CTkLabel(self, text="This app is part of the LIFE+ Lynxconnect project", font=("Helvetica", 16))
-    #     text_label.pack(pady=10)
-
+        # text_label = ctk.CTkLabel(self, text=tr["description"], font=("Helvetica", 16))
+        # text_label.pack(pady=10)
 
 
 class AppHelp:
@@ -243,78 +362,100 @@ class AppHelp:
 
 
 class WBFolderApp:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Main frame (single large square)
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_folder": "Selecciona la carpeta con las imágenes. El nombre y la fecha se tomarán de estas imágenes.",
+                "browse_folder": "Buscar Carpeta",
+                "no_folder_selected": "No se ha seleccionado ninguna carpeta",
+                "select_excel": "Selecciona el archivo Excel inicial.",
+                "browse_file": "Buscar Archivo",
+                "no_file_selected": "No se ha seleccionado ningún archivo",
+                "process": "Procesar",
+                "download_excel": "Descargar Excel Actualizado",
+                "success_message": "¡Archivo Excel procesado con éxito!"
+            },
+            "pt": {
+                "select_folder": "Selecione a pasta com as imagens. O nome e a data serão retirados dessas imagens.",
+                "browse_folder": "Procurar Pasta",
+                "no_folder_selected": "Nenhuma pasta selecionada",
+                "select_excel": "Selecione o arquivo Excel inicial.",
+                "browse_file": "Procurar Arquivo",
+                "no_file_selected": "Nenhum arquivo selecionado",
+                "process": "Processar",
+                "download_excel": "Baixar Excel Atualizado",
+                "success_message": "Arquivo Excel processado com sucesso!"
+            },
+            "en": {
+                "select_folder": "Select the folder with the images. The name and the date will be taken from these images.",
+                "browse_folder": "Browse Folder",
+                "no_folder_selected": "No folder selected",
+                "select_excel": "Select the Initial Excel file.",
+                "browse_file": "Browse File",
+                "no_file_selected": "No file selected",
+                "process": "Process",
+                "download_excel": "Download Updated Excel",
+                "success_message": "Excel file processed successfully!"
+            }
+        }
+
+        # Resto de la configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Marco principal (cuadrado grande único)
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label to prompt user action
-        self.label = ctk.CTkLabel(self.main_frame, text="Select the folder with the images, tha name and the date will be take from these images.", anchor="w")
+        # Etiqueta para solicitar acción al usuario
+        self.label = ctk.CTkLabel(self.main_frame, text=tr["select_folder"], anchor="w")
         self.label.pack(pady=10)
 
-        # Frame to hold folder selection widgets
+        # Marco para contener los widgets de selección de carpeta
         self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select a folder
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_folder)
+        # Botón para buscar y seleccionar una carpeta
+        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text=tr["browse_folder"], command=self.select_folder)
         self.select_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected folder name
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
+        # Etiqueta para mostrar el nombre de la carpeta seleccionada
+        self.folder_label = ctk.CTkLabel(self.folder_frame, text=tr["no_folder_selected"], anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Message between the two buttons
-        self.message_label = ctk.CTkLabel(self.main_frame, text="Select the Initial Excel file.")
+        # Mensaje entre los dos botones
+        self.message_label = ctk.CTkLabel(self.main_frame, text=tr["select_excel"])
         self.message_label.pack(pady=10)
 
-        # Frame to hold file selection widgets
+        # Marco para contener los widgets de selección de archivo
         self.file_frame = ctk.CTkFrame(self.main_frame)
         self.file_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select an Excel file
-        self.select_file_btn = ctk.CTkButton(self.file_frame, text="Browse File", command=self.select_file)
+        # Botón para buscar y seleccionar un archivo Excel
+        self.select_file_btn = ctk.CTkButton(self.file_frame, text=tr["browse_file"], command=self.select_file)
         self.select_file_btn.pack(side="left", padx=5)
 
-        # Label to display the selected file name
-        self.file_label = ctk.CTkLabel(self.file_frame, text="No file selected", anchor="w")
+        # Etiqueta para mostrar el nombre del archivo seleccionado
+        self.file_label = ctk.CTkLabel(self.file_frame, text=tr["no_file_selected"], anchor="w")
         self.file_label.pack(side="left", padx=5)
 
-        # Section for options in a single line
-        self.options_frame = ctk.CTkFrame(self.main_frame)
-        self.options_frame.pack(pady=10, padx=10, fill='x')
+        # Botón de procesar
+        self.process_btn = ctk.CTkButton(self.main_frame, text=tr["process"], command=self.process_files)
+        self.process_btn.pack(pady=10)
 
-        # Checkbox for multiple images processing
-        self.multiple_images_checkbox = ctk.CTkCheckBox(self.options_frame, text="Process with Multiple Images")
-        self.multiple_images_checkbox.pack(side="left", padx=5)
+        # Botón de descargar
+        self.download_btn = ctk.CTkButton(self.main_frame, text=tr["download_excel"], command=self.download_file, state=ctk.DISABLED)
+        self.download_btn.pack(pady=10)
 
-        # Label for time threshold
-        self.time_threshold_label = ctk.CTkLabel(self.options_frame, text="Time threshold (seconds):", anchor="w")
-        self.time_threshold_label.pack(side="left", padx=5)
-
-        # Entry for time threshold
-        self.time_threshold_entry = ctk.CTkEntry(self.options_frame, width=100)
-        self.time_threshold_entry.pack(side="left", padx=5)
-        self.time_threshold_entry.insert(0, "3")  # Default value
-
-        # Frame to hold process and download buttons side by side
-        self.button_frame = ctk.CTkFrame(self.main_frame)
-        self.button_frame.pack(pady=10)
-
-        # Process button
-        self.process_btn = ctk.CTkButton(self.button_frame, text="Process", command=self.process_files)
-        self.process_btn.pack(side="left", padx=5)
-
-        # Download button
-        self.download_btn = ctk.CTkButton(self.button_frame, text="Download Updated Excel", command=self.download_file, state=ctk.DISABLED)
-        self.download_btn.pack(side="left", padx=5)
-
+        # Variable para almacenar la ruta del archivo temporal
         self.temp_file_path = None
-
-
 
     def select_folder(self):
         # Open a dialog to select a folder
@@ -462,74 +603,122 @@ class WBFolderApp:
 
 
 class WBCatalogApp:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Frame to hold all widgets
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_directory": "Selecciona un directorio para analizar. La primera palabra del nombre de archivo se utilizará como el ID individual.",
+                "browse_folder": "Buscar Carpeta",
+                "no_folder_selected": "No se ha seleccionado ninguna carpeta",
+                "select_excel": "Selecciona un archivo Excel para procesar junto con las fotos.",
+                "browse_file": "Buscar Archivo",
+                "no_file_selected": "No se ha seleccionado ningún archivo",
+                "collapse_rows": "Colapsar filas con el mismo ID individual",
+                "capitalize_id": "Capitalizar el ID individual",
+                "process": "Procesar",
+                "download_excel": "Descargar Excel Actualizado",
+                "success_message": "¡Archivo Excel procesado con éxito!"
+            },
+            "pt": {
+                "select_directory": "Selecione um diretório para analisar. A primeira palavra do nome do arquivo será usada como o ID individual.",
+                "browse_folder": "Procurar Pasta",
+                "no_folder_selected": "Nenhuma pasta selecionada",
+                "select_excel": "Selecione um arquivo Excel para processar junto com as fotos.",
+                "browse_file": "Procurar Arquivo",
+                "no_file_selected": "Nenhum arquivo selecionado",
+                "collapse_rows": "Colapsar linhas com o mesmo ID individual",
+                "capitalize_id": "Capitalizar o ID individual",
+                "process": "Processar",
+                "download_excel": "Baixar Excel Atualizado",
+                "success_message": "Arquivo Excel processado com sucesso!"
+            },
+            "en": {
+                "select_directory": "Select a directory to analyze. The first word of the filename will be used as the individual ID.",
+                "browse_folder": "Browse Folder",
+                "no_folder_selected": "No folder selected",
+                "select_excel": "Select an Excel file to process along with the photos.",
+                "browse_file": "Browse File",
+                "no_file_selected": "No file selected",
+                "collapse_rows": "Collapse rows with the same individual ID",
+                "capitalize_id": "Capitalize individual ID",
+                "process": "Process",
+                "download_excel": "Download Updated Excel",
+                "success_message": "Excel file processed successfully!"
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label for folder selection
-        self.label1 = ctk.CTkLabel(self.main_frame, text="Select a directory to analyze. The first word of the filename's image files will be used as the individualID.", anchor="w")
+        # Etiqueta para selección de directorio
+        self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_directory"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold folder selection widgets
+        # Frame para la selección de directorio
         self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select a folder
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_folder)
+        # Botón para buscar y seleccionar una carpeta
+        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text=tr["browse_folder"], command=self.select_folder)
         self.select_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected folder name
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
+        # Etiqueta para mostrar la carpeta seleccionada
+        self.folder_label = ctk.CTkLabel(self.folder_frame, text=tr["no_folder_selected"], anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Label for file selection
-        self.label2 = ctk.CTkLabel(self.main_frame, text="Select an Excel file to process along with the photos.", anchor="w")
+        # Etiqueta para selección de archivo Excel
+        self.label2 = ctk.CTkLabel(self.main_frame, text=tr["select_excel"], anchor="w")
         self.label2.pack(pady=10)
 
-        # Frame to hold file selection widgets
+        # Frame para la selección de archivo Excel
         self.file_frame = ctk.CTkFrame(self.main_frame)
         self.file_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select an Excel file
-        self.select_file_btn = ctk.CTkButton(self.file_frame, text="Browse File", command=self.select_file)
+        # Botón para buscar y seleccionar un archivo
+        self.select_file_btn = ctk.CTkButton(self.file_frame, text=tr["browse_file"], command=self.select_file)
         self.select_file_btn.pack(side="left", padx=5)
 
-        # Label to display the selected file name
-        self.file_label = ctk.CTkLabel(self.file_frame, text="No file selected", anchor="w")
+        # Etiqueta para mostrar el archivo seleccionado
+        self.file_label = ctk.CTkLabel(self.file_frame, text=tr["no_file_selected"], anchor="w")
         self.file_label.pack(side="left", padx=5)
 
-        # Frame to hold the checkboxes side by side
+        # Frame para las opciones de checkboxes
         self.checkbox_frame = ctk.CTkFrame(self.main_frame)
         self.checkbox_frame.pack(pady=5, padx=10, fill="x")
-    
-        # Checkbox for collapsing option
+
+        # Checkbox para la opción de colapsar filas
         self.collapse_var = ctk.BooleanVar()
-        self.collapse_check = ctk.CTkCheckBox(self.checkbox_frame, text="Collapse rows with the same individualID", variable=self.collapse_var)
+        self.collapse_check = ctk.CTkCheckBox(self.checkbox_frame, text=tr["collapse_rows"], variable=self.collapse_var)
         self.collapse_check.pack(side="left", padx=5)
 
-        # Checkbox for capitalizing individualID
-        self.capitalize_var = ctk.BooleanVar(value=True)  # Default to True
-        self.capitalize_check = ctk.CTkCheckBox(self.checkbox_frame, text="Capitalize individualID", variable=self.capitalize_var)
+        # Checkbox para la opción de capitalizar el ID individual
+        self.capitalize_var = ctk.BooleanVar(value=True)
+        self.capitalize_check = ctk.CTkCheckBox(self.checkbox_frame, text=tr["capitalize_id"], variable=self.capitalize_var)
         self.capitalize_check.pack(side="left", padx=5)
 
-        # Frame to hold process and download buttons side by side
+        # Frame para los botones de procesar y descargar
         self.button_frame = ctk.CTkFrame(self.main_frame)
         self.button_frame.pack(pady=10)
 
-        # Process button
-        self.process_btn = ctk.CTkButton(self.button_frame, text="Process", command=self.process_files)
+        # Botón para procesar
+        self.process_btn = ctk.CTkButton(self.button_frame, text=tr["process"], command=self.process_files)
         self.process_btn.pack(side="left", padx=5)
 
-        # Download button
-        self.download_btn = ctk.CTkButton(self.button_frame, text="Download Updated Excel", command=self.download_file, state=ctk.DISABLED)
+        # Botón para descargar el Excel
+        self.download_btn = ctk.CTkButton(self.button_frame, text=tr["download_excel"], command=self.download_file, state=ctk.DISABLED)
         self.download_btn.pack(side="left", padx=5)
-
-        self.temp_file_path = None
-
+        
     def select_folder(self):
         self.folder_path = filedialog.askdirectory()
         if self.folder_path:
@@ -642,59 +831,90 @@ class WBCatalogApp:
 
 
 class FrameExtractorApp:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Mode can be "System", "Dark", "Light"
+        self.lang = lang  # Guardar el idioma actual
 
-        # Main frame (single large square)
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_videos": "Selecciona la carpeta que contiene los videos.",
+                "browse_folder": "Buscar Carpeta",
+                "no_folder_selected": "No se ha seleccionado ninguna carpeta",
+                "interval_between_frames": "Intervalo entre cuadros (segundos):",
+                "extract_frames": "Extraer cuadros",
+                "processing": "Procesando...",
+                "success_message": "Cuadros extraídos y guardados con éxito.",
+                "error_message": "Error: "
+            },
+            "pt": {
+                "select_videos": "Selecione a pasta que contém os vídeos.",
+                "browse_folder": "Procurar Pasta",
+                "no_folder_selected": "Nenhuma pasta selecionada",
+                "interval_between_frames": "Intervalo entre quadros (segundos):",
+                "extract_frames": "Extrair quadros",
+                "processing": "Processando...",
+                "success_message": "Quadros extraídos e salvos com sucesso.",
+                "error_message": "Erro: "
+            },
+            "en": {
+                "select_videos": "Select the folder containing the videos.",
+                "browse_folder": "Browse Folder",
+                "no_folder_selected": "No folder selected",
+                "interval_between_frames": "Interval between frames (seconds):",
+                "extract_frames": "Extract frames",
+                "processing": "Processing...",
+                "success_message": "Frames extracted and saved successfully.",
+                "error_message": "Error: "
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label to prompt user action
-        self.label = ctk.CTkLabel(self.main_frame, text="Select the folder containing the videos.", anchor="w")
+        # Etiqueta para seleccionar la carpeta de videos
+        self.label = ctk.CTkLabel(self.main_frame, text=tr["select_videos"], anchor="w")
         self.label.pack(pady=10)
 
-        # Frame to hold folder selection widgets
+        # Frame para la selección de la carpeta de videos
         self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select a folder
-        self.select_videos_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_videos_folder)
+        # Botón para buscar y seleccionar la carpeta
+        self.select_videos_btn = ctk.CTkButton(self.folder_frame, text=tr["browse_folder"], command=self.select_videos_folder)
         self.select_videos_btn.pack(side="left", padx=5)
 
-        # Label to display the selected folder name
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
+        # Etiqueta para mostrar la carpeta seleccionada
+        self.folder_label = ctk.CTkLabel(self.folder_frame, text=tr["no_folder_selected"], anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Label and entry for the interval in seconds
+        # Frame para el intervalo entre cuadros
         self.interval_frame = ctk.CTkFrame(self.main_frame)
         self.interval_frame.pack(pady=10, padx=10, fill="x")
 
-        self.interval_label = ctk.CTkLabel(self.interval_frame, text="Interval between frames (seconds):")
+        self.interval_label = ctk.CTkLabel(self.interval_frame, text=tr["interval_between_frames"])
         self.interval_label.pack(side="left", padx=5)
 
-        self.interval_var = ctk.DoubleVar(value=1.0)  # Default value of 1 second
+        self.interval_var = ctk.DoubleVar(value=1.0)  # Valor por defecto de 1 segundo
         self.interval_entry = ctk.CTkEntry(self.interval_frame, textvariable=self.interval_var, width=100)
         self.interval_entry.pack(side="left", padx=5)
 
-        # Frame to hold process and download buttons side by side
-        self.button_frame = ctk.CTkFrame(self.main_frame)
-        self.button_frame.pack(pady=10)
+        # Botón para extraer cuadros
+        self.process_btn = ctk.CTkButton(self.main_frame, text=tr["extract_frames"], command=self.start_extraction)
+        self.process_btn.pack(pady=10)
 
-        # Process button
-        self.process_btn = ctk.CTkButton(self.button_frame, text="Extract frames", command=self.start_extraction)
-        self.process_btn.pack(side="left", padx=5)
-
-        # Status label for feedback
+        # Etiqueta de estado para mostrar mensajes de procesamiento
         self.status_label = ctk.CTkLabel(self.main_frame, text="", anchor="center", justify="center")
         self.status_label.pack(pady=10, padx=10, fill="x")
-
-        # Variable to store the folder path
-        self.folder_path = None
         
-        self.status_label = ctk.CTkLabel(self.main_frame, text="", anchor="center", justify="center")
-        self.status_label.pack(pady=10, padx=10, fill="x")
-
     def select_videos_folder(self):
         self.folder_path = filedialog.askdirectory(title="Select the folder with videos")
         if self.folder_path:
@@ -795,50 +1015,85 @@ class FrameExtractorApp:
 
 
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
-    def __init__(self, root):
-        super().__init__(root)  # Correct call to the base class constructor
+    def __init__(self, root, lang="es"):
+        super().__init__(root)  # Llamada correcta al constructor de la clase base
         self.root = root
-        self.pack(fill="both", expand=True)  # Ensure the frame adjusts to the window size
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Almacena el idioma actual
+        self.pack(fill="both", expand=True)  # Asegura que el marco se ajuste al tamaño de la ventana
+        ctk.set_appearance_mode("System")  # Modo de apariencia ("System", "Dark", "Light")
         
-        # Main frame to hold all widgets
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_csv": "Selecciona el archivo CSV con URLs de Wildlife Insights",
+                "browse_csv": "Buscar CSV",
+                "no_csv_selected": "No se ha seleccionado un archivo CSV",
+                "multiple_folders": "Guardar en carpetas separadas por deployment_id",
+                "download_images": "Descargar Imágenes",
+                "stop": "Detener",
+                "downloading": "Descargando...",
+                "stopped": "Descarga detenida"
+            },
+            "pt": {
+                "select_csv": "Selecione o arquivo CSV com URLs do Wildlife Insights",
+                "browse_csv": "Procurar CSV",
+                "no_csv_selected": "Nenhum arquivo CSV selecionado",
+                "multiple_folders": "Salvar em pastas separadas por deployment_id",
+                "download_images": "Baixar Imagens",
+                "stop": "Parar",
+                "downloading": "Baixando...",
+                "stopped": "Download interrompido"
+            },
+            "en": {
+                "select_csv": "Select the images CSV file with URLs from Wildlife Insights",
+                "browse_csv": "Browse CSV",
+                "no_csv_selected": "No CSV file selected",
+                "multiple_folders": "Save in separate folders by deployment_id",
+                "download_images": "Download Images",
+                "stop": "Stop",
+                "downloading": "Downloading...",
+                "stopped": "Download stopped"
+            }
+        }
+
+        # Marco principal para contener todos los widgets
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label for CSV file selection
-        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the images CSV file with URLs from Wildlife Insights", anchor="w")
+        # Etiqueta para la selección de archivos CSV
+        self.label1 = ctk.CTkLabel(self.main_frame, text=self.translations[self.lang]["select_csv"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold CSV selection widgets
+        # Marco para contener los widgets de selección de CSV
         self.selection_frame = ctk.CTkFrame(self.main_frame)
         self.selection_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select CSV file
-        self.select_csv_btn = ctk.CTkButton(self.selection_frame, text="Browse CSV", command=self.select_csv)
+        # Botón para buscar y seleccionar el archivo CSV
+        self.select_csv_btn = ctk.CTkButton(self.selection_frame, text=self.translations[self.lang]["browse_csv"], command=self.select_csv)
         self.select_csv_btn.pack(side="left", padx=5)
 
-        # Label to display the selected CSV file name
-        self.csv_label = ctk.CTkLabel(self.selection_frame, text="No CSV file selected", anchor="w")
+        # Etiqueta para mostrar el nombre del archivo CSV seleccionado
+        self.csv_label = ctk.CTkLabel(self.selection_frame, text=self.translations[self.lang]["no_csv_selected"], anchor="w")
         self.csv_label.pack(side="left", padx=5)
 
-        # Add option for single or multiple folders
+        # Añadir opción para carpetas simples o múltiples
         self.use_multiple_folders = IntVar()
-        self.multiple_folders_checkbtn = ctk.CTkCheckBox(self.main_frame, text="Save in separate folders by deployment_id", variable=self.use_multiple_folders)
+        self.multiple_folders_checkbtn = ctk.CTkCheckBox(self.main_frame, text=self.translations[self.lang]["multiple_folders"], variable=self.use_multiple_folders)
         self.multiple_folders_checkbtn.pack(pady=10)
 
-        # Status label for showing download progress
+        # Etiqueta de estado para mostrar el progreso de la descarga
         self.status_var = StringVar()
         self.status_label = ctk.CTkLabel(self.main_frame, textvariable=self.status_var)
         self.status_label.pack(pady=10)
 
-        # Buttons for processing
+        # Botones para el procesamiento
         self.buttons_frame = ctk.CTkFrame(self.main_frame)
         self.buttons_frame.pack(pady=10)
 
-        self.download_btn = ctk.CTkButton(self.buttons_frame, text="Download Images", command=self.start_download, state=ctk.DISABLED)
+        self.download_btn = ctk.CTkButton(self.buttons_frame, text=self.translations[self.lang]["download_images"], command=self.start_download, state=ctk.DISABLED)
         self.download_btn.pack(side="left", padx=5)
 
-        self.stop_btn = ctk.CTkButton(self.buttons_frame, text="Stop", command=self.stop_download, state=ctk.DISABLED)
+        self.stop_btn = ctk.CTkButton(self.buttons_frame, text=self.translations[self.lang]["stop"], command=self.stop_download, state=ctk.DISABLED)
         self.stop_btn.pack(side="left", padx=5)
 
         self.stop_flag = False
@@ -967,90 +1222,113 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
 
        
 class ExcelCombinerApp:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Main frame (single large square)
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_initial_excel": "Selecciona el archivo Excel inicial",
+                "browse_excel": "Buscar Excel",
+                "no_excel_selected": "No se ha seleccionado ningún archivo Excel",
+                "select_images_csv": "Selecciona el archivo CSV de imágenes",
+                "browse_csv": "Buscar CSV",
+                "no_csv_selected": "No se ha seleccionado ningún archivo CSV",
+                "select_deployments_csv": "Selecciona el archivo CSV de despliegues",
+                "process_files": "Procesar Archivos",
+                "download_excel": "Descargar Excel Actualizado",
+                "process_completed": "Archivos procesados con éxito",
+                "error_message": "Se produjo un error: "
+            },
+            "pt": {
+                "select_initial_excel": "Selecione o arquivo Excel inicial",
+                "browse_excel": "Procurar Excel",
+                "no_excel_selected": "Nenhum arquivo Excel selecionado",
+                "select_images_csv": "Selecione o arquivo CSV de imagens",
+                "browse_csv": "Procurar CSV",
+                "no_csv_selected": "Nenhum arquivo CSV selecionado",
+                "select_deployments_csv": "Selecione o arquivo CSV de implantações",
+                "process_files": "Processar Arquivos",
+                "download_excel": "Baixar Excel Atualizado",
+                "process_completed": "Arquivos processados com sucesso",
+                "error_message": "Ocorreu um erro: "
+            },
+            "en": {
+                "select_initial_excel": "Select the Initial Excel file",
+                "browse_excel": "Browse Excel",
+                "no_excel_selected": "No Excel file selected",
+                "select_images_csv": "Select the Images CSV file",
+                "browse_csv": "Browse CSV",
+                "no_csv_selected": "No CSV file selected",
+                "select_deployments_csv": "Select the Deployments CSV file",
+                "process_files": "Process Files",
+                "download_excel": "Download Updated Excel",
+                "process_completed": "Files processed successfully",
+                "error_message": "An error occurred: "
+            }
+        }
+
+        # Resto de la configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Marco principal
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label for Initial Excel file
-        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the Initial Excel file", anchor="w")
+        # Etiqueta para el archivo Excel inicial
+        self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_initial_excel"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold Initial Excel selection widgets
+        # Marco para la selección del archivo Excel inicial
         self.excel_frame = ctk.CTkFrame(self.main_frame)
         self.excel_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_excel_btn = ctk.CTkButton(self.excel_frame, text="Browse Excel", command=self.select_initial_excel)
+        self.select_excel_btn = ctk.CTkButton(self.excel_frame, text=tr["browse_excel"], command=self.select_initial_excel)
         self.select_excel_btn.pack(side="left", padx=5)
 
-        self.excel_label = ctk.CTkLabel(self.excel_frame, text="No Excel file selected", anchor="w")
+        self.excel_label = ctk.CTkLabel(self.excel_frame, text=tr["no_excel_selected"], anchor="w")
         self.excel_label.pack(side="left", padx=5)
 
-        # Label for Images CSV file
-        self.label2 = ctk.CTkLabel(self.main_frame, text="Select the Images CSV file", anchor="w")
+        # Etiqueta para el archivo CSV de imágenes
+        self.label2 = ctk.CTkLabel(self.main_frame, text=tr["select_images_csv"], anchor="w")
         self.label2.pack(pady=10)
 
-        # Frame to hold Images CSV selection widgets
+        # Marco para la selección del archivo CSV de imágenes
         self.images_frame = ctk.CTkFrame(self.main_frame)
         self.images_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_images_btn = ctk.CTkButton(self.images_frame, text="Browse CSV", command=self.select_images_csv)
+        self.select_images_btn = ctk.CTkButton(self.images_frame, text=tr["browse_csv"], command=self.select_images_csv)
         self.select_images_btn.pack(side="left", padx=5)
 
-        self.images_label = ctk.CTkLabel(self.images_frame, text="No Images CSV file selected", anchor="w")
+        self.images_label = ctk.CTkLabel(self.images_frame, text=tr["no_csv_selected"], anchor="w")
         self.images_label.pack(side="left", padx=5)
 
-        # Label for Deployments CSV file
-        self.label3 = ctk.CTkLabel(self.main_frame, text="Select the Deployments CSV file", anchor="w")
+        # Etiqueta para el archivo CSV de despliegues
+        self.label3 = ctk.CTkLabel(self.main_frame, text=tr["select_deployments_csv"], anchor="w")
         self.label3.pack(pady=10)
 
-        # Frame to hold Deployments CSV selection widgets
+        # Marco para la selección del archivo CSV de despliegues
         self.deployments_frame = ctk.CTkFrame(self.main_frame)
         self.deployments_frame.pack(pady=5, padx=10, fill="x")
 
-        self.select_deployments_btn = ctk.CTkButton(self.deployments_frame, text="Browse CSV", command=self.select_deployments_csv)
+        self.select_deployments_btn = ctk.CTkButton(self.deployments_frame, text=tr["browse_csv"], command=self.select_deployments_csv)
         self.select_deployments_btn.pack(side="left", padx=5)
 
-        self.deployments_label = ctk.CTkLabel(self.deployments_frame, text="No Deployments CSV file selected", anchor="w")
+        self.deployments_label = ctk.CTkLabel(self.deployments_frame, text=tr["no_csv_selected"], anchor="w")
         self.deployments_label.pack(side="left", padx=5)
 
-        # Section for options in a single line
-        self.options_frame = ctk.CTkFrame(self.main_frame)
-        self.options_frame.pack(pady=10, padx=10, fill='x')
+        # Botón de procesar archivos
+        self.process_btn = ctk.CTkButton(self.main_frame, text=tr["process_files"], command=self.process_files, state=ctk.DISABLED)
+        self.process_btn.pack(pady=10)
 
-        # Checkbox for multiple images processing
-        self.multiple_images_var = ctk.BooleanVar(value=False)
-        self.multiple_images_checkbox = ctk.CTkCheckBox(self.options_frame, text="Process with Multiple Images", variable=self.multiple_images_var)
-        self.multiple_images_checkbox.pack(side="left", padx=5)
-
-        # Label for time threshold
-        self.time_threshold_label = ctk.CTkLabel(self.options_frame, text="Time threshold (seconds):", anchor="w")
-        self.time_threshold_label.pack(side="left", padx=5)
-
-        # Entry for time threshold
-        self.time_threshold_entry = ctk.CTkEntry(self.options_frame, width=100)
-        self.time_threshold_entry.pack(side="left", padx=5)
-        self.time_threshold_entry.insert(0, "3")  # Default value
-
-        # Frame to hold process and download buttons side by side
-        self.button_frame = ctk.CTkFrame(self.main_frame)
-        self.button_frame.pack(pady=10)
-
-        # Process button
-        self.process_btn = ctk.CTkButton(self.button_frame, text="Process Files", command=self.process_files, state=ctk.DISABLED)
-        self.process_btn.pack(side="left", padx=5)
-
-        # Download button
-        self.download_btn = ctk.CTkButton(self.button_frame, text="Download Updated Excel", command=self.save_file, state=ctk.DISABLED)
-        self.download_btn.pack(side="left", padx=5)
-
-        self.initial_excel_path = None
-        self.images_csv_path = None
-        self.deployments_csv_path = None
-        self.final_df = None  # To store the final DataFrame
+        # Botón de descargar Excel
+        self.download_btn = ctk.CTkButton(self.main_frame, text=tr["download_excel"], command=self.save_file, state=ctk.DISABLED)
+        self.download_btn.pack(pady=10)
         
     def select_initial_excel(self):
         self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
@@ -1240,77 +1518,116 @@ class ExcelCombinerApp:
 
 
 class DateChangerApp:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Frame to hold all widgets
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_folder": "Selecciona la carpeta que contiene los archivos",
+                "browse_folder": "Buscar Carpeta",
+                "no_folder_selected": "No se ha seleccionado ninguna carpeta",
+                "set_real_date": "Establece la Fecha Real (AAAA-MM-DD HH:MM:SS)",
+                "use_newest_date": "Usar la fecha más reciente",
+                "use_oldest_date": "Usar la fecha más antigua",
+                "use_custom_date": "Usar fecha personalizada",
+                "rewrite_dates": "Reescribir fechas de los archivos",
+                "copy_to_folder": "Copiar a la Carpeta",
+                "success_message": "¡Fechas de los archivos actualizadas con éxito!",
+            },
+            "pt": {
+                "select_folder": "Selecione a pasta que contém os arquivos",
+                "browse_folder": "Procurar Pasta",
+                "no_folder_selected": "Nenhuma pasta selecionada",
+                "set_real_date": "Defina a Data Real (AAAA-MM-DD HH:MM:SS)",
+                "use_newest_date": "Usar a data mais recente",
+                "use_oldest_date": "Usar a data mais antiga",
+                "use_custom_date": "Usar data personalizada",
+                "rewrite_dates": "Reescrever datas dos arquivos",
+                "copy_to_folder": "Copiar para a Pasta",
+                "success_message": "Datas dos arquivos atualizadas com sucesso!",
+            },
+            "en": {
+                "select_folder": "Select the folder containing files",
+                "browse_folder": "Browse Folder",
+                "no_folder_selected": "No folder selected",
+                "set_real_date": "Set the Real Date (YYYY-MM-DD HH:MM:SS)",
+                "use_newest_date": "Use newest date",
+                "use_oldest_date": "Use oldest date",
+                "use_custom_date": "Use custom date",
+                "rewrite_dates": "Rewrite files Change Dates",
+                "copy_to_folder": "Copy to Folder",
+                "success_message": "File dates updated successfully!",
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Label for folder selection
-        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the folder containing files", anchor="w")
+        # Label para selección de carpeta
+        self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_folder"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold folder selection widgets
+        # Frame para la selección de carpeta
         self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select a folder
-        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text="Browse Folder", command=self.select_folder)
+        # Botón para seleccionar carpeta
+        self.select_folder_btn = ctk.CTkButton(self.folder_frame, text=tr["browse_folder"], command=self.select_folder)
         self.select_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected folder name
-        self.folder_label = ctk.CTkLabel(self.folder_frame, text="No folder selected", anchor="w")
+        # Label para mostrar la carpeta seleccionada
+        self.folder_label = ctk.CTkLabel(self.folder_frame, text=tr["no_folder_selected"], anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Frame to hold date options
+        # Frame para las opciones de fecha
         self.date_frame = ctk.CTkFrame(self.main_frame)
         self.date_frame.pack(pady=10, padx=10, fill="x")
 
-        # Label and entry for setting the real date
-        self.label2 = ctk.CTkLabel(self.date_frame, text="Set the Real Date (YYYY-MM-DD HH:MM:SS)", anchor="w")
+        # Label y entrada para la fecha real
+        self.label2 = ctk.CTkLabel(self.date_frame, text=tr["set_real_date"], anchor="w")
         self.label2.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
         self.real_date_entry = ctk.CTkEntry(self.date_frame)
         self.real_date_entry.grid(row=0, column=1, padx=10, pady=5, sticky="we")
 
-        # Radio buttons and labels for date options
+        # Radio buttons y etiquetas para opciones de fecha
         self.date_option = ctk.IntVar()
         self.date_option.set(1)
 
-        self.newest_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use newest date", variable=self.date_option, value=1)
+        self.newest_date_radio = ctk.CTkRadioButton(self.date_frame, text=tr["use_newest_date"], variable=self.date_option, value=1)
         self.newest_date_radio.grid(row=1, column=0, padx=5, pady=2, sticky="w")
 
-        self.newest_date = ctk.StringVar()
-        self.newest_date_label = ctk.CTkLabel(self.date_frame, textvariable=self.newest_date, anchor="w")
-        self.newest_date_label.grid(row=1, column=1, padx=10, pady=2, sticky="w")
-
-        self.oldest_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use oldest date", variable=self.date_option, value=2)
+        self.oldest_date_radio = ctk.CTkRadioButton(self.date_frame, text=tr["use_oldest_date"], variable=self.date_option, value=2)
         self.oldest_date_radio.grid(row=2, column=0, padx=5, pady=2, sticky="w")
 
-        self.oldest_date = ctk.StringVar()
-        self.oldest_date_label = ctk.CTkLabel(self.date_frame, textvariable=self.oldest_date, anchor="w")
-        self.oldest_date_label.grid(row=2, column=1, padx=10, pady=2, sticky="w")
-
-        self.custom_date_radio = ctk.CTkRadioButton(self.date_frame, text="Use custom date", variable=self.date_option, value=3)
+        self.custom_date_radio = ctk.CTkRadioButton(self.date_frame, text=tr["use_custom_date"], variable=self.date_option, value=3)
         self.custom_date_radio.grid(row=3, column=0, padx=5, pady=2, sticky="w")
 
         self.custom_date_entry = ctk.CTkEntry(self.date_frame)
         self.custom_date_entry.grid(row=3, column=1, padx=10, pady=2, sticky="we")
 
-        # Frame to hold the Change Dates and Copy buttons
+        # Frame para los botones de cambiar fechas y copiar
         self.button_frame = ctk.CTkFrame(self.main_frame)
         self.button_frame.pack(pady=10)
 
-        # Change Dates button
-        self.change_dates_btn = ctk.CTkButton(self.button_frame, text="Rewrite files Change Dates", command=self.change_dates)
+        # Botón para cambiar las fechas
+        self.change_dates_btn = ctk.CTkButton(self.button_frame, text=tr["rewrite_dates"], command=self.change_dates)
         self.change_dates_btn.pack(side="left", padx=10)
 
-        # Copy to Folder button
-        self.copy_btn = ctk.CTkButton(self.button_frame, text="Copy to Folder", command=self.copy_to_folder)
+        # Botón para copiar a otra carpeta
+        self.copy_btn = ctk.CTkButton(self.button_frame, text=tr["copy_to_folder"], command=self.copy_to_folder)
         self.copy_btn.pack(side="left", padx=10)
-
+        
     def select_folder(self):
         folder = filedialog.askdirectory(title="Select Folder")
         if folder:
@@ -1477,106 +1794,158 @@ class DateChangerApp:
 
 
 class ImagesRenamer:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Main frame (single large square)
-        self.main_frame = ctk.CTkFrame(root)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "select_source_directory": "Selecciona el directorio de origen:",
+                "browse_source": "Buscar Origen",
+                "no_source_folder_selected": "No se ha seleccionado ninguna carpeta de origen",
+                "settings": "Configuración",
+                "use_folder_name": "Usar nombre de carpeta",
+                "keep_original_filename": "Mantener nombre de archivo original",
+                "add_exif_date": "Agregar fecha EXIF",
+                "replace_spaces": "Reemplazar espacios",
+                "use_custom_text": "Usar texto personalizado",
+                "copy_photos": "Copiar fotos a la carpeta de destino",
+                "select_destination_directory": "Selecciona el directorio de destino si deseas mover las fotos:",
+                "browse_destination": "Buscar Destino",
+                "no_destination_folder_selected": "No se ha seleccionado ninguna carpeta de destino",
+                "processing": "Procesando...",
+                "rename": "Renombrar",
+                "success_message": "Las fotos han sido renombradas y procesadas con éxito.",
+                "information": "Información"
+            },
+            "pt": {
+                "select_source_directory": "Selecione o diretório de origem:",
+                "browse_source": "Procurar Origem",
+                "no_source_folder_selected": "Nenhuma pasta de origem selecionada",
+                "settings": "Configurações",
+                "use_folder_name": "Usar nome da pasta",
+                "keep_original_filename": "Manter nome de arquivo original",
+                "add_exif_date": "Adicionar data EXIF",
+                "replace_spaces": "Substituir espaços",
+                "use_custom_text": "Usar texto personalizado",
+                "copy_photos": "Copiar fotos para a pasta de destino",
+                "select_destination_directory": "Selecione o diretório de destino se deseja mover as fotos:",
+                "browse_destination": "Procurar Destino",
+                "no_destination_folder_selected": "Nenhuma pasta de destino selecionada",
+                "processing": "Processando...",
+                "rename": "Renomear",
+                "success_message": "As fotos foram renomeadas e processadas com sucesso.",
+                "information": "Informação"
+            },
+            "en": {
+                "select_source_directory": "Select the source directory:",
+                "browse_source": "Browse Source",
+                "no_source_folder_selected": "No source folder selected",
+                "settings": "Settings",
+                "use_folder_name": "Use folder name",
+                "keep_original_filename": "Keep original filename",
+                "add_exif_date": "Add EXIF date",
+                "replace_spaces": "Replace spaces",
+                "use_custom_text": "Use custom text",
+                "copy_photos": "Copy photos to destination folder",
+                "select_destination_directory": "Select the destination directory if you want to move the photos:",
+                "browse_destination": "Browse Destination",
+                "no_destination_folder_selected": "No destination folder selected",
+                "processing": "Processing...",
+                "rename": "Rename",
+                "success_message": "Photos have been renamed and processed successfully.",
+                "information": "Information"
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Section: Source
-        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the source directory:", anchor="w")
+        # Sección: Directorio de origen
+        self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_source_directory"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold source folder selection widgets
         self.source_folder_frame = ctk.CTkFrame(self.main_frame)
         self.source_folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select the source folder
-        self.select_source_folder_btn = ctk.CTkButton(self.source_folder_frame, text="Browse Source", command=self.select_source_folder)
+        self.select_source_folder_btn = ctk.CTkButton(self.source_folder_frame, text=tr["browse_source"], command=self.select_source_folder)
         self.select_source_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected source folder name
-        self.source_folder_label = ctk.CTkLabel(self.source_folder_frame, text="No source folder selected", anchor="w")
+        self.source_folder_label = ctk.CTkLabel(self.source_folder_frame, text=tr["no_source_folder_selected"], anchor="w")
         self.source_folder_label.pack(side="left", padx=5)
 
-        # Section: Settings
-        self.label2 = ctk.CTkLabel(self.main_frame, text="Settings", anchor="w")
+        # Sección: Configuración
+        self.label2 = ctk.CTkLabel(self.main_frame, text=tr["settings"], anchor="w")
         self.label2.pack(pady=10)
 
-        # Frame to hold checkboxes in parallel
         self.checkbox_frame = ctk.CTkFrame(self.main_frame)
         self.checkbox_frame.pack(pady=10, padx=10, fill="x")
 
-        # Checkbox to choose whether to use the folder name for renaming
         self.use_folder_name_var = BooleanVar(value=True)
-        self.checkbox_use_folder_name = ctk.CTkCheckBox(self.checkbox_frame, text="Use folder name", variable=self.use_folder_name_var)
+        self.checkbox_use_folder_name = ctk.CTkCheckBox(self.checkbox_frame, text=tr["use_folder_name"], variable=self.use_folder_name_var)
         self.checkbox_use_folder_name.pack(side="left", padx=5)
 
-        # Checkbox to choose whether to keep the original filename
         self.keep_original_name_var = BooleanVar(value=False)
-        self.checkbox_keep_original_name = ctk.CTkCheckBox(self.checkbox_frame, text="Keep original filename", variable=self.keep_original_name_var)
+        self.checkbox_keep_original_name = ctk.CTkCheckBox(self.checkbox_frame, text=tr["keep_original_filename"], variable=self.keep_original_name_var)
         self.checkbox_keep_original_name.pack(side="left", padx=5)
 
-        # Checkbox to choose whether to add EXIF date to the filename
         self.add_exif_date_var = BooleanVar(value=False)
-        self.checkbox_add_exif_date = ctk.CTkCheckBox(self.checkbox_frame, text="Add EXIF date", variable=self.add_exif_date_var)
+        self.checkbox_add_exif_date = ctk.CTkCheckBox(self.checkbox_frame, text=tr["add_exif_date"], variable=self.add_exif_date_var)
         self.checkbox_add_exif_date.pack(side="left", padx=5)
 
-        # Checkbox to choose whether to replace spaces with underscores
         self.replace_spaces_var = BooleanVar(value=False)
-        self.checkbox_replace_spaces = ctk.CTkCheckBox(self.checkbox_frame, text="Replace spaces", variable=self.replace_spaces_var)
+        self.checkbox_replace_spaces = ctk.CTkCheckBox(self.checkbox_frame, text=tr["replace_spaces"], variable=self.replace_spaces_var)
         self.checkbox_replace_spaces.pack(side="left", padx=5)
 
-        # Frame to hold the custom text input option, "Use custom text", and "Copy photos" checkboxes
         self.custom_text_frame = ctk.CTkFrame(self.main_frame)
         self.custom_text_frame.pack(pady=10, padx=10, fill="x")
 
-        # Checkbox to select whether to use custom text for renaming
         self.use_custom_text_var = BooleanVar(value=False)
-        self.checkbox_use_custom_text = ctk.CTkCheckBox(self.custom_text_frame, text="Use custom text", variable=self.use_custom_text_var, command=self.toggle_custom_text_entry)
+        self.checkbox_use_custom_text = ctk.CTkCheckBox(self.custom_text_frame, text=tr["use_custom_text"], variable=self.use_custom_text_var, command=self.toggle_custom_text_entry)
         self.checkbox_use_custom_text.pack(side="left", padx=5)
 
-        # Entry field for custom text input
         self.custom_text_var = StringVar(value="")
         self.custom_text_entry = ctk.CTkEntry(self.custom_text_frame, textvariable=self.custom_text_var, state="disabled", width=200)
         self.custom_text_entry.pack(side="left", padx=5)
 
-        # Checkbox to choose whether to copy photos to the destination folder
-        self.copy_photos_var = BooleanVar(value=True)  # Set to True by default
-        self.checkbox_copy_photos = ctk.CTkCheckBox(self.custom_text_frame, text="Copy photos to destination folder", variable=self.copy_photos_var)
+        self.copy_photos_var = BooleanVar(value=True)
+        self.checkbox_copy_photos = ctk.CTkCheckBox(self.custom_text_frame, text=tr["copy_photos"], variable=self.copy_photos_var)
         self.checkbox_copy_photos.pack(side="left", padx=5)
 
-        # Section: Destination
-        self.label3 = ctk.CTkLabel(self.main_frame, text="Select the destination directory if you want to move the photos:", anchor="w")
+        # Sección: Directorio de destino
+        self.label3 = ctk.CTkLabel(self.main_frame, text=tr["select_destination_directory"], anchor="w")
         self.label3.pack(pady=10)
 
-        # Frame to hold destination folder selection widgets
         self.dest_folder_frame = ctk.CTkFrame(self.main_frame)
         self.dest_folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select the destination folder
-        self.select_dest_folder_btn = ctk.CTkButton(self.dest_folder_frame, text="Browse Destination", command=self.select_dest_folder)
+        self.select_dest_folder_btn = ctk.CTkButton(self.dest_folder_frame, text=tr["browse_destination"], command=self.select_dest_folder)
         self.select_dest_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected destination folder name
-        self.dest_folder_label = ctk.CTkLabel(self.dest_folder_frame, text="No destination folder selected", anchor="w")
+        self.dest_folder_label = ctk.CTkLabel(self.dest_folder_frame, text=tr["no_destination_folder_selected"], anchor="w")
         self.dest_folder_label.pack(side="left", padx=5)
 
-        # Processing label
+        # Etiqueta de procesamiento
         self.processing_label = ctk.CTkLabel(self.main_frame, text="", anchor="w")
         self.processing_label.pack(pady=10)
 
-        # Single Rename button to handle both renaming and moving
-        self.rename_and_copy_btn = ctk.CTkButton(self.main_frame, text="Rename", command=self.rename_and_copy_photos)
+        # Botón para renombrar y copiar
+        self.rename_and_copy_btn = ctk.CTkButton(self.main_frame, text=tr["rename"], command=self.rename_and_copy_photos)
         self.rename_and_copy_btn.pack(pady=20)
 
         self.source_folder = None
         self.dest_folder = None
 
     def toggle_custom_text_entry(self):
-        """Toggle the state of the custom text entry field based on the checkbox."""
         if self.use_custom_text_var.get():
             self.custom_text_entry.configure(state="normal")
         else:
@@ -1586,13 +1955,14 @@ class ImagesRenamer:
         self.source_folder = filedialog.askdirectory()
         if self.source_folder:
             self.source_folder_label.configure(text=self.source_folder)
-            messagebox.showinfo("Information", f"Selected source folder: {self.source_folder}")
+            messagebox.showinfo(self.translations[self.lang]["information"], f"{self.translations[self.lang]['select_source_directory']} {self.source_folder}")
 
     def select_dest_folder(self):
         self.dest_folder = filedialog.askdirectory()
         if self.dest_folder:
             self.dest_folder_label.configure(text=self.dest_folder)
-            messagebox.showinfo("Information", f"Selected destination folder: {self.dest_folder}")
+            messagebox.showinfo(self.translations[self.lang]["information"], f"{self.translations[self.lang]['select_destination_directory']} {self.dest_folder}")
+
 
     def get_exif_date(self, file_path):
         try:
@@ -1676,78 +2046,148 @@ class ImagesRenamer:
         self.processing_label.after(3000, lambda: self.processing_label.configure(text=""))  # Hide label after 3 seconds
 
 class LynxOne:
-    def __init__(self, root):
+    def __init__(self, root, lang="es"):
         self.root = root
-        ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
+        self.lang = lang  # Guardar el idioma actual
 
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(root, width=400, height=300)
+        # Diccionario de traducciones
+        self.translations = {
+            "es": {
+                "source_directory": "Selecciona el directorio de origen.",
+                "browse_source": "Buscar Origen",
+                "no_source_folder_selected": "No se ha seleccionado ninguna carpeta de origen",
+                "settings": "Configuración para agrupar imágenes.",
+                "group_by_minutes": "Agrupar por minutos:",
+                "linces_folder_exists": "¿Existe la carpeta Lince/Linces?",
+                "revision_folder_exists": "¿Existe la carpeta Revisión?",
+                "optional_files": "Opcional: Selecciona archivos Excel adicionales para unir.",
+                "estaciones_file": "No se ha seleccionado ningún archivo de Estaciones",
+                "browse_estaciones": "Buscar Estaciones",
+                "individuos_file": "No se ha seleccionado ningún archivo de Individuos",
+                "browse_individuos": "Buscar Individuos",
+                "generate_excel": "Generar Excel",
+                "download_excel": "Descargar Excel",
+                "warning": "Advertencia",
+                "info": "Información",
+                "success_message": "Archivo Excel guardado con éxito en {file_path}",
+                "error_message": "Error: ",
+                "no_source_folder": "Por favor, selecciona una carpeta de origen primero."
+            },
+            "pt": {
+                "source_directory": "Selecione o diretório de origem.",
+                "browse_source": "Procurar Origem",
+                "no_source_folder_selected": "Nenhuma pasta de origem selecionada",
+                "settings": "Configurações para agrupar imagens.",
+                "group_by_minutes": "Agrupar por minutos:",
+                "linces_folder_exists": "A pasta Lince/Linces existe?",
+                "revision_folder_exists": "A pasta Revisão existe?",
+                "optional_files": "Opcional: Selecione arquivos Excel adicionais para unir.",
+                "estaciones_file": "Nenhum arquivo Estaciones selecionado",
+                "browse_estaciones": "Procurar Estaciones",
+                "individuos_file": "Nenhum arquivo Individuos selecionado",
+                "browse_individuos": "Procurar Individuos",
+                "generate_excel": "Gerar Excel",
+                "download_excel": "Baixar Excel",
+                "warning": "Aviso",
+                "info": "Informação",
+                "success_message": "Arquivo Excel salvo com sucesso em {file_path}",
+                "error_message": "Erro: ",
+                "no_source_folder": "Por favor, selecione uma pasta de origem primeiro."
+            },
+            "en": {
+                "source_directory": "Select the source directory.",
+                "browse_source": "Browse Source",
+                "no_source_folder_selected": "No source folder selected",
+                "settings": "Settings for grouping images.",
+                "group_by_minutes": "Group by minutes:",
+                "linces_folder_exists": "Does the Lince/Linces folder exist?",
+                "revision_folder_exists": "Does the Revision folder exist?",
+                "optional_files": "Optional: Select additional Excel files for joining.",
+                "estaciones_file": "No Estaciones file selected",
+                "browse_estaciones": "Browse Estaciones",
+                "individuos_file": "No Individuos file selected",
+                "browse_individuos": "Browse Individuos",
+                "generate_excel": "Generate Excel",
+                "download_excel": "Download Excel",
+                "warning": "Warning",
+                "info": "Information",
+                "success_message": "Excel file successfully saved at {file_path}",
+                "error_message": "Error: ",
+                "no_source_folder": "Please select a source folder first."
+            }
+        }
+
+        # Configuración de la interfaz
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Obtener las traducciones según el idioma seleccionado
+        tr = self.translations[self.lang]
+
+        # Crear el panel de pestañas
+        self.tabview = ctk.CTkTabview(self.root, width=400, height=300)
         self.tabview.pack(pady=20, padx=20, fill="both", expand=True)
         self.tabview.pack_propagate(False)
 
-        # Add tabs
+        # Agregar pestañas
         self.source_tab = self.tabview.add("Source")
         self.settings_tab = self.tabview.add("Settings")
-        self.optional_tab = self.tabview.add("Optional Files")  # New tab for optional files
+        self.optional_tab = self.tabview.add("Optional Files")
 
-        # Content of the "Source" tab
-        self.label1 = ctk.CTkLabel(self.source_tab, text="Select the source directory.", anchor="w")
+        # Contenido de la pestaña "Source"
+        self.label1 = ctk.CTkLabel(self.source_tab, text=tr["source_directory"], anchor="w")
         self.label1.pack(pady=10)
 
-        # Frame to hold source folder selection widgets
         self.source_folder_frame = ctk.CTkFrame(self.source_tab)
         self.source_folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Button to browse and select the source folder
-        self.select_source_folder_btn = ctk.CTkButton(self.source_folder_frame, text="Browse Source", command=self.select_source_folder)
+        self.select_source_folder_btn = ctk.CTkButton(self.source_folder_frame, text=tr["browse_source"], command=self.select_source_folder)
         self.select_source_folder_btn.pack(side="left", padx=5)
 
-        # Label to display the selected source folder name
-        self.source_folder_label = ctk.CTkLabel(self.source_folder_frame, text="No source folder selected", anchor="w")
+        self.source_folder_label = ctk.CTkLabel(self.source_folder_frame, text=tr["no_source_folder_selected"], anchor="w")
         self.source_folder_label.pack(side="left", padx=5)
 
-        # Content of the "Settings" tab
-        self.label2 = ctk.CTkLabel(self.settings_tab, text="Settings for grouping images.", anchor="w")
+        # Contenido de la pestaña "Settings"
+        self.label2 = ctk.CTkLabel(self.settings_tab, text=tr["settings"], anchor="w")
         self.label2.pack(pady=10)
 
-        # Frame for the minutes input
         self.minutes_frame = ctk.CTkFrame(self.settings_tab)
         self.minutes_frame.pack(pady=5, padx=10, fill="x")
 
-        self.minutes_label = ctk.CTkLabel(self.minutes_frame, text="Group by minutes:")
+        self.minutes_label = ctk.CTkLabel(self.minutes_frame, text=tr["group_by_minutes"])
         self.minutes_label.pack(side="left", padx=5)
 
         self.minutes_entry = ctk.CTkEntry(self.minutes_frame, placeholder_text="Minutes (0 to disable)")
         self.minutes_entry.pack(side="left", padx=5)
 
-        # Checkbox to indicate if the Lince/linces folder exists
         self.lince_checkbox_var = ctk.BooleanVar(value=True)
-        self.checkbox_lince_exists = ctk.CTkCheckBox(self.settings_tab, text="Does the Lince/Linces folder exist?", variable=self.lince_checkbox_var)
+        self.checkbox_lince_exists = ctk.CTkCheckBox(self.settings_tab, text=tr["linces_folder_exists"], variable=self.lince_checkbox_var)
         self.checkbox_lince_exists.pack(pady=10)
 
-        # Checkbox to indicate if the Revision folder exists
         self.revision_checkbox_var = ctk.BooleanVar(value=False)
-        self.checkbox_revision_exists = ctk.CTkCheckBox(self.settings_tab, text="Does the Revision folder exist?", variable=self.revision_checkbox_var)
+        self.checkbox_revision_exists = ctk.CTkCheckBox(self.settings_tab, text=tr["revision_folder_exists"], variable=self.revision_checkbox_var)
         self.checkbox_revision_exists.pack(pady=10)
 
-        # Content of the "Optional Files" tab
-        self.label3 = ctk.CTkLabel(self.optional_tab, text="Optional: Select additional Excel files for joining.", anchor="w")
+        # Contenido de la pestaña "Optional Files"
+        self.label3 = ctk.CTkLabel(self.optional_tab, text=tr["optional_files"], anchor="w")
         self.label3.pack(pady=10)
 
-        # Frame for Estaciones file
         self.estaciones_frame = ctk.CTkFrame(self.optional_tab)
         self.estaciones_frame.pack(pady=5, padx=10, fill="x")
-        self.estaciones_file_label = ctk.CTkLabel(self.estaciones_frame, text="No Estaciones file selected", anchor="w")
+
+        self.estaciones_file_label = ctk.CTkLabel(self.estaciones_frame, text=tr["estaciones_file"], anchor="w")
         self.estaciones_file_label.pack(side="left", padx=5)
-        self.select_estaciones_file_btn = ctk.CTkButton(self.estaciones_frame, text="Browse Estaciones", command=self.select_estaciones_file)
+
+        self.select_estaciones_file_btn = ctk.CTkButton(self.estaciones_frame, text=tr["browse_estaciones"], command=self.select_estaciones_file)
         self.select_estaciones_file_btn.pack(side="left", padx=5)
 
-        # Frame for Individuos file
         self.individuos_frame = ctk.CTkFrame(self.optional_tab)
         self.individuos_frame.pack(pady=5, padx=10, fill="x")
-        self.individuos_file_label = ctk.CTkLabel(self.individuos_frame, text="No Individuos file selected", anchor="w")
+
+        self.individuos_file_label = ctk.CTkLabel(self.individuos_frame, text=tr["individuos_file"], anchor="w")
         self.individuos_file_label.pack(side="left", padx=5)
-        self.select_individuos_file_btn = ctk.CTkButton(self.individuos_frame, text="Browse Individuos", command=self.select_individuos_file)
+
+        self.select_individuos_file_btn = ctk.CTkButton(self.individuos_frame, text=tr["browse_individuos"], command=self.select_individuos_file)
         self.select_individuos_file_btn.pack(side="left", padx=5)
 
         self.source_folder = None
@@ -1755,30 +2195,31 @@ class LynxOne:
         self.individuos_file = None
         self.excel_data = None
 
-        # Buttons for generating and downloading Excel files
-        self.generate_button = ctk.CTkButton(root, text="Generate Excel", command=self.generate_excel)
+        # Botones para generar y descargar archivos Excel
+        self.generate_button = ctk.CTkButton(self.root, text=tr["generate_excel"], command=self.generate_excel)
         self.generate_button.pack(pady=10, side="left", padx=20)
 
-        self.download_button = ctk.CTkButton(root, text="Download Excel", command=self.save_excel)
+        self.download_button = ctk.CTkButton(self.root, text=tr["download_excel"], command=self.save_excel)
         self.download_button.pack(pady=10, side="left", padx=20)
 
     def select_source_folder(self):
         self.source_folder = filedialog.askdirectory()
         if self.source_folder:
             self.source_folder_label.configure(text=self.source_folder)
-            messagebox.showinfo("Information", f"Selected source folder: {self.source_folder}")
+            messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['source_directory']} {self.source_folder}")
 
     def select_estaciones_file(self):
         self.estaciones_file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if self.estaciones_file:
             self.estaciones_file_label.configure(text=self.estaciones_file)
-            messagebox.showinfo("Information", f"Selected Estaciones file: {self.estaciones_file}")
+            messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['estaciones_file']} {self.estaciones_file}")
 
     def select_individuos_file(self):
         self.individuos_file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if self.individuos_file:
             self.individuos_file_label.configure(text=self.individuos_file)
-            messagebox.showinfo("Information", f"Selected Individuos file: {self.individuos_file}")
+            messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['individuos_file']} {self.individuos_file}")
+
 
     def get_exif_data(self, image_path):
         # Retrieve EXIF data from an image
@@ -1801,7 +2242,7 @@ class LynxOne:
 
     def generate_excel(self):
         if not self.source_folder:
-            messagebox.showwarning("Warning", "Please select a source folder first.")
+            messagebox.showwarning(self.translations[self.lang]["warning"], self.translations[self.lang]["no_source_folder"])
             return
 
         # File extensions to look for
