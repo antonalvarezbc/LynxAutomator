@@ -794,7 +794,6 @@ class FrameExtractorApp:
             print(f"Error setting file dates: {e}")
 
 
-
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
     def __init__(self, root):
         super().__init__(root)  # Correct call to the base class constructor
@@ -1482,21 +1481,16 @@ class ImagesRenamer:
         self.root = root
         ctk.set_appearance_mode("System")  # Appearance mode ("System", "Dark", "Light")
 
-        # Create the tab panel
-        self.tabview = ctk.CTkTabview(root, width=400, height=300)
-        self.tabview.pack(pady=20, padx=20)
+        # Main frame (single large square)
+        self.main_frame = ctk.CTkFrame(root)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Add tabs
-        self.source_tab = self.tabview.add("Source")
-        self.settings_tab = self.tabview.add("Settings")
-        self.dest_tab = self.tabview.add("Destination")
-
-        # Content of the "Source" tab
-        self.label1 = ctk.CTkLabel(self.source_tab, text="Select the source directory:", anchor="w")
+        # Section: Source
+        self.label1 = ctk.CTkLabel(self.main_frame, text="Select the source directory:", anchor="w")
         self.label1.pack(pady=10)
 
         # Frame to hold source folder selection widgets
-        self.source_folder_frame = ctk.CTkFrame(self.source_tab)
+        self.source_folder_frame = ctk.CTkFrame(self.main_frame)
         self.source_folder_frame.pack(pady=5, padx=10, fill="x")
 
         # Button to browse and select the source folder
@@ -1507,12 +1501,12 @@ class ImagesRenamer:
         self.source_folder_label = ctk.CTkLabel(self.source_folder_frame, text="No source folder selected", anchor="w")
         self.source_folder_label.pack(side="left", padx=5)
 
-        # Content of the "Settings" tab
-        self.label2 = ctk.CTkLabel(self.settings_tab, text="Settings", anchor="w")
+        # Section: Settings
+        self.label2 = ctk.CTkLabel(self.main_frame, text="Settings", anchor="w")
         self.label2.pack(pady=10)
 
         # Frame to hold checkboxes in parallel
-        self.checkbox_frame = ctk.CTkFrame(self.settings_tab)
+        self.checkbox_frame = ctk.CTkFrame(self.main_frame)
         self.checkbox_frame.pack(pady=10, padx=10, fill="x")
 
         # Checkbox to choose whether to use the folder name for renaming
@@ -1535,8 +1529,8 @@ class ImagesRenamer:
         self.checkbox_replace_spaces = ctk.CTkCheckBox(self.checkbox_frame, text="Replace spaces", variable=self.replace_spaces_var)
         self.checkbox_replace_spaces.pack(side="left", padx=5)
 
-        # Frame to hold the custom text input option and its entry field
-        self.custom_text_frame = ctk.CTkFrame(self.settings_tab)
+        # Frame to hold the custom text input option, "Use custom text", and "Copy photos" checkboxes
+        self.custom_text_frame = ctk.CTkFrame(self.main_frame)
         self.custom_text_frame.pack(pady=10, padx=10, fill="x")
 
         # Checkbox to select whether to use custom text for renaming
@@ -1549,16 +1543,17 @@ class ImagesRenamer:
         self.custom_text_entry = ctk.CTkEntry(self.custom_text_frame, textvariable=self.custom_text_var, state="disabled", width=200)
         self.custom_text_entry.pack(side="left", padx=5)
 
-        # Button to rename and overwrite photos in Settings tab
-        self.rename_and_copy_btn_source = ctk.CTkButton(self.settings_tab, text="Rename and Overwrite", command=self.rename_and_copy_photos)
-        self.rename_and_copy_btn_source.pack(pady=20)
+        # Checkbox to choose whether to copy photos to the destination folder
+        self.copy_photos_var = BooleanVar(value=True)  # Set to True by default
+        self.checkbox_copy_photos = ctk.CTkCheckBox(self.custom_text_frame, text="Copy photos to destination folder", variable=self.copy_photos_var)
+        self.checkbox_copy_photos.pack(side="left", padx=5)
 
-        # Content of the "Destination" tab
-        self.label3 = ctk.CTkLabel(self.dest_tab, text="Select the destination directory if you want to move the photos:", anchor="w")
+        # Section: Destination
+        self.label3 = ctk.CTkLabel(self.main_frame, text="Select the destination directory if you want to move the photos:", anchor="w")
         self.label3.pack(pady=10)
 
         # Frame to hold destination folder selection widgets
-        self.dest_folder_frame = ctk.CTkFrame(self.dest_tab)
+        self.dest_folder_frame = ctk.CTkFrame(self.main_frame)
         self.dest_folder_frame.pack(pady=5, padx=10, fill="x")
 
         # Button to browse and select the destination folder
@@ -1569,14 +1564,13 @@ class ImagesRenamer:
         self.dest_folder_label = ctk.CTkLabel(self.dest_folder_frame, text="No destination folder selected", anchor="w")
         self.dest_folder_label.pack(side="left", padx=5)
 
-        # Checkbox to choose whether to copy photos to the destination folder
-        self.copy_photos_var = BooleanVar(value=False)  # Added this line
-        self.checkbox_copy_photos = ctk.CTkCheckBox(self.dest_tab, text="Copy photos to destination folder", variable=self.copy_photos_var)
-        self.checkbox_copy_photos.pack(pady=10)
+        # Processing label
+        self.processing_label = ctk.CTkLabel(self.main_frame, text="", anchor="w")
+        self.processing_label.pack(pady=10)
 
-        # Button to rename and move photos in Destination tab
-        self.rename_and_copy_btn_dest = ctk.CTkButton(self.dest_tab, text="Rename and Move", command=self.rename_and_copy_photos)
-        self.rename_and_copy_btn_dest.pack(pady=20)
+        # Single Rename button to handle both renaming and moving
+        self.rename_and_copy_btn = ctk.CTkButton(self.main_frame, text="Rename", command=self.rename_and_copy_photos)
+        self.rename_and_copy_btn.pack(pady=20)
 
         self.source_folder = None
         self.dest_folder = None
@@ -1624,11 +1618,16 @@ class ImagesRenamer:
             messagebox.showerror("Error", "Please select the destination folder.")
             return
 
+        # Show processing label
+        self.processing_label.configure(text="Processing...")
+        self.root.update_idletasks()  # Ensure the label updates immediately
+
         source_path = Path(self.source_folder)
         dest_path = Path(self.dest_folder) if self.copy_photos_var.get() else None
 
         if not source_path.is_dir() or (dest_path and not dest_path.is_dir()):
             messagebox.showerror("Error", "Invalid directory selected.")
+            self.processing_label.configure(text="")  # Hide processing label on error
             return
 
         custom_text = self.custom_text_var.get().strip()
@@ -1650,7 +1649,7 @@ class ImagesRenamer:
                     if self.use_custom_text_var.get():
                         base_name += f" {custom_text}"
 
-                    new_name = f"{base_name}{exif_date} {original_name}{file.suffix}" if self.keep_original_name_var.get() else f"{base_name}{exif_date}{file.suffix}"
+                    new_name = f"{base_name} {exif_date}{original_name}{file.suffix}" if self.keep_original_name_var.get() else f"{base_name} {exif_date}{file.suffix}"
 
                     # Replace spaces with underscores if the option is selected
                     if self.replace_spaces_var.get():
@@ -1662,7 +1661,7 @@ class ImagesRenamer:
                     counter = 1
                     original_new_path = new_path
                     while new_path.exists():
-                        new_name = original_new_path.stem + f"_{counter}" + original_new_path.suffix
+                        new_name = original_new_path.stem + f" {counter}" + original_new_path.suffix
                         new_path = new_path.parent / new_name
                         counter += 1
 
@@ -1671,12 +1670,10 @@ class ImagesRenamer:
                     else:
                         file.rename(new_path)
 
-        if self.copy_photos_var.get():
-            messagebox.showinfo("Information", f"Photos have been renamed and moved to '{self.dest_folder}' successfully.")
-        else:
-            messagebox.showinfo("Information", "Photos have been renamed and overwritten successfully.")
-
-
+        # Hide processing label and show success message
+        self.processing_label.configure(text="Processing completed.")
+        messagebox.showinfo("Information", "Photos have been renamed and processed successfully.")
+        self.processing_label.after(3000, lambda: self.processing_label.configure(text=""))  # Hide label after 3 seconds
 
 class LynxOne:
     def __init__(self, root):
