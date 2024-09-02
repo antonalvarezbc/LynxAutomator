@@ -12,7 +12,7 @@ This module includes features that facilitate the generation of the **bulk impor
 
 ### 2. Wildlife Insights
 
-This module lets you download images directly from the **Wildlife Insights** platform, streamlining the data collection and analysis process.
+This module helps you to download images from the **Wildlife Insights** platform.
 
 ### 3. Wildlife Insights-Wildbook
 
@@ -30,6 +30,15 @@ This module contains several useful tools for managing and correcting data relat
 - **Frame extraction:** Enables you to extract specific frames from videos while retaining the original capture date.
 - **Image renaming:** A tool for bulk renaming images according to specific patterns.
 
+
+## Download 
+
+To download the application, follow these steps:
+
+1. Visit the [Releases](https://github.com/antonalvarezbc/LynxAutomator/releases/) page of the repository on GitHub.
+2. Look for the latest version or the one you want to download.
+3. Click on the selected version to access the download files.
+4. Download the  executable for **Windows**: Download the `.exe` file.
 
 ## Installation
 
