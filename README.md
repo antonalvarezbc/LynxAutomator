@@ -18,7 +18,7 @@ This module helps you to download images from the **Wildlife Insights** platform
 
 This module automatically generates an Excel file for **bulk import** into Wildbook using the data and images obtained from Wildlife Insights, efficiently integrating both systems.
 
-### 4. Iberian Lynx Monitoring
+### 4. Iberian Lynx
 
 This module is designed to facilitate the generation of Excel files necessary for tracking the Iberian lynx, allowing for more efficient organization and analysis of the data.
 
