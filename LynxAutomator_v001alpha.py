@@ -43,8 +43,8 @@ class BaseApp:
                 "date_changer": "Cambiador de Fecha",
                 "video_frame_extractor": "Extractor de Fotogramas de Video",
                 "images_renamer": "Renombrador de Imágenes",
-                "wiwbe_folder": "WIWbE desde Carpeta",
-                "wiwbe_catalog": "Catálogo WIWbE",
+                "wiwbe_folder": "BIWbE desde Carpeta",
+                "wiwbe_catalog": "Catálogo BIWbE",
                 "wi_downloader": "Descargador WI",
                 "lynx_feature_1": "Función Lince Ibérico",
                 "wi_csvs_to_biwbe": "WI CSVs a BIWbE"
@@ -62,8 +62,8 @@ class BaseApp:
                 "date_changer": "Mudança de Data",
                 "video_frame_extractor": "Extractor de Quadros de Vídeo",
                 "images_renamer": "Renomeador de Imagens",
-                "wiwbe_folder": "WIWbE da Pasta",
-                "wiwbe_catalog": "Catálogo WIWbE",
+                "wiwbe_folder": "BIWbE da Pasta",
+                "wiwbe_catalog": "Catálogo BIWbE",
                 "wi_downloader": "Downloader WI",
                 "lynx_feature_1": "Recurso Lince Ibérico",
                 "wi_csvs_to_biwbe": "WI CSVs para BIWbE"
@@ -81,8 +81,8 @@ class BaseApp:
                 "date_changer": "Date Changer",
                 "video_frame_extractor": "Video Frame Extractor",
                 "images_renamer": "Images Renamer",
-                "wiwbe_folder": "WIWbE from Folder",
-                "wiwbe_catalog": "WIWbE Catalog",
+                "wiwbe_folder": "BIWbE from Folder",
+                "wiwbe_catalog": "BIWbE Catalog",
                 "wi_downloader": "WI Downloader",
                 "lynx_feature_1": "Iberian Lynx Feature",
                 "wi_csvs_to_biwbe": "WI CSVs to BIWbE"
@@ -145,12 +145,13 @@ class BaseApp:
         self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # Nueva pestaña
 
         # Agregar pestañas al notebook principal
-        self.main_tabs.add(self.about_frame, text=tr["about"])
         self.main_tabs.add(self.wildbook_frame, text=tr["wildbook"])
         self.main_tabs.add(self.wildlife_insights_frame, text=tr["wildlife_insights"])
         self.main_tabs.add(self.wildlife_insights_wildbook_frame, text=tr["wi_wildbook"])
         self.main_tabs.add(self.iberian_lynx_frame, text=tr["iberian_lynx"])
         self.main_tabs.add(self.camtrap_frame, text=tr["functionalities"])
+        self.main_tabs.add(self.about_frame, text=tr["about"])
+
 
         # Estilo para las pestañas
         style = ttk.Style()
@@ -237,15 +238,15 @@ class Presentation(ctk.CTkFrame):
         self.translations = {
             "es": {
                 "title": "LynxAutomator",
-                "description": "Esta aplicación forma parte del proyecto LIFE+ Lynxconnect"
+                "description": "Esta aplicación esta desarrollada por Antón Álvarez (aalvarez@wwf.es) y esta en estado alpha"
             },
             "pt": {
                 "title": "LynxAutomator",
-                "description": "Este aplicativo faz parte do projeto LIFE+ Lynxconnect"
+                "description": "Este aplicativo esta desarrollada por Antón Álvarez (aalvarez@wwf.es) y esta en estado alpha"
             },
             "en": {
                 "title": "LynxAutomator",
-                "description": "This app is part of the LIFE+ Lynxconnect project"
+                "description": "This app has been develop by Antón Álvarez (aalvarez@wwf.es) and it is in alpha state"
             }
         }
 
@@ -266,8 +267,8 @@ class Presentation(ctk.CTkFrame):
         # logo_label = tk.Label(self, image=self.logo)
         # logo_label.pack(pady=20)
 
-        # text_label = ctk.CTkLabel(self, text=tr["description"], font=("Helvetica", 16))
-        # text_label.pack(pady=10)
+        text_label = ctk.CTkLabel(self, text=tr["description"], font=("Helvetica", 16))
+        text_label.pack(pady=10)
 
 
 class AppHelp:
@@ -377,7 +378,8 @@ class WBFolderApp:
                 "no_file_selected": "No se ha seleccionado ningún archivo",
                 "process": "Procesar",
                 "download_excel": "Descargar Excel Actualizado",
-                "success_message": "¡Archivo Excel procesado con éxito!"
+                "success_message": "¡Archivo Excel procesado con éxito!",
+                "group_by_time": "Agrupar por tiempo"
             },
             "pt": {
                 "select_folder": "Selecione a pasta com as imagens. O nome e a data serão retirados dessas imagens.",
@@ -388,7 +390,8 @@ class WBFolderApp:
                 "no_file_selected": "Nenhum arquivo selecionado",
                 "process": "Processar",
                 "download_excel": "Baixar Excel Atualizado",
-                "success_message": "Arquivo Excel processado com sucesso!"
+                "success_message": "Arquivo Excel processado com sucesso!",
+                "group_by_time": "Agrupar por tempo"
             },
             "en": {
                 "select_folder": "Select the folder with the images. The name and the date will be taken from these images.",
@@ -399,7 +402,8 @@ class WBFolderApp:
                 "no_file_selected": "No file selected",
                 "process": "Process",
                 "download_excel": "Download Updated Excel",
-                "success_message": "Excel file processed successfully!"
+                "success_message": "Excel file processed successfully!",
+                "group_by_time": "Group by time"
             }
         }
 
@@ -407,54 +411,75 @@ class WBFolderApp:
         self.setup_ui()
 
     def setup_ui(self):
-        # Obtener traducciones según el idioma seleccionado
+        # Obtain translations based on the selected language
         tr = self.translations[self.lang]
 
-        # Marco principal (cuadrado grande único)
+        # Main frame (single large square)
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Etiqueta para solicitar acción al usuario
+        # Label asking the user to select a folder
         self.label = ctk.CTkLabel(self.main_frame, text=tr["select_folder"], anchor="w")
         self.label.pack(pady=10)
 
-        # Marco para contener los widgets de selección de carpeta
+        # Frame for the folder selection widgets
         self.folder_frame = ctk.CTkFrame(self.main_frame)
         self.folder_frame.pack(pady=5, padx=10, fill="x")
 
-        # Botón para buscar y seleccionar una carpeta
+        # Button to browse and select a folder
         self.select_folder_btn = ctk.CTkButton(self.folder_frame, text=tr["browse_folder"], command=self.select_folder)
         self.select_folder_btn.pack(side="left", padx=5)
 
-        # Etiqueta para mostrar el nombre de la carpeta seleccionada
+        # Label to display the selected folder's name
         self.folder_label = ctk.CTkLabel(self.folder_frame, text=tr["no_folder_selected"], anchor="w")
         self.folder_label.pack(side="left", padx=5)
 
-        # Mensaje entre los dos botones
+        # Message between the two buttons
         self.message_label = ctk.CTkLabel(self.main_frame, text=tr["select_excel"])
         self.message_label.pack(pady=10)
 
-        # Marco para contener los widgets de selección de archivo
+        # Frame for the file selection widgets
         self.file_frame = ctk.CTkFrame(self.main_frame)
         self.file_frame.pack(pady=5, padx=10, fill="x")
 
-        # Botón para buscar y seleccionar un archivo Excel
+        # Button to browse and select an Excel file
         self.select_file_btn = ctk.CTkButton(self.file_frame, text=tr["browse_file"], command=self.select_file)
         self.select_file_btn.pack(side="left", padx=5)
 
-        # Etiqueta para mostrar el nombre del archivo seleccionado
+        # Label to display the selected file's name
         self.file_label = ctk.CTkLabel(self.file_frame, text=tr["no_file_selected"], anchor="w")
         self.file_label.pack(side="left", padx=5)
 
-        # Botón de procesar
-        self.process_btn = ctk.CTkButton(self.main_frame, text=tr["process"], command=self.process_files)
-        self.process_btn.pack(pady=10)
+        # Frame for Checkbox and Time Threshold
+        self.options_frame = ctk.CTkFrame(self.main_frame)
+        self.options_frame.pack(pady=10, padx=10, fill="x")
 
-        # Botón de descargar
-        self.download_btn = ctk.CTkButton(self.main_frame, text=tr["download_excel"], command=self.download_file, state=ctk.DISABLED)
-        self.download_btn.pack(pady=10)
+        # Checkbox for multiple images (group by time)
+        self.multiple_images_var = tk.BooleanVar()
+        self.multiple_images_check = ctk.CTkCheckBox(self.options_frame, text=tr["group_by_time"], variable=self.multiple_images_var)
+        self.multiple_images_check.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-        # Variable para almacenar la ruta del archivo temporal
+        # Label for time threshold
+        self.time_threshold_label = ctk.CTkLabel(self.options_frame, text="Time Threshold (seconds):", anchor="w")
+        self.time_threshold_label.grid(row=0, column=1, padx=(20, 5), pady=5, sticky="w")
+
+        # Entry for time threshold
+        self.time_threshold_entry = ctk.CTkEntry(self.options_frame)
+        self.time_threshold_entry.grid(row=0, column=2, padx=5, pady=5)
+
+        # Frame for Process and Download Buttons
+        self.buttons_frame = ctk.CTkFrame(self.main_frame)
+        self.buttons_frame.pack(pady=10)
+
+        # Process files button
+        self.process_btn = ctk.CTkButton(self.buttons_frame, text=tr["process"], command=self.process_files, state=ctk.DISABLED)
+        self.process_btn.pack(side="left", padx=5)
+
+        # Download Excel button
+        self.download_btn = ctk.CTkButton(self.buttons_frame, text=tr["download_excel"], command=self.download_file, state=ctk.DISABLED)
+        self.download_btn.pack(side="left", padx=5)
+
+        # Variable to store the path of the temporary file
         self.temp_file_path = None
 
     def select_folder(self):
@@ -462,14 +487,19 @@ class WBFolderApp:
         self.folder_path = filedialog.askdirectory()
         if self.folder_path:
             self.folder_label.configure(text=os.path.basename(self.folder_path))
-            messagebox.showinfo("Information", f"Selected folder: {self.folder_path}")
+            self.check_ready_to_process()
 
     def select_file(self):
         # Open a dialog to select an Excel file
         self.file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if self.file_path:
             self.file_label.configure(text=os.path.basename(self.file_path))
-            messagebox.showinfo("Information", f"Selected file: {self.file_path}")
+            self.check_ready_to_process()
+
+    def check_ready_to_process(self):
+        # Enable the process button if both a folder and a file have been selected
+        if hasattr(self, 'folder_path') and hasattr(self, 'file_path'):
+            self.process_btn.configure(state=ctk.NORMAL)
 
     def get_exif_data(self, image_path):
         # Retrieve EXIF data from an image
@@ -526,30 +556,34 @@ class WBFolderApp:
         # Convert 'Date' column to datetime and sort data by date
         new_data['Date'] = pd.to_datetime(new_data['Date'])
         new_data.sort_values(by='Date', inplace=True)
-        
-        # Determine time threshold for grouping
-        time_threshold = int(self.time_threshold_entry.get())
-        new_data['TimeDiff'] = new_data['Date'].diff().dt.total_seconds().fillna(0)
-        
-        grouped_data = []
-        current_group = []
-        for index, row in new_data.iterrows():
-            if current_group and row['TimeDiff'] > time_threshold:
+
+        # Check if grouping by time is enabled
+        if self.multiple_images_var.get():
+            # Determine time threshold for grouping
+            time_threshold = int(self.time_threshold_entry.get())
+            new_data['TimeDiff'] = new_data['Date'].diff().dt.total_seconds().fillna(0)
+            
+            grouped_data = []
+            current_group = []
+            for index, row in new_data.iterrows():
+                if current_group and row['TimeDiff'] > time_threshold:
+                    grouped_data.append(current_group)
+                    current_group = []
+                current_group.append(row)
+            if current_group:
                 grouped_data.append(current_group)
-                current_group = []
-            current_group.append(row)
-        if current_group:
-            grouped_data.append(current_group)
-        
-        # Create a new DataFrame to store the grouped data
-        final_data = []
-        for group in grouped_data:
-            base_row = group[0].copy()
-            for i, additional_row in enumerate(group[1:], start=1):
-                base_row[f'Encounter.mediaAsset{i}'] = additional_row['Encounter.mediaAsset0']
-            final_data.append(base_row)
-        
-        final_df = pd.DataFrame(final_data).drop(columns=['TimeDiff'])
+            
+            # Create a new DataFrame to store the grouped data
+            final_data = []
+            for group in grouped_data:
+                base_row = group[0].copy()
+                for i, additional_row in enumerate(group[1:], start=1):
+                    base_row[f'Encounter.mediaAsset{i}'] = additional_row['Encounter.mediaAsset0']
+                final_data.append(base_row)
+            
+            final_df = pd.DataFrame(final_data).drop(columns=['TimeDiff'])
+        else:
+            final_df = new_data.copy()
 
         # Add date-related columns
         final_df['Encounter.year'] = final_df['Date'].dt.year
@@ -829,7 +863,6 @@ class WBCatalogApp:
                 self.temp_file_path = None
 
 
-
 class FrameExtractorApp:
     def __init__(self, root, lang="es"):
         self.root = root
@@ -841,10 +874,10 @@ class FrameExtractorApp:
                 "select_videos": "Selecciona la carpeta que contiene los videos.",
                 "browse_folder": "Buscar Carpeta",
                 "no_folder_selected": "No se ha seleccionado ninguna carpeta",
-                "interval_between_frames": "Intervalo entre cuadros (segundos):",
-                "extract_frames": "Extraer cuadros",
+                "interval_between_frames": "Intervalo entre fotogramas (segundos):",
+                "extract_frames": "Extraer fotogramas",
                 "processing": "Procesando...",
-                "success_message": "Cuadros extraídos y guardados con éxito.",
+                "success_message": "Fotogramas extraídos y guardados con éxito.",
                 "error_message": "Error: "
             },
             "pt": {
@@ -1235,7 +1268,9 @@ class ExcelCombinerApp:
                 "select_images_csv": "Selecciona el archivo CSV de imágenes",
                 "browse_csv": "Buscar CSV",
                 "no_csv_selected": "No se ha seleccionado ningún archivo CSV",
-                "select_deployments_csv": "Selecciona el archivo CSV de despliegues",
+                "select_deployments_csv": "Selecciona el archivo CSV de deployments",
+                "process_multiple_images": "Procesar múltiples imágenes   ",
+                "time_threshold": "Umbral de tiempo (segundos):",
                 "process_files": "Procesar Archivos",
                 "download_excel": "Descargar Excel Actualizado",
                 "process_completed": "Archivos procesados con éxito",
@@ -1248,7 +1283,9 @@ class ExcelCombinerApp:
                 "select_images_csv": "Selecione o arquivo CSV de imagens",
                 "browse_csv": "Procurar CSV",
                 "no_csv_selected": "Nenhum arquivo CSV selecionado",
-                "select_deployments_csv": "Selecione o arquivo CSV de implantações",
+                "select_deployments_csv": "Selecione o arquivo CSV de deployments",
+                "process_multiple_images": "Processar múltiplas imagens   ",
+                "time_threshold": "Limite de tempo (segundos):",
                 "process_files": "Processar Arquivos",
                 "download_excel": "Baixar Excel Atualizado",
                 "process_completed": "Arquivos processados com sucesso",
@@ -1262,6 +1299,8 @@ class ExcelCombinerApp:
                 "browse_csv": "Browse CSV",
                 "no_csv_selected": "No CSV file selected",
                 "select_deployments_csv": "Select the Deployments CSV file",
+                "process_multiple_images": "Process multiple images   ",
+                "time_threshold": "Time threshold (seconds):",
                 "process_files": "Process Files",
                 "download_excel": "Download Updated Excel",
                 "process_completed": "Files processed successfully",
@@ -1269,11 +1308,11 @@ class ExcelCombinerApp:
             }
         }
 
+
         # Resto de la configuración de la interfaz
         self.setup_ui()
 
     def setup_ui(self):
-        # Obtener traducciones según el idioma seleccionado
         tr = self.translations[self.lang]
 
         # Marco principal
@@ -1322,13 +1361,36 @@ class ExcelCombinerApp:
         self.deployments_label = ctk.CTkLabel(self.deployments_frame, text=tr["no_csv_selected"], anchor="w")
         self.deployments_label.pack(side="left", padx=5)
 
+        # Marco para el Checkbox y el Umbral de Tiempo
+        self.options_frame = ctk.CTkFrame(self.main_frame)
+        self.options_frame.pack(pady=10, padx=10, fill="x")
+
+        # Checkbox para múltiples imágenes
+        self.multiple_images_var = tk.BooleanVar()
+        self.multiple_images_check = ctk.CTkCheckBox(self.options_frame, text=tr["process_multiple_images"], variable=self.multiple_images_var)
+        self.multiple_images_check.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+
+        # Etiqueta para el umbral de tiempo
+        self.time_threshold_label = ctk.CTkLabel(self.options_frame, text=tr["time_threshold"], anchor="w")
+        self.time_threshold_label.grid(row=0, column=1, padx=(20, 5), pady=5, sticky="w")
+
+        # Campo de entrada para el umbral de tiempo
+        self.time_threshold_entry = ctk.CTkEntry(self.options_frame)
+        self.time_threshold_entry.grid(row=0, column=2, padx=5, pady=5)
+
+        # Marco para los botones de procesar archivos y descargar Excel
+        self.buttons_frame = ctk.CTkFrame(self.main_frame)
+        self.buttons_frame.pack(pady=10)
+
         # Botón de procesar archivos
-        self.process_btn = ctk.CTkButton(self.main_frame, text=tr["process_files"], command=self.process_files, state=ctk.DISABLED)
-        self.process_btn.pack(pady=10)
+        self.process_btn = ctk.CTkButton(self.buttons_frame, text=tr["process_files"], command=self.process_files, state=ctk.DISABLED)
+        self.process_btn.pack(side="left", padx=5)
 
         # Botón de descargar Excel
-        self.download_btn = ctk.CTkButton(self.main_frame, text=tr["download_excel"], command=self.save_file, state=ctk.DISABLED)
-        self.download_btn.pack(pady=10)
+        self.download_btn = ctk.CTkButton(self.buttons_frame, text=tr["download_excel"], command=self.save_file, state=ctk.DISABLED)
+        self.download_btn.pack(side="left", padx=5)
+
+        
         
     def select_initial_excel(self):
         self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
@@ -1351,6 +1413,14 @@ class ExcelCombinerApp:
     def check_all_selected(self):
         if self.initial_excel_path and self.images_csv_path and self.deployments_csv_path:
             self.process_btn.configure(state=ctk.NORMAL)
+
+    # Function to sanitize and generate Occurrence.occurrenceID
+    def generate_occurrence_id(self, row):
+        # Convert to string and handle NaN by replacing with an empty string
+        sanitized_project_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['project_id']) if pd.notna(row['project_id']) else '')
+        sanitized_subproject_name = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['subproject_name']) if pd.notna(row['subproject_name']) else '')
+        sanitized_deployment_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['deployment_id']) if pd.notna(row['deployment_id']) else '')
+        return f"{sanitized_project_id}-{sanitized_subproject_name}-{sanitized_deployment_id}"
 
     def process_files(self):
         try:
@@ -1383,6 +1453,8 @@ class ExcelCombinerApp:
             else:
                 # Process as single image per row, no grouping
                 combined_df = pd.DataFrame()
+
+                # Add the columns for location and media asset
                 combined_df['Encounter.decimalLatitude'] = result_df['latitude']
                 combined_df['Encounter.decimalLongitude'] = result_df['longitude']
                 combined_df['Encounter.verbatimLocality'] = result_df['placename']
@@ -1407,19 +1479,30 @@ class ExcelCombinerApp:
                         combined_df[column] = initial_df[column].iloc[0]
 
                 # Ensure the columns are in the same order as initial_df and include the new Occurrence.occurrenceID column
-                final_columns = ['Occurrence.occurrenceID'] + [col for col in initial_df.columns if col != 'Occurrence.occurrenceID']
+                final_columns = ['Occurrence.occurrenceID', 
+                                'Encounter.decimalLatitude', 
+                                'Encounter.decimalLongitude', 
+                                'Encounter.verbatimLocality', 
+                                'Encounter.mediaAsset0', 
+                                'Encounter.year', 
+                                'Encounter.month', 
+                                'Encounter.day', 
+                                'Encounter.hour', 
+                                'Encounter.minutes'] + [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 'Encounter.verbatimLocality', 'Encounter.mediaAsset0', 'Encounter.year', 'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']]
+                
                 combined_df = combined_df[final_columns]
 
                 # Store the final DataFrame in the class variable
                 self.final_df = combined_df
 
                 messagebox.showinfo("Process Completed", f"File processed successfully.")
-                self.save_file_btn.configure(state=ctk.NORMAL)
+                self.download_btn.configure(state=ctk.NORMAL)
         
         except Exception as e:
             messagebox.showerror("Error", f"Se produjo un error: {e}")
             print(e)
-
+    
+           
     def process_multiple_images(self, result_df, initial_df):
         try:
             # Sort the DataFrame by deployment_id and timestamp
@@ -1477,27 +1560,38 @@ class ExcelCombinerApp:
                 if column not in combined_df.columns:
                     combined_df[column] = initial_df[column].iloc[0]
 
-            # Ensure the columns are in the same order as initial_df and include the new Occurrence.occurrenceID column
-            final_columns = ['Occurrence.occurrenceID'] + [col for col in initial_df.columns if col != 'Occurrence.occurrenceID']
+            # Ensure the columns are in the correct order and include the new Occurrence.occurrenceID column
+            final_columns = ['Occurrence.occurrenceID',
+                            'Encounter.decimalLatitude', 
+                            'Encounter.decimalLongitude', 
+                            'Encounter.verbatimLocality', 
+                            'Encounter.year', 
+                            'Encounter.month', 
+                            'Encounter.day', 
+                            'Encounter.hour', 
+                            'Encounter.minutes'] + \
+                            [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID',
+                                                                            'Encounter.decimalLatitude', 
+                                                                            'Encounter.decimalLongitude', 
+                                                                            'Encounter.verbatimLocality', 
+                                                                            'Encounter.year', 
+                                                                            'Encounter.month', 
+                                                                            'Encounter.day', 
+                                                                            'Encounter.hour', 
+                                                                            'Encounter.minutes']]
+
             combined_df = combined_df[final_columns + [col for col in combined_df.columns if col.startswith('Encounter.mediaAsset')]]
 
             # Store the final DataFrame in the class variable
             self.final_df = combined_df
 
             messagebox.showinfo("Process Completed", f"Files processed successfully with multiple images handling.")
-            self.save_file_btn.configure(state=ctk.NORMAL)
+            self.download_btn.configure(state=ctk.NORMAL)
         
         except Exception as e:
             messagebox.showerror("Error", f"Se produjo un error: {e}")
             print(e)
 
-    # Function to sanitize and generate Occurrence.occurrenceID
-    def generate_occurrence_id(self, row):
-        # Convert to string and handle NaN by replacing with an empty string
-        sanitized_project_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['project_id']) if pd.notna(row['project_id']) else '')
-        sanitized_subproject_name = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['subproject_name']) if pd.notna(row['subproject_name']) else '')
-        sanitized_deployment_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['deployment_id']) if pd.notna(row['deployment_id']) else '')
-        return f"{sanitized_project_id}-{sanitized_subproject_name}-{sanitized_deployment_id}"
 
     # Ensure the file extension is .JPG
     def ensure_jpg_extension(self, location):
@@ -2045,6 +2139,7 @@ class ImagesRenamer:
         messagebox.showinfo("Information", "Photos have been renamed and processed successfully.")
         self.processing_label.after(3000, lambda: self.processing_label.configure(text=""))  # Hide label after 3 seconds
 
+
 class LynxOne:
     def __init__(self, root, lang="es"):
         self.root = root
@@ -2100,13 +2195,13 @@ class LynxOne:
                 "no_source_folder_selected": "No source folder selected",
                 "settings": "Settings for grouping images.",
                 "group_by_minutes": "Group by minutes:",
-                "linces_folder_exists": "Does the Lince/Linces folder exist?",
-                "revision_folder_exists": "Does the Revision folder exist?",
+                "linces_folder_exists": "Does the lynx/lynxes folder exist?",
+                "revision_folder_exists": "Does the develoment folder exist?",
                 "optional_files": "Optional: Select additional Excel files for joining.",
-                "estaciones_file": "No Estaciones file selected",
-                "browse_estaciones": "Browse Estaciones",
-                "individuos_file": "No Individuos file selected",
-                "browse_individuos": "Browse Individuos",
+                "estaciones_file": "No Station file selected",
+                "browse_estaciones": "Browse Station",
+                "individuos_file": "No Individuals file selected",
+                "browse_individuos": "Browse Individuals",
                 "generate_excel": "Generate Excel",
                 "download_excel": "Download Excel",
                 "warning": "Warning",
