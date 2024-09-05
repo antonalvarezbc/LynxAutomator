@@ -239,6 +239,7 @@ class Presentation(ctk.CTkFrame):
             "es": {
                 "title": "LynxAutomator",
                 "description": "Esta aplicación esta desarrollada por Antón Álvarez (aalvarez@wwf.es) y esta en estado alpha"
+                #https://api.github.com/repos/antonalvarezbc/lynxAutomator/releases/
             },
             "pt": {
                 "title": "LynxAutomator",
@@ -2219,8 +2220,12 @@ class LynxOne:
         # Obtener las traducciones según el idioma seleccionado
         tr = self.translations[self.lang]
 
+        # Crear el main_frame
+        self.main_frame = ctk.CTkFrame(self.root)
+        self.main_frame.pack(fill="both", expand=True)
+
         # Crear el panel de pestañas
-        self.tabview = ctk.CTkTabview(self.root, width=400, height=300)
+        self.tabview = ctk.CTkTabview(self.main_frame, width=400, height=300)
         self.tabview.pack(pady=20, padx=20, fill="both", expand=True)
         self.tabview.pack_propagate(False)
 
@@ -2290,12 +2295,16 @@ class LynxOne:
         self.individuos_file = None
         self.excel_data = None
 
-        # Botones para generar y descargar archivos Excel
-        self.generate_button = ctk.CTkButton(self.root, text=tr["generate_excel"], command=self.generate_excel)
-        self.generate_button.pack(pady=10, side="left", padx=20)
+        # Frame for Process and Download Buttons
+        self.buttons_frame = ctk.CTkFrame(self.main_frame)
+        self.buttons_frame.pack(pady=10)
 
-        self.download_button = ctk.CTkButton(self.root, text=tr["download_excel"], command=self.save_excel)
-        self.download_button.pack(pady=10, side="left", padx=20)
+        # Botones para generar y descargar archivos Excel
+        self.generate_button = ctk.CTkButton(self.buttons_frame, text=tr["generate_excel"], command=self.generate_excel)
+        self.generate_button.pack(side="left", padx=5)
+
+        self.download_button = ctk.CTkButton(self.buttons_frame, text=tr["download_excel"], command=self.save_excel)
+        self.download_button.pack(side="left", padx=5)
 
     def select_source_folder(self):
         self.source_folder = filedialog.askdirectory()
