@@ -42,7 +42,10 @@ To download the application, follow these steps:
 
 ## Installation
 
-This application does not need to be installed, is a .exe file that you can run on your Windows PC.
+This application has two options:
+- LynxAutomator.exe does not need to be installed
+- LynxAutomator-Setup.exe the installer
+Both are the same app.
 
 ## [User guide](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx) 
 
