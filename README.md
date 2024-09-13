@@ -44,7 +44,7 @@ To download the application, follow these steps:
 
 This application does not need to be installed, is a .exe file that you can run on your Windows PC.
 
-## [User guide](https://docs.google.com/document/d/1f24DUzTcXGDH2t5m7DhcUdmD6oFJYGmJkoP_sG5xzxw/edit#heading=h.m5pi0fb7skq1) 
+## [User guide](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx) 
 
-WIP
+[WIP](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx)
 
