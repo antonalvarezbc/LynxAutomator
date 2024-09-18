@@ -4,8 +4,8 @@ AppVersion=0.001
 DefaultDirName={pf}\LynxAutomator
 DefaultGroupName=LynxAutomator
 OutputBaseFilename=LynxAutomator-Setup
-Compression=lzma
-SolidCompression=yes
+Compression=none
+SolidCompression=no
 
 [Files]
 Source: "C:\Users\WWF-POR113\Desktop\PythonApps\BIWBapp\dist\LynxAutomator_v001alpha.exe"; DestDir: "{app}"; Flags: ignoreversion
