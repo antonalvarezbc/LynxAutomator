@@ -2375,30 +2375,30 @@ class LynxOne:
                     # Extract parts of the path depending on whether Lince and Revision exist
                     parts = root_path.parts
                     if lince_exists and revision_exists and len(parts) >= 6:
-                        finca = parts[-5]  # Fifth folder from the end
-                        estacion = parts[-4]  # Fourth folder from the end
-                        revision = parts[-3]  # Third folder from the end
-                        lince = parts[-1]  # Current folder name
+                        finca = parts[-5]
+                        estacion = parts[-4]
+                        revision = parts[-3]
+                        lince = parts[-1]
                     elif lince_exists and not revision_exists and len(parts) >= 5:
-                        finca = parts[-4]  # Fourth folder from the end
-                        estacion = parts[-3]  # Third folder from the end
-                        revision = "N/A"  # No Revision folder
-                        lince = parts[-1]  # Current folder name
+                        finca = parts[-4]
+                        estacion = parts[-3]
+                        revision = "N/A"
+                        lince = parts[-1]
                     elif not lince_exists and revision_exists and len(parts) >= 5:
-                        finca = parts[-4]  # Fourth folder from the end
-                        estacion = parts[-3]  # Third folder from the end
-                        revision = parts[-2]  # Second folder from the end
-                        lince = parts[-1]  # Current folder name
+                        finca = parts[-4]
+                        estacion = parts[-3]
+                        revision = parts[-2]
+                        lince = parts[-1]
                     elif not lince_exists and not revision_exists and len(parts) >= 4:
-                        finca = parts[-3]  # Third folder from the end
-                        estacion = parts[-2]  # Second folder from the end
-                        revision = "N/A"  # No Revision folder
-                        lince = parts[-1]  # Current folder name
+                        finca = parts[-3]
+                        estacion = parts[-2]
+                        revision = "N/A"
+                        lince = parts[-1]
                     else:
-                        continue  # Skip if the expected structure is not met
+                        continue
 
                     # Get the Capture Date (EXIF DateTimeOriginal) from the image
-                    file_name = root_path / file  # Combine path and file
+                    file_name = root_path / file
                     exif_data = self.get_exif_data(str(file_name))
                     if exif_data:
                         capture_date = self.get_date_taken(exif_data)
@@ -2406,7 +2406,6 @@ class LynxOne:
                         capture_date = None
 
                     # Handle multiple linces
-                    # Replace both " y " and " Y " with a common separator
                     lince = re.sub(r' y | Y ', ' y ', lince)
                     lince_names = lince.split(" y ")
 
@@ -2416,10 +2415,10 @@ class LynxOne:
                             "Finca": finca,
                             "Estación": estacion,
                             "Revisión": revision,
-                            "Linces": lince,  # Combined names
-                            "Lince": individual_lince.strip(),  # Individual lince name
+                            "Individuos": lince,
+                            "Individuo": individual_lince.strip(),
                             "Archivo": str(file_name),
-                            "Fecha de Captura": capture_date
+                            "Fecha Foto": capture_date
                         }
                         data.append(individual_lince_row)
 
@@ -2428,23 +2427,40 @@ class LynxOne:
             return
 
         # Convert to DataFrame
-        df = pd.DataFrame(data, columns=["Finca", "Estación", "Revisión", "Linces", "Lince", "Archivo", "Fecha de Captura"])
+        df = pd.DataFrame(data, columns=["Finca", "Estación", "Revisión", "Individuos", "Individuo", "Archivo", "Fecha Foto"])
 
         if minutes_to_group > 0:
-            # Group by individual and collapse rows based on time difference
+            # Group by finca, estacion, revisión, and collapse rows based on time difference
             grouped_data = []
-            for name, group in df.groupby(["Finca", "Estación", "Revisión", "Lince"]):
-                group = group.sort_values(by="Fecha de Captura")
+            for name, group in df.groupby(["Finca", "Estación", "Revisión"]):
+                group = group.sort_values(by="Fecha Foto")
                 collapsed_files = []
+                collapsed_individuos = []
                 last_time = None
                 for _, row in group.iterrows():
-                    if last_time and row["Fecha de Captura"] and (row["Fecha de Captura"] - last_time).total_seconds() / 60 <= minutes_to_group:
+                    if last_time and row["Fecha Foto"] and (row["Fecha Foto"] - last_time).total_seconds() / 60 <= minutes_to_group:
                         collapsed_files[-1]["Archivo"] += ";" + row["Archivo"]
+                        # Append current individual's name to collapsed list
+                        collapsed_individuos[-1].update(row["Individuo"].split(" y "))
                     else:
                         collapsed_files.append(row.to_dict())
-                    last_time = row["Fecha de Captura"]
-                grouped_data.extend(collapsed_files)
+                        # Start a new set of individuals for the new collapsed group
+                        collapsed_individuos.append(set(row["Individuo"].split(" y ")))
+                    last_time = row["Fecha Foto"]
+                
+                # Expand 'Individuo' to include each individual in separate rows for each collapsed group
+                for i, collapsed in enumerate(collapsed_files):
+                    for individual in collapsed_individuos[i]:
+                        new_row = collapsed.copy()
+                        new_row["Individuo"] = individual.strip()
+                        new_row["Individuos"] = " y ".join(collapsed_individuos[i])  # Update combined names
+                        grouped_data.append(new_row)
+
             df = pd.DataFrame(grouped_data)
+
+        # Remove the "Revisión" column if all its values are "N/A"
+        if df["Revisión"].nunique() == 1 and df["Revisión"].iloc[0] == "N/A":
+            df = df.drop(columns=["Revisión"])
 
         # Perform join with Estaciones and Individuos if the files are provided
         if self.estaciones_file:
@@ -2453,11 +2469,12 @@ class LynxOne:
 
         if self.individuos_file:
             individuos_df = pd.read_excel(self.individuos_file)
-            df = df.merge(individuos_df, how='left', left_on='Lince', right_on='Lince')
+            df = df.merge(individuos_df, how='left', left_on='Individuo', right_on='Lince')
 
         # Store the DataFrame to use it later for saving
         self.excel_data = df
 
+   
     def save_excel(self):
         if not hasattr(self, 'excel_data') or self.excel_data is None:
             messagebox.showerror("Error", "No Excel data to save. Please generate the Excel file first.")
