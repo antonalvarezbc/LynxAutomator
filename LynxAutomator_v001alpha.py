@@ -2470,6 +2470,12 @@ class LynxOne:
         if self.individuos_file:
             individuos_df = pd.read_excel(self.individuos_file)
             df = df.merge(individuos_df, how='left', left_on='Individuo', right_on='Lince')
+        
+        # Crear una columna que cuente el número de fotos
+        df["Número de Fotos"] = df["Archivo"].apply(lambda x: len(x.split(";")))
+
+        # Vaciar la columna "Individuos" si es igual a "Individuo"
+        df.loc[df["Individuos"] == df["Individuo"], "Individuos"] = ""
 
         # Store the DataFrame to use it later for saving
         self.excel_data = df
