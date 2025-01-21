@@ -636,7 +636,6 @@ class WBFolderApp:
                 self.temp_file_path = None
 
 
-
 class WBCatalogApp:
     def __init__(self, root, lang="es"):
         self.root = root
@@ -1418,10 +1417,12 @@ class ExcelCombinerApp:
     # Function to sanitize and generate Occurrence.occurrenceID
     def generate_occurrence_id(self, row):
         # Convert to string and handle NaN by replacing with an empty string
-        sanitized_project_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['project_id']) if pd.notna(row['project_id']) else '')
-        sanitized_subproject_name = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['subproject_name']) if pd.notna(row['subproject_name']) else '')
-        sanitized_deployment_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['deployment_id']) if pd.notna(row['deployment_id']) else '')
-        return f"{sanitized_project_id}-{sanitized_subproject_name}-{sanitized_deployment_id}"
+        sanitized_project_id = str(row['project_id']) if pd.notna(row['project_id']) else ''
+        sanitized_deployment_id = str(row['deployment_id']) if pd.notna(row['deployment_id']) else ''
+        
+        # Return combined occurrenceID
+        return f"{sanitized_project_id}-{sanitized_deployment_id}"
+
 
     def process_files(self):
         try:
