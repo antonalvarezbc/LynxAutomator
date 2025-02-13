@@ -2352,7 +2352,7 @@ class LynxOne:
 
         # File extensions to look for
         valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif', 
-                            '.mp4', '.avi', '.mov', '.mkv', '.wmv')
+                            '.mp4', '.avi', '.mov', '.mkv', '.wmv', '.MOV')
 
         # Determine if the "Lince/linces" and "Revision" folders exist
         lince_exists = self.lince_checkbox_var.get()
@@ -2376,9 +2376,9 @@ class LynxOne:
                     # Extract parts of the path depending on whether Lince and Revision exist
                     parts = root_path.parts
                     if lince_exists and revision_exists and len(parts) >= 6:
-                        finca = parts[-5]
-                        estacion = parts[-4]
-                        revision = parts[-3]
+                        finca = parts[-4]
+                        estacion = parts[-3]
+                        revision = parts[-2]
                         lince = parts[-1]
                     elif lince_exists and not revision_exists and len(parts) >= 5:
                         finca = parts[-4]
