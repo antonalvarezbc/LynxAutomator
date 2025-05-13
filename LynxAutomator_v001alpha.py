@@ -238,18 +238,18 @@ class Presentation(ctk.CTkFrame):
         self.translations = {
             "es": {
                 "title": "LynxAutomator",
-                "description": "Esta aplicación esta desarrollada por Antón Álvarez (aalvarez@wwf.es) y esta en estado alpha"
-                #https://api.github.com/repos/antonalvarezbc/lynxAutomator/releases/
+                "description": "LynxAutomator ha sido desarrollada por WWF España\n en el ámbito del proyecto LIFE LynxConnect 19NAT/ES/001055\n en la acción A8 Nuevas técnicas complementarias para el seguimiento de las poblaciones de lince"
             },
             "pt": {
                 "title": "LynxAutomator",
-                "description": "Este aplicativo esta desarrollada por Antón Álvarez (aalvarez@wwf.es) y esta en estado alpha"
+                "description": "LynxAutomator foi desenvolvida pela WWF Espanha\n no âmbito do projeto LIFE LynxConnect 19NAT/ES/001055\n na ação A8 Novas técnicas complementares para o monitoramento das populações de lince"
             },
             "en": {
                 "title": "LynxAutomator",
-                "description": "This app has been develop by Antón Álvarez (aalvarez@wwf.es) and it is in alpha state"
+                "description": "LynxAutomator has been developed by WWF Spain\n within the framework of the LIFE LynxConnect project 19NAT/ES/001055\n under Action A8 New complementary techniques for monitoring lynx populations"
             }
         }
+
 
         # Configuración de la interfaz
         self.setup_ui()
@@ -261,12 +261,12 @@ class Presentation(ctk.CTkFrame):
         self.pack(fill="both", expand=True)
 
         # # Crear widgets
-        # logo_path = "ruta/a/tu/logo.png"  # Asegúrate de actualizar esto con la ruta correcta
-        # logo_image = Image.open(logo_path)
+        logo_path = "BIWB_app\LynxAutomator\logo.png"  # Asegúrate de actualizar esto con la ruta correcta
+        logo_image = Image.open(logo_path)
 
-        # self.logo = ImageTk.PhotoImage(logo_image)
-        # logo_label = tk.Label(self, image=self.logo)
-        # logo_label.pack(pady=20)
+        self.logo = ImageTk.PhotoImage(logo_image)
+        logo_label = tk.Label(self, image=self.logo)
+        logo_label.pack(pady=20)
 
         text_label = ctk.CTkLabel(self, text=tr["description"], font=("Helvetica", 16))
         text_label.pack(pady=10)
