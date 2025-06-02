@@ -1253,13 +1253,31 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             # Reset the status label
             self.status_var.set("Download process completed.")
 
-       
-class ExcelCombinerApp:
-    def __init__(self, root, lang="es"):
-        self.root = root
-        self.lang = lang  # Guardar el idioma actual
 
-        # Diccionario de traducciones
+class ExcelCombinerApp:
+    """
+    Clase principal de la aplicación para combinar datos de Excel y CSV,
+    procesar imágenes y generar un nuevo archivo Excel.
+    """
+    def __init__(self, root, lang="es"):
+        """
+        Constructor de la clase.
+        Inicializa la ventana principal de la aplicación y las variables de estado.
+
+        Args:
+            root (tk.Tk o ctk.CTk): La ventana raíz de la aplicación.
+            lang (str): El idioma de la interfaz ("es", "pt", "en").
+        """
+        self.root = root # Ventana raíz de la aplicación
+        self.lang = lang  # Idioma actual de la interfaz
+
+        # Rutas de los archivos seleccionados por el usuario
+        self.initial_excel_path = None
+        self.images_csv_path = None
+        self.deployments_csv_path = None
+        self.final_df = None # DataFrame final resultante del procesamiento
+
+        # Diccionario de traducciones para la interfaz de usuario
         self.translations = {
             "es": {
                 "select_initial_excel": "Selecciona el archivo Excel inicial",
@@ -1269,12 +1287,24 @@ class ExcelCombinerApp:
                 "browse_csv": "Buscar CSV",
                 "no_csv_selected": "No se ha seleccionado ningún archivo CSV",
                 "select_deployments_csv": "Selecciona el archivo CSV de deployments",
-                "process_multiple_images": "Procesar múltiples imágenes   ",
+                "process_multiple_images": "Procesar múltiples imágenes  ",
                 "time_threshold": "Umbral de tiempo (segundos):",
                 "process_files": "Procesar Archivos",
                 "download_excel": "Descargar Excel Actualizado",
                 "process_completed": "Archivos procesados con éxito",
-                "error_message": "Se produjo un error: "
+                "error_message": "Se produjo un error: ",
+                "separate_objects_gt_1": "Separar si objetos > 1", # Nuevo texto para el checkbox
+                "missing_columns_error": "Columnas 'project_id' o 'deployment_id' faltan en los archivos CSV de imágenes o despliegues. Asegúrate de que ambos archivos contengan estas columnas.",
+                "error_column_missing_in_images_csv": "La columna '{col}' falta en el archivo CSV de imágenes.",
+                "error_column_missing_in_deployments_csv": "La columna '{col}' falta en el archivo CSV de deployments.",
+                "error_no_initial_excel_selected": "No se ha seleccionado un archivo de Excel inicial.",
+                "file_saved_successfully": "Archivo guardado con éxito en {path}",
+                "error_threshold_value": "El umbral de tiempo debe ser un número entero.",
+                "warning_empty_final_df": "El DataFrame final está vacío, pero había datos para procesar. Verifique los filtros y umbrales.",
+                "info_no_valid_data": "No había datos válidos para procesar después de la carga inicial y combinación.",
+                "error_saving_file": "No se pudo guardar el archivo: ",
+                "warning_download_empty": "No hay datos procesados para descargar. El Excel resultante estaría vacío.",
+                "error_download_not_available": "Los archivos aún no se han procesado o el procesamiento no generó datos."
             },
             "pt": {
                 "select_initial_excel": "Selecione o arquivo Excel inicial",
@@ -1284,12 +1314,24 @@ class ExcelCombinerApp:
                 "browse_csv": "Procurar CSV",
                 "no_csv_selected": "Nenhum arquivo CSV selecionado",
                 "select_deployments_csv": "Selecione o arquivo CSV de deployments",
-                "process_multiple_images": "Processar múltiplas imagens   ",
+                "process_multiple_images": "Processar múltiplas imagens  ",
                 "time_threshold": "Limite de tempo (segundos):",
                 "process_files": "Processar Arquivos",
                 "download_excel": "Baixar Excel Atualizado",
                 "process_completed": "Arquivos processados com sucesso",
-                "error_message": "Ocorreu um erro: "
+                "error_message": "Ocorreu um erro: ",
+                "separate_objects_gt_1": "Separar se objetos > 1",
+                "missing_columns_error": "Colunas 'project_id' ou 'deployment_id' estão faltando nos arquivos CSV de imagens ou implantações. Certifique-se de que ambos os arquivos contenham essas colunas.",
+                "error_column_missing_in_images_csv": "A coluna '{col}' está faltando no arquivo CSV de imagens.",
+                "error_column_missing_in_deployments_csv": "A coluna '{col}' está faltando no arquivo CSV de implantações.",
+                "error_no_initial_excel_selected": "Nenhum arquivo Excel inicial foi selecionado.",
+                "file_saved_successfully": "Arquivo salvo com sucesso em {path}",
+                "error_threshold_value": "O limite de tempo deve ser um número inteiro.",
+                "warning_empty_final_df": "O DataFrame final está vazio, mas havia dados para processar. Verifique os filtros e limites.",
+                "info_no_valid_data": "Não havia dados válidos para processar após o carregamento inicial e a combinação.",
+                "error_saving_file": "Não foi possível salvar o arquivo: ",
+                "warning_download_empty": "Não há dados processados para download. O Excel resultante estaria vazio.",
+                "error_download_not_available": "Os arquivos ainda não foram processados ou o processamento não gerou dados."
             },
             "en": {
                 "select_initial_excel": "Select the Initial Excel file",
@@ -1299,319 +1341,616 @@ class ExcelCombinerApp:
                 "browse_csv": "Browse CSV",
                 "no_csv_selected": "No CSV file selected",
                 "select_deployments_csv": "Select the Deployments CSV file",
-                "process_multiple_images": "Process multiple images   ",
+                "process_multiple_images": "Process multiple images  ",
                 "time_threshold": "Time threshold (seconds):",
                 "process_files": "Process Files",
                 "download_excel": "Download Updated Excel",
                 "process_completed": "Files processed successfully",
-                "error_message": "An error occurred: "
+                "error_message": "An error occurred: ",
+                "separate_objects_gt_1": "Separate if objects > 1",
+                "missing_columns_error": "Columns 'project_id' or 'deployment_id' are missing in the images or deployments CSV files. Ensure both files contain these columns.",
+                "error_column_missing_in_images_csv": "Column '{col}' is missing in the images CSV file.",
+                "error_column_missing_in_deployments_csv": "Column '{col}' is missing in the deployments CSV file.",
+                "error_no_initial_excel_selected": "No initial Excel file has been selected.",
+                "file_saved_successfully": "File saved successfully to {path}",
+                "error_threshold_value": "Time threshold must be an integer.",
+                "warning_empty_final_df": "The final DataFrame is empty, but there was data to process. Check filters and thresholds.",
+                "info_no_valid_data": "No valid data was found to process after initial load and merge.",
+                "error_saving_file": "Could not save file: ",
+                "warning_download_empty": "No processed data available for download. The resulting Excel would be empty.",
+                "error_download_not_available": "Files have not been processed yet or processing resulted in no data."
             }
         }
-
-
-        # Resto de la configuración de la interfaz
+        # Configura la interfaz de usuario
         self.setup_ui()
 
     def setup_ui(self):
-        tr = self.translations[self.lang]
+        """
+        Configura todos los elementos de la interfaz de usuario (widgets)
+        utilizando CustomTkinter.
+        """
+        tr = self.translations[self.lang] # Obtiene las traducciones para el idioma actual
 
-        # Marco principal
+        # Marco principal que contendrá todos los demás elementos
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Etiqueta para el archivo Excel inicial
+        # Sección para la selección del archivo Excel inicial
         self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_initial_excel"], anchor="w")
-        self.label1.pack(pady=10)
+        self.label1.pack(pady=10, fill="x")
 
-        # Marco para la selección del archivo Excel inicial
         self.excel_frame = ctk.CTkFrame(self.main_frame)
         self.excel_frame.pack(pady=5, padx=10, fill="x")
-
         self.select_excel_btn = ctk.CTkButton(self.excel_frame, text=tr["browse_excel"], command=self.select_initial_excel)
         self.select_excel_btn.pack(side="left", padx=5)
-
         self.excel_label = ctk.CTkLabel(self.excel_frame, text=tr["no_excel_selected"], anchor="w")
-        self.excel_label.pack(side="left", padx=5)
+        self.excel_label.pack(side="left", padx=5, expand=True, fill="x")
 
-        # Etiqueta para el archivo CSV de imágenes
+        # Sección para la selección del archivo CSV de imágenes
         self.label2 = ctk.CTkLabel(self.main_frame, text=tr["select_images_csv"], anchor="w")
-        self.label2.pack(pady=10)
+        self.label2.pack(pady=10, fill="x")
 
-        # Marco para la selección del archivo CSV de imágenes
         self.images_frame = ctk.CTkFrame(self.main_frame)
         self.images_frame.pack(pady=5, padx=10, fill="x")
-
         self.select_images_btn = ctk.CTkButton(self.images_frame, text=tr["browse_csv"], command=self.select_images_csv)
         self.select_images_btn.pack(side="left", padx=5)
-
         self.images_label = ctk.CTkLabel(self.images_frame, text=tr["no_csv_selected"], anchor="w")
-        self.images_label.pack(side="left", padx=5)
+        self.images_label.pack(side="left", padx=5, expand=True, fill="x")
 
-        # Etiqueta para el archivo CSV de despliegues
+        # Sección para la selección del archivo CSV de despliegues
         self.label3 = ctk.CTkLabel(self.main_frame, text=tr["select_deployments_csv"], anchor="w")
-        self.label3.pack(pady=10)
+        self.label3.pack(pady=10, fill="x")
 
-        # Marco para la selección del archivo CSV de despliegues
         self.deployments_frame = ctk.CTkFrame(self.main_frame)
         self.deployments_frame.pack(pady=5, padx=10, fill="x")
-
         self.select_deployments_btn = ctk.CTkButton(self.deployments_frame, text=tr["browse_csv"], command=self.select_deployments_csv)
         self.select_deployments_btn.pack(side="left", padx=5)
-
         self.deployments_label = ctk.CTkLabel(self.deployments_frame, text=tr["no_csv_selected"], anchor="w")
-        self.deployments_label.pack(side="left", padx=5)
+        self.deployments_label.pack(side="left", padx=5, expand=True, fill="x")
 
-        # Marco para el Checkbox y el Umbral de Tiempo
+        # Marco para las opciones de procesamiento (checkboxes y umbral de tiempo)
         self.options_frame = ctk.CTkFrame(self.main_frame)
         self.options_frame.pack(pady=10, padx=10, fill="x")
 
-        # Checkbox para múltiples imágenes
+        # Checkbox para procesar múltiples imágenes (agrupar por tiempo)
         self.multiple_images_var = tk.BooleanVar()
         self.multiple_images_check = ctk.CTkCheckBox(self.options_frame, text=tr["process_multiple_images"], variable=self.multiple_images_var)
         self.multiple_images_check.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-        # Etiqueta para el umbral de tiempo
+        # Etiqueta y campo de entrada para el umbral de tiempo
         self.time_threshold_label = ctk.CTkLabel(self.options_frame, text=tr["time_threshold"], anchor="w")
         self.time_threshold_label.grid(row=0, column=1, padx=(20, 5), pady=5, sticky="w")
+        self.time_threshold_entry = ctk.CTkEntry(self.options_frame, width=100) # Ancho ajustado
+        self.time_threshold_entry.grid(row=0, column=2, padx=5, pady=5, sticky="w")
+        self.time_threshold_entry.insert(0, "3") # Valor predeterminado de 3 segundos
 
-        # Campo de entrada para el umbral de tiempo
-        self.time_threshold_entry = ctk.CTkEntry(self.options_frame)
-        self.time_threshold_entry.grid(row=0, column=2, padx=5, pady=5)
-
-        # Marco para los botones de procesar archivos y descargar Excel
-        self.buttons_frame = ctk.CTkFrame(self.main_frame)
-        self.buttons_frame.pack(pady=10)
-
-        # Botón de procesar archivos
-        self.process_btn = ctk.CTkButton(self.buttons_frame, text=tr["process_files"], command=self.process_files, state=ctk.DISABLED)
-        self.process_btn.pack(side="left", padx=5)
-
-        # Botón de descargar Excel
-        self.download_btn = ctk.CTkButton(self.buttons_frame, text=tr["download_excel"], command=self.save_file, state=ctk.DISABLED)
-        self.download_btn.pack(side="left", padx=5)
-
+        # Checkbox para separar imágenes si 'number_of_objects' es mayor que 1
+        self.separate_large_groups_var = tk.BooleanVar(value=False) # Valor inicial False
+        self.separate_large_groups_check = ctk.CTkCheckBox(
+            self.options_frame,
+            text=tr["separate_objects_gt_1"], # Texto actualizado desde las traducciones
+            variable=self.separate_large_groups_var
+        )
+        self.separate_large_groups_check.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="w")
         
+        # Configuración de las columnas del marco de opciones para un diseño flexible
+        self.options_frame.columnconfigure(0, weight=1) # Permite que el texto del checkbox se expanda
+        self.options_frame.columnconfigure(1, weight=0) # Etiqueta de umbral de tiempo fija
+        self.options_frame.columnconfigure(2, weight=0) # Campo de entrada de umbral de tiempo fijo
+
+        # Marco para los botones de acción
+        self.buttons_frame = ctk.CTkFrame(self.main_frame)
+        self.buttons_frame.pack(pady=20) # Mayor padding vertical
+
+        # Botón para iniciar el procesamiento de archivos
+        self.process_btn = ctk.CTkButton(self.buttons_frame, text=tr["process_files"], command=self.process_files, state=ctk.DISABLED)
+        self.process_btn.pack(side="left", padx=10) # Mayor padding horizontal
+
+        # Botón para descargar el archivo Excel actualizado
+        self.download_btn = ctk.CTkButton(self.buttons_frame, text=tr["download_excel"], command=self.save_file, state=ctk.DISABLED)
+        self.download_btn.pack(side="left", padx=10) # Mayor padding horizontal
         
     def select_initial_excel(self):
-        self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        """
+        Abre un diálogo para seleccionar el archivo Excel inicial (.xlsx o .xls).
+        Actualiza la etiqueta de la interfaz y verifica si todos los archivos están seleccionados.
+        """
+        self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx;*.xls")])
         if self.initial_excel_path:
             self.excel_label.configure(text=os.path.basename(self.initial_excel_path))
+        else:
+            self.excel_label.configure(text=self.translations[self.lang]["no_excel_selected"])
         self.check_all_selected()
 
     def select_images_csv(self):
+        """
+        Abre un diálogo para seleccionar el archivo CSV de imágenes.
+        Actualiza la etiqueta de la interfaz y verifica si todos los archivos están seleccionados.
+        """
         self.images_csv_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if self.images_csv_path:
             self.images_label.configure(text=os.path.basename(self.images_csv_path))
+        else:
+            self.images_label.configure(text=self.translations[self.lang]["no_csv_selected"])
         self.check_all_selected()
 
     def select_deployments_csv(self):
+        """
+        Abre un diálogo para seleccionar el archivo CSV de despliegues.
+        Actualiza la etiqueta de la interfaz y verifica si todos los archivos están seleccionados.
+        """
         self.deployments_csv_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if self.deployments_csv_path:
             self.deployments_label.configure(text=os.path.basename(self.deployments_csv_path))
+        else:
+            self.deployments_label.configure(text=self.translations[self.lang]["no_csv_selected"])
         self.check_all_selected()
 
     def check_all_selected(self):
+        """
+        Verifica si los tres archivos (Excel inicial, CSV de imágenes, CSV de despliegues)
+        han sido seleccionados. Habilita o deshabilita el botón de "Procesar Archivos"
+        en consecuencia.
+        """
         if self.initial_excel_path and self.images_csv_path and self.deployments_csv_path:
             self.process_btn.configure(state=ctk.NORMAL)
+        else:
+            self.process_btn.configure(state=ctk.DISABLED)
 
-    # Function to sanitize and generate Occurrence.occurrenceID
     def generate_occurrence_id(self, row):
-        # Convert to string and handle NaN by replacing with an empty string
+        """
+        Genera un identificador de ocurrencia único combinando 'project_id' y 'deployment_id'.
+        Maneja valores NaN convirtiéndolos a cadenas vacías.
+
+        Args:
+            row (pd.Series): Una fila del DataFrame de entrada.
+
+        Returns:
+            str: El ID de ocurrencia generado.
+        """
         sanitized_project_id = str(row['project_id']) if pd.notna(row['project_id']) else ''
         sanitized_deployment_id = str(row['deployment_id']) if pd.notna(row['deployment_id']) else ''
-        
-        # Return combined occurrenceID
         return f"{sanitized_project_id}-{sanitized_deployment_id}"
 
-
     def process_files(self):
+        """
+        Función principal para cargar, fusionar y procesar los archivos seleccionados.
+        Implementa la lógica para separar imágenes con múltiples objetos o agruparlas por tiempo.
+        Maneja errores y actualiza el estado de la interfaz.
+        """
+        tr = self.translations[self.lang] # Obtiene las traducciones para mensajes de error
         try:
-            # Load the provided files with dtype=str to avoid DtypeWarning
+            # Verifica que todas las rutas de archivo estén seleccionadas.
+            # Esto es una salvaguarda, ya que el estado del botón 'process_btn'
+            # debería evitar que se llame a esta función si faltan archivos.
+            if not all([self.initial_excel_path, self.images_csv_path, self.deployments_csv_path]):
+                missing_files = []
+                if not self.initial_excel_path: missing_files.append("Excel inicial")
+                if not self.images_csv_path: missing_files.append("CSV de imágenes")
+                if not self.deployments_csv_path: missing_files.append("CSV de deployments")
+                messagebox.showerror("Error", f"Faltan archivos por seleccionar: {', '.join(missing_files)}")
+                return
+
+            # Carga los archivos CSV de imágenes y despliegues.
+            # dtype=str: Carga todas las columnas como cadenas para evitar advertencias de tipo.
+            # low_memory=False: Asegura que todo el archivo se lea en memoria para inferir tipos correctamente.
             images_df = pd.read_csv(self.images_csv_path, dtype=str, low_memory=False)
             deployments_df = pd.read_csv(self.deployments_csv_path, dtype=str, low_memory=False)
             
-            # Load the initial Excel file
-            initial_excel_path = self.initial_excel_path
-            if initial_excel_path is None:
-                raise ValueError("No se ha seleccionado un archivo de Excel inicial.")
-            
-            initial_df = pd.read_excel(initial_excel_path, sheet_name=None)
-            sheet_names = initial_df.keys()
-            first_sheet_name = list(sheet_names)[0]
-            initial_df = initial_df[first_sheet_name]
+            # --- START: Verificaciones de columnas esenciales para la fusión ---
+            required_merge_cols = ['project_id', 'deployment_id']
+            for col in required_merge_cols:
+                if col not in images_df.columns:
+                    raise ValueError(tr["error_column_missing_in_images_csv"].format(col=col))
+                if col not in deployments_df.columns:
+                    raise ValueError(tr["error_column_missing_in_deployments_csv"].format(col=col))
+            # --- END: Verificaciones de columnas esenciales ---
 
-            # Merge the dataframes on project_id and deployment_id
+            # Carga el archivo Excel inicial.
+            initial_df_dict = pd.read_excel(self.initial_excel_path, sheet_name=None)
+            if not initial_df_dict:
+                raise ValueError("El archivo Excel inicial está vacío o no se pudo leer.")
+            first_sheet_name = list(initial_df_dict.keys())[0]
+            # Selecciona la primera hoja y reinicia su índice para asegurar unicidad.
+            initial_df = initial_df_dict[first_sheet_name].reset_index(drop=True)
+
+            # Fusiona los DataFrames de imágenes y despliegues usando 'project_id' y 'deployment_id'.
             merged_df = images_df.merge(deployments_df, on=['project_id', 'deployment_id'], suffixes=('_image', '_deployment'))
+            # Reinicia el índice del DataFrame fusionado para asegurar un índice numérico único y predeterminado.
+            merged_df = merged_df.reset_index(drop=True)
 
-            # Select the relevant columns
-            result_df = merged_df[['latitude', 'longitude', 'placename', 'location', 'timestamp', 'project_id', 'deployment_id', 'subproject_name']]
+            # Define las columnas requeridas para el DataFrame de resultados.
+            required_cols_for_result_df = ['latitude', 'longitude', 'placename', 'location', 'timestamp', 'project_id', 'deployment_id', 'subproject_name']
+            
+            # Si 'number_of_objects' no está en el DataFrame fusionado, lo añade con un valor predeterminado de '1'.
+            if 'number_of_objects' not in merged_df.columns:
+                merged_df['number_of_objects'] = '1' 
+            
+            # Asegura que todas las columnas requeridas existan en merged_df antes de la selección.
+            # Esto es una doble verificación después de la lógica de 'number_of_objects'.
+            missing_in_merged = [col for col in required_cols_for_result_df if col not in merged_df.columns]
+            if missing_in_merged:
+                # Si 'number_of_objects' se añadió dinámicamente y no estaba en la lista inicial, no es un error.
+                if 'number_of_objects' not in missing_in_merged and 'number_of_objects' in required_cols_for_result_df:
+                    pass # Está bien, se añadió.
+                else:
+                    raise ValueError(f"Columnas requeridas faltantes en los datos combinados: {', '.join(missing_in_merged)}")
 
-            # Convert 'timestamp' column to datetime
-            result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], format='%Y-%m-%d %H:%M:%S')
+            # Siempre incluye 'number_of_objects' en las columnas finales si no estaba ya.
+            if 'number_of_objects' not in required_cols_for_result_df:
+                required_cols_for_result_df.append('number_of_objects')
 
-            # Check if the "Multiple Images" checkbox is selected
-            if self.multiple_images_var.get():
-                self.process_multiple_images(result_df, initial_df)
-            else:
-                # Process as single image per row, no grouping
-                combined_df = pd.DataFrame()
+            # Crea 'result_df' como una copia explícita del subconjunto de columnas para evitar SettingWithCopyWarning.
+            result_df = merged_df[required_cols_for_result_df].copy()
+            
+            # Convierte la columna 'timestamp' a formato datetime.
+            # errors='coerce': Convierte los valores no válidos a NaT (Not a Time) en lugar de lanzar un error.
+            result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], errors='coerce') 
+            # Elimina las filas donde la conversión de 'timestamp' falló (contienen NaT).
+            result_df = result_df.dropna(subset=['timestamp']) 
 
-                # Add the columns for location and media asset
-                combined_df['Encounter.decimalLatitude'] = result_df['latitude']
-                combined_df['Encounter.decimalLongitude'] = result_df['longitude']
-                combined_df['Encounter.verbatimLocality'] = result_df['placename']
-                combined_df['Encounter.mediaAsset0'] = result_df['location'].apply(lambda x: x.split('/')[-1] if pd.notna(x) else x)
+            self.final_df = pd.DataFrame() # Inicializa el DataFrame final
 
-                # Generate Occurrence.occurrenceID
-                combined_df['Occurrence.occurrenceID'] = result_df.apply(self.generate_occurrence_id, axis=1)
-
-                # Ensure the file extension is .JPG
-                combined_df['Encounter.mediaAsset0'] = combined_df['Encounter.mediaAsset0'].apply(self.ensure_jpg_extension)
-
-                # Add time-related columns
-                combined_df['Encounter.year'] = result_df['timestamp'].dt.year
-                combined_df['Encounter.month'] = result_df['timestamp'].dt.month
-                combined_df['Encounter.day'] = result_df['timestamp'].dt.day
-                combined_df['Encounter.hour'] = result_df['timestamp'].dt.hour
-                combined_df['Encounter.minutes'] = result_df['timestamp'].dt.minute
-
-                # Fill missing columns from initial_df to combined_df with default values from initial_df
-                for column in initial_df.columns:
-                    if column not in combined_df.columns:
-                        combined_df[column] = initial_df[column].iloc[0]
-
-                # Ensure the columns are in the same order as initial_df and include the new Occurrence.occurrenceID column
-                final_columns = ['Occurrence.occurrenceID', 
-                                'Encounter.decimalLatitude', 
-                                'Encounter.decimalLongitude', 
-                                'Encounter.verbatimLocality', 
-                                'Encounter.mediaAsset0', 
-                                'Encounter.year', 
-                                'Encounter.month', 
-                                'Encounter.day', 
-                                'Encounter.hour', 
-                                'Encounter.minutes'] + [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 'Encounter.verbatimLocality', 'Encounter.mediaAsset0', 'Encounter.year', 'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']]
+            # Lógica condicional basada en el checkbox "Separar si objetos > 1"
+            if self.separate_large_groups_var.get():
+                # Si 'number_of_objects' no está presente (aunque la lógica anterior debería asegurarlo), lo añade.
+                if 'number_of_objects' not in result_df.columns: 
+                    result_df['number_of_objects'] = '1' 
                 
-                combined_df = combined_df[final_columns]
+                # Convierte 'number_of_objects' a numérico, manejando errores y NaNs.
+                result_df['number_of_objects'] = pd.to_numeric(result_df['number_of_objects'], errors='coerce').fillna(0)
+                
+                # Filtra las imágenes con más de 1 objeto y crea una copia con índice reseteado.
+                large_objects_df = result_df[result_df['number_of_objects'] > 1].copy().reset_index(drop=True)
+                # Filtra las imágenes con 1 o menos objetos y crea una copia con índice reseteado.
+                other_objects_df = result_df[result_df['number_of_objects'] <= 1].copy().reset_index(drop=True)
 
-                # Store the final DataFrame in the class variable
-                self.final_df = combined_df
+                processed_dfs = [] # Lista para almacenar los DataFrames procesados antes de concatenar
 
-                messagebox.showinfo("Process Completed", f"File processed successfully.")
-                self.download_btn.configure(state=ctk.NORMAL)
+                # Procesa las imágenes con múltiples objetos siempre una por fila.
+                if not large_objects_df.empty:
+                    processed_large_df = self.process_single_image_per_row(large_objects_df, initial_df)
+                    processed_dfs.append(processed_large_df)
+
+                # Procesa las otras imágenes según el estado del checkbox de múltiples imágenes.
+                if not other_objects_df.empty:
+                    if self.multiple_images_var.get():
+                        processed_other_df = self.process_multiple_images(other_objects_df, initial_df)
+                    else:
+                        processed_other_df = self.process_single_image_per_row(other_objects_df, initial_df)
+                    processed_dfs.append(processed_other_df)
+                
+                # Concatena todos los DataFrames procesados si hay alguno.
+                if processed_dfs:
+                    self.final_df = pd.concat(processed_dfs, ignore_index=True)
+
+            else: # Si el checkbox "Separar si objetos > 1" NO está marcado, se procede con la lógica original.
+                if self.multiple_images_var.get():
+                    # Pasa una copia de result_df para evitar SettingWithCopyWarning dentro de la función.
+                    self.final_df = self.process_multiple_images(result_df.copy(), initial_df) 
+                else:
+                    # Pasa una copia de result_df para evitar SettingWithCopyWarning dentro de la función.
+                    self.final_df = self.process_single_image_per_row(result_df.copy(), initial_df) 
+            
+            # Mensajes de finalización o advertencia basados en el resultado del procesamiento.
+            if self.final_df.empty and not result_df.empty :
+                messagebox.showwarning("Advertencia de Proceso", tr["warning_empty_final_df"])
+            elif self.final_df.empty and result_df.empty:
+                messagebox.showinfo("Proceso Completado", tr["info_no_valid_data"])
+            else:
+                messagebox.showinfo("Proceso Completado", tr["process_completed"])
+
+            # Habilita o deshabilita el botón de descarga según si hay datos en el DataFrame final.
+            self.download_btn.configure(state=ctk.NORMAL if not self.final_df.empty else ctk.DISABLED)
         
+        except ValueError as ve:
+            # Manejo de errores específicos de ValueError (ej. columnas faltantes, umbral no numérico).
+            messagebox.showerror("Error de Valor", f"{tr['error_message']}{ve}")
+            print(f"ValueError: {ve}")
         except Exception as e:
-            messagebox.showerror("Error", f"Se produjo un error: {e}")
-            print(e)
-    
-           
-    def process_multiple_images(self, result_df, initial_df):
+            # Manejo de cualquier otra excepción inesperada.
+            import traceback # Importa traceback para obtener la traza completa del error
+            messagebox.showerror("Error Inesperado", f"{tr['error_message']}{e}\n{traceback.format_exc()}")
+            print(f"Exception: {e}\n{traceback.format_exc()}")
+
+    def process_single_image_per_row(self, result_df_input, initial_df_template):
+        """
+        Procesa un DataFrame para asegurar que cada imagen o entrada esté en una fila separada.
+        Ideal para cuando no se desea agrupar imágenes por tiempo.
+
+        Args:
+            result_df_input (pd.DataFrame): DataFrame con los datos de imágenes a procesar.
+            initial_df_template (pd.DataFrame): DataFrame de plantilla para rellenar columnas.
+
+        Returns:
+            pd.DataFrame: DataFrame con una imagen por fila y columnas estandarizadas.
+        """
+        # Crea una copia defensiva del DataFrame de entrada y reinicia su índice.
+        result_df = result_df_input.copy().reset_index(drop=True)
+        initial_df = initial_df_template.copy() # Copia de la plantilla inicial
+
+        combined_rows = [] # Lista para almacenar los diccionarios de cada nueva fila
+
+        # Itera sobre cada fila del DataFrame de resultados.
+        for _, row in result_df.iterrows():
+            new_row_dict = {} # Diccionario para la nueva fila
+            new_row_dict['Encounter.decimalLatitude'] = row['latitude']
+            new_row_dict['Encounter.decimalLongitude'] = row['longitude']
+            new_row_dict['Encounter.verbatimLocality'] = row['placename']
+            
+            media_asset = row['location']
+            if pd.notna(media_asset):
+                # Extrae el nombre del archivo de la ruta y asegura la extensión .JPG.
+                new_row_dict['Encounter.mediaAsset0'] = self.ensure_jpg_extension(media_asset.split('/')[-1])
+            else:
+                new_row_dict['Encounter.mediaAsset0'] = pd.NA # Usa pd.NA para valores faltantes
+
+            # Genera el ID de ocurrencia para la fila.
+            new_row_dict['Occurrence.occurrenceID'] = self.generate_occurrence_id(row)
+            
+            ts = row['timestamp'] # 'timestamp' ya es un objeto datetime
+            new_row_dict['Encounter.year'] = ts.year
+            new_row_dict['Encounter.month'] = ts.month
+            new_row_dict['Encounter.day'] = ts.day
+            new_row_dict['Encounter.hour'] = ts.hour
+            new_row_dict['Encounter.minutes'] = ts.minute
+
+            # Rellena las columnas faltantes en la nueva fila con valores predeterminados de initial_df.
+            for col_template in initial_df.columns:
+                if col_template not in new_row_dict: # Evita sobrescribir valores ya establecidos
+                    # Toma el primer valor de la columna de la plantilla si existe, de lo contrario pd.NA.
+                    new_row_dict[col_template] = initial_df[col_template].iloc[0] if not initial_df.empty and col_template in initial_df else pd.NA
+            
+            combined_rows.append(new_row_dict) # Añade la nueva fila a la lista
+
+        if not combined_rows:
+            # Si no se procesó ninguna fila, devuelve un DataFrame vacío con las columnas esperadas.
+            temp_final_cols = list(initial_df.columns)
+            default_cols_to_ensure = ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 
+                                      'Encounter.verbatimLocality', 'Encounter.mediaAsset0', 'Encounter.year', 
+                                      'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']
+            for c in default_cols_to_ensure:
+                if c not in temp_final_cols:
+                    temp_final_cols.insert(0, c) # Inserta al principio o añade si es necesario
+            return pd.DataFrame(columns=list(dict.fromkeys(temp_final_cols))) # Asegura columnas únicas
+
+        combined_df = pd.DataFrame(combined_rows) # Crea el DataFrame a partir de la lista de filas
+        
+        # Define el orden deseado de las columnas.
+        final_ordered_columns = [
+            'Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude',
+            'Encounter.verbatimLocality', 'Encounter.mediaAsset0', 
+            'Encounter.year', 'Encounter.month', 'Encounter.day', 
+            'Encounter.hour', 'Encounter.minutes'
+        ]
+        
+        # Añade las columnas restantes de la plantilla inicial que no están en la lista principal.
+        for col in initial_df.columns:
+            if col not in final_ordered_columns and col in combined_df.columns:
+                final_ordered_columns.append(col)
+        
+        # Añade cualquier otra columna que pueda haberse generado pero no esté en la plantilla o lista principal.
+        for col in combined_df.columns:
+            if col not in final_ordered_columns:
+                final_ordered_columns.append(col)
+        
+        # Reordena el DataFrame para que las columnas estén en el orden deseado, rellenando con NA si faltan.
+        combined_df = combined_df.reindex(columns=final_ordered_columns, fill_value=pd.NA)
+
+        return combined_df
+
+    def process_multiple_images(self, result_df_input, initial_df_template):
+        """
+        Procesa un DataFrame para agrupar imágenes en una sola fila si están dentro
+        de un umbral de tiempo específico para el mismo despliegue.
+
+        Args:
+            result_df_input (pd.DataFrame): DataFrame con los datos de imágenes a procesar.
+            initial_df_template (pd.DataFrame): DataFrame de plantilla para rellenar columnas.
+
+        Returns:
+            pd.DataFrame: DataFrame con imágenes agrupadas por tiempo en una sola fila.
+        """
+        # Crea una copia defensiva del DataFrame de entrada y reinicia su índice.
+        result_df = result_df_input.copy().reset_index(drop=True)
+        initial_df = initial_df_template.copy() # Copia de la plantilla inicial
+
         try:
-            # Sort the DataFrame by deployment_id and timestamp
-            result_df = result_df.sort_values(by=['deployment_id', 'timestamp'])
+            time_threshold_str = self.time_threshold_entry.get()
+            if not time_threshold_str.isdigit():
+                raise ValueError(self.translations[self.lang]["error_threshold_value"])
+            time_threshold = int(time_threshold_str)
+        except ValueError as e:
+            messagebox.showerror("Error de Umbral", str(e))
+            # Devuelve un DataFrame vacío con el esquema de initial_df en caso de error.
+            return pd.DataFrame(columns=initial_df.columns) 
 
-            # Get the time threshold from user input
-            time_threshold = int(self.time_threshold_entry.get())
+        # Asegura que 'timestamp' sea de tipo datetime antes de ordenar.
+        if not pd.api.types.is_datetime64_any_dtype(result_df['timestamp']):
+            result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], errors='coerce')
+            result_df = result_df.dropna(subset=['timestamp']) # Elimina filas con timestamps inválidos
 
-            # Group images by deployment and time difference
-            combined_images = []
-            for deployment_id, group in result_df.groupby('deployment_id'):
-                group['time_diff'] = group['timestamp'].diff().dt.total_seconds().fillna(time_threshold + 1)
-                group_images = []
-                for _, row in group.iterrows():
-                    if group_images and row['time_diff'] > time_threshold:
-                        combined_images.append(group_images)
-                        group_images = []
-                    group_images.append(row)
-                if group_images:
-                    combined_images.append(group_images)
+        if result_df.empty: # Si el DataFrame está vacío después de limpiar timestamps
+            # Construye un DataFrame vacío con el esquema esperado si no hay datos para procesar.
+            temp_final_cols = list(initial_df.columns)
+            default_cols_to_ensure = ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 
+                                      'Encounter.verbatimLocality', 'Encounter.year', 
+                                      'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']
+            # Asegura que haya al menos 'Encounter.mediaAsset0' para el esquema.
+            for i in range(5) : # Asumiendo un máximo de 5 assets para el esquema vacío, ajustar si es necesario
+                default_cols_to_ensure.append(f'Encounter.mediaAsset{i}')
 
-            # Create the new combined DataFrame
-            rows_list = []
-            max_assets = 0
-            for idx, images_group in enumerate(combined_images):
-                if isinstance(images_group, list) or isinstance(images_group, pd.DataFrame):
-                    base_row = images_group[0]
-                    new_row = {
-                        'Encounter.decimalLatitude': base_row['latitude'],
-                        'Encounter.decimalLongitude': base_row['longitude'],
-                        'Encounter.verbatimLocality': base_row['placename'],
-                        'Occurrence.occurrenceID': self.generate_occurrence_id(base_row),  # Generate Occurrence ID
-                        'Encounter.year': base_row['timestamp'].year,
-                        'Encounter.month': base_row['timestamp'].month,
-                        'Encounter.day': base_row['timestamp'].day,
-                        'Encounter.hour': base_row['timestamp'].hour,
-                        'Encounter.minutes': base_row['timestamp'].minute
-                    }
-                    for i, image in enumerate(images_group):
-                        image_location = image['location'].split('/')[-1]
-                        new_row[f'Encounter.mediaAsset{i}'] = self.ensure_jpg_extension(image_location)
-                    rows_list.append(new_row)
-                    max_assets = max(max_assets, len(images_group))
+            for c in default_cols_to_ensure:
+                if c not in temp_final_cols:
+                    temp_final_cols.insert(0, c) 
+            return pd.DataFrame(columns=list(dict.fromkeys(temp_final_cols)))
 
-            # Convert the list of rows into a DataFrame
-            combined_df = pd.DataFrame(rows_list)
-
-            # Ensure all rows have columns Encounter.mediaAsset0 to Encounter.mediaAsset{max_assets-1}
-            for i in range(max_assets):
-                if f'Encounter.mediaAsset{i}' not in combined_df.columns:
-                    combined_df[f'Encounter.mediaAsset{i}'] = None
-
-            # Fill missing columns from initial_df to combined_df with default values from initial_df
-            for column in initial_df.columns:
-                if column not in combined_df.columns:
-                    combined_df[column] = initial_df[column].iloc[0]
-
-            # Ensure the columns are in the correct order and include the new Occurrence.occurrenceID column
-            final_columns = ['Occurrence.occurrenceID',
-                            'Encounter.decimalLatitude', 
-                            'Encounter.decimalLongitude', 
-                            'Encounter.verbatimLocality', 
-                            'Encounter.year', 
-                            'Encounter.month', 
-                            'Encounter.day', 
-                            'Encounter.hour', 
-                            'Encounter.minutes'] + \
-                            [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID',
-                                                                            'Encounter.decimalLatitude', 
-                                                                            'Encounter.decimalLongitude', 
-                                                                            'Encounter.verbatimLocality', 
-                                                                            'Encounter.year', 
-                                                                            'Encounter.month', 
-                                                                            'Encounter.day', 
-                                                                            'Encounter.hour', 
-                                                                            'Encounter.minutes']]
-
-            combined_df = combined_df[final_columns + [col for col in combined_df.columns if col.startswith('Encounter.mediaAsset')]]
-
-            # Store the final DataFrame in the class variable
-            self.final_df = combined_df
-
-            messagebox.showinfo("Process Completed", f"Files processed successfully with multiple images handling.")
-            self.download_btn.configure(state=ctk.NORMAL)
+        # Ordena el DataFrame por 'deployment_id' y 'timestamp' para una agrupación cronológica.
+        result_df = result_df.sort_values(by=['deployment_id', 'timestamp'])
         
-        except Exception as e:
-            messagebox.showerror("Error", f"Se produjo un error: {e}")
-            print(e)
+        all_processed_rows = [] # Lista para almacenar los diccionarios de las filas combinadas
+        max_assets_in_any_group = 0 # Rastrea el número máximo de assets en cualquier grupo
 
+        # Itera sobre cada grupo de 'deployment_id'.
+        for deployment_id, group_df in result_df.groupby('deployment_id'):
+            # Crea una copia del grupo y reinicia su índice para evitar SettingWithCopyWarning.
+            current_group_processed = group_df.copy().reset_index(drop=True)
+            
+            # Calcula la diferencia de tiempo entre imágenes consecutivas dentro del grupo.
+            current_group_processed['time_diff'] = current_group_processed['timestamp'].diff().dt.total_seconds().fillna(time_threshold + 1)
+            
+            image_event_accumulator = [] # Acumulador para imágenes dentro de un mismo "evento" (ráfaga)
+            
+            # Itera sobre cada fila (imagen) dentro del grupo de despliegue.
+            for _, image_row in current_group_processed.iterrows():
+                # Si hay imágenes acumuladas y la diferencia de tiempo excede el umbral,
+                # procesa el evento acumulado y reinicia el acumulador.
+                if image_event_accumulator and image_row['time_diff'] > time_threshold:
+                    if image_event_accumulator:
+                        base_event_row_data = image_event_accumulator[0] # Usa la primera imagen para los datos base
+                        new_combined_row = {
+                            'Encounter.decimalLatitude': base_event_row_data['latitude'],
+                            'Encounter.decimalLongitude': base_event_row_data['longitude'],
+                            'Encounter.verbatimLocality': base_event_row_data['placename'],
+                            'Occurrence.occurrenceID': self.generate_occurrence_id(base_event_row_data),
+                            'Encounter.year': base_event_row_data['timestamp'].year,
+                            'Encounter.month': base_event_row_data['timestamp'].month,
+                            'Encounter.day': base_event_row_data['timestamp'].day,
+                            'Encounter.hour': base_event_row_data['timestamp'].hour,
+                            'Encounter.minutes': base_event_row_data['timestamp'].minute
+                        }
+                        # Añade los assets de medios (imágenes) al diccionario de la nueva fila.
+                        for i, asset_data_row in enumerate(image_event_accumulator):
+                            asset_location = asset_data_row['location']
+                            if pd.notna(asset_location):
+                                new_combined_row[f'Encounter.mediaAsset{i}'] = self.ensure_jpg_extension(asset_location.split('/')[-1])
+                            else:
+                                new_combined_row[f'Encounter.mediaAsset{i}'] = pd.NA # o None
+                        
+                        all_processed_rows.append(new_combined_row) # Añade la fila combinada a la lista global
+                        max_assets_in_any_group = max(max_assets_in_any_group, len(image_event_accumulator)) # Actualiza el máximo de assets
+                        image_event_accumulator = [] # Reinicia el acumulador para el siguiente evento
+                
+                image_event_accumulator.append(image_row) # Añade la imagen actual al acumulador
+            
+            # Procesa cualquier imagen restante en el acumulador al final de cada grupo.
+            if image_event_accumulator:
+                base_event_row_data = image_event_accumulator[0]
+                new_combined_row = {
+                    'Encounter.decimalLatitude': base_event_row_data['latitude'],
+                    'Encounter.decimalLongitude': base_event_row_data['longitude'],
+                    'Encounter.verbatimLocality': base_event_row_data['placename'],
+                    'Occurrence.occurrenceID': self.generate_occurrence_id(base_event_row_data),
+                    'Encounter.year': base_event_row_data['timestamp'].year,
+                    'Encounter.month': base_event_row_data['timestamp'].month,
+                    'Encounter.day': base_event_row_data['timestamp'].day,
+                    'Encounter.hour': base_event_row_data['timestamp'].hour,
+                    'Encounter.minutes': base_event_row_data['timestamp'].minute
+                }
+                for i, asset_data_row in enumerate(image_event_accumulator):
+                    asset_location = asset_data_row['location']
+                    if pd.notna(asset_location):
+                        new_combined_row[f'Encounter.mediaAsset{i}'] = self.ensure_jpg_extension(asset_location.split('/')[-1])
+                    else:
+                        new_combined_row[f'Encounter.mediaAsset{i}'] = pd.NA # o None
 
-    # Ensure the file extension is .JPG
+                all_processed_rows.append(new_combined_row)
+                max_assets_in_any_group = max(max_assets_in_any_group, len(image_event_accumulator))
+
+        if not all_processed_rows:
+            # Si no se procesó ninguna fila, construye un DataFrame vacío con el esquema esperado.
+            temp_final_cols = list(initial_df.columns)
+            default_cols_to_ensure = ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 
+                                      'Encounter.verbatimLocality', 'Encounter.year', 
+                                      'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']
+            for i in range(max_assets_in_any_group if max_assets_in_any_group > 0 else 1): # Asegura al menos mediaAsset0
+                default_cols_to_ensure.append(f'Encounter.mediaAsset{i}')
+
+            for c in default_cols_to_ensure:
+                if c not in temp_final_cols:
+                    temp_final_cols.insert(0, c)
+            return pd.DataFrame(columns=list(dict.fromkeys(temp_final_cols)))
+
+        final_combined_df = pd.DataFrame(all_processed_rows) # Crea el DataFrame final combinado
+
+        # Asegura que todas las columnas Encounter.mediaAssetX existan hasta el máximo de assets.
+        for i in range(max_assets_in_any_group):
+            col_name = f'Encounter.mediaAsset{i}'
+            if col_name not in final_combined_df.columns:
+                final_combined_df[col_name] = pd.NA # Rellena con pd.NA si la columna falta
+
+        # Añade las columnas faltantes de la plantilla initial_df.
+        for col_template in initial_df.columns:
+            if col_template not in final_combined_df.columns:
+                final_combined_df[col_template] = initial_df[col_template].iloc[0] if not initial_df.empty and col_template in initial_df else pd.NA
+        
+        # Define el orden final de las columnas.
+        ordered_cols = [
+            'Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude',
+            'Encounter.verbatimLocality', 'Encounter.year', 'Encounter.month', 'Encounter.day',
+            'Encounter.hour', 'Encounter.minutes'
+        ]
+        # Ordena las columnas de mediaAsset numéricamente.
+        media_asset_cols_sorted = sorted(
+            [col for col in final_combined_df.columns if col.startswith('Encounter.mediaAsset')],
+            key=lambda x: int(x.replace('Encounter.mediaAsset', ''))
+        )
+        ordered_cols.extend(media_asset_cols_sorted) # Añade las columnas de mediaAsset ordenadas
+
+        # Añade las columnas restantes de la plantilla initial_df que aún no están incluidas.
+        for col in initial_df.columns:
+            if col not in ordered_cols and col in final_combined_df.columns:
+                ordered_cols.append(col)
+        
+        # Añade cualquier otra columna del DataFrame final que aún no esté en la lista ordenada.
+        for col in final_combined_df.columns:
+            if col not in ordered_cols:
+                ordered_cols.append(col)
+        
+        # Reindexa el DataFrame final con el orden de columnas deseado.
+        final_combined_df = final_combined_df.reindex(columns=ordered_cols, fill_value=pd.NA)
+        
+        return final_combined_df
+
     def ensure_jpg_extension(self, location):
-        if pd.isna(location):
-            return location
-        parts = location.split('.')
-        if len(parts) > 1 and parts[-1].lower() != 'jpg':
-            return '.'.join(parts[:-1]) + '.JPG'
-        return location
+        """
+        Asegura que la ubicación del archivo de imagen tenga la extensión '.JPG'.
+        Si ya tiene una extensión, la cambia a '.JPG'. Si no tiene, la añade.
 
+        Args:
+            location (str): La ruta o nombre del archivo de imagen.
+
+        Returns:
+            str: La ubicación del archivo con la extensión '.JPG'.
+        """
+        if pd.isna(location):
+            return location # o pd.NA, dependiendo de cómo quieras manejar los NaNs
+        location_str = str(location) # Asegura que la ubicación sea una cadena
+        parts = location_str.split('.')
+        if len(parts) > 1: # Si tiene una extensión
+            base_name = '.'.join(parts[:-1]) # Obtiene el nombre base sin la extensión
+            return base_name + '.JPG' # Estandariza a .JPG
+        return location_str + '.JPG' # Si no tiene extensión, añade .JPG
 
     def save_file(self):
-        if self.final_df is not None:
+        """
+        Guarda el DataFrame final procesado en un archivo Excel (.xlsx).
+        Abre un diálogo para que el usuario elija la ubicación y el nombre del archivo.
+        Maneja errores de guardado y notifica al usuario.
+        """
+        tr = self.translations[self.lang]
+        if self.final_df is not None and not self.final_df.empty:
             save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
             if save_path:
-                self.final_df.to_excel(save_path, index=False)
-                messagebox.showinfo("File Saved", f"File saved successfully to {save_path}")
-
+                try:
+                    self.final_df.to_excel(save_path, index=False) # Guarda el DataFrame en Excel sin el índice
+                    messagebox.showinfo("Archivo Guardado", tr["file_saved_successfully"].format(path=save_path))
+                except Exception as e:
+                    messagebox.showerror("Error al Guardar Archivo", f"{tr['error_saving_file']}{e}")
+        elif self.final_df is not None and self.final_df.empty:
+            messagebox.showwarning("Descarga No Disponible", tr["warning_download_empty"])
+        else: # self.final_df es None
+            messagebox.showerror("Descarga No Disponible", tr["error_download_not_available"])
 
 class DateChangerApp:
     def __init__(self, root, lang="es"):
