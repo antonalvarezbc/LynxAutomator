@@ -261,27 +261,78 @@ class Presentation(ctk.CTkFrame):
         # Configuración de la interfaz
         self.setup_ui()
 
+class Presentation(ctk.CTkFrame):
+    def __init__(self, root, lang="es"):
+        super().__init__(root)
+        self.lang = lang
+
+        self.translations = {
+            "es": {
+                "title": "LynxAutomator",
+                "description": "LynxAutomator ha sido desarrollada por WWF España\n"
+                               "en el ámbito del proyecto LIFE LynxConnect 19NAT/ES/001055\n"
+                               "en la acción A8 Nuevas técnicas complementarias para el seguimiento de las poblaciones de lince"
+            },
+            "pt": {
+                "title": "LynxAutomator",
+                "description": "LynxAutomator foi desenvolvida pela WWF Espanha\n"
+                               "no âmbito do projeto LIFE LynxConnect 19NAT/ES/001055\n"
+                               "na ação A8 Novas técnicas complementares para o monitoramento das populações de lince"
+            },
+            "en": {
+                "title": "LynxAutomator",
+                "description": "LynxAutomator has been developed by WWF Spain\n"
+                               "within the framework of the LIFE LynxConnect project 19NAT/ES/001055\n"
+                               "under Action A8 New complementary techniques for monitoring lynx populations"
+            }
+        }
+
+        self.setup_ui()
+
     def resource_path(self, relative_path):
         """Obtiene la ruta al recurso, compatible con PyInstaller."""
         try:
-            base_path = sys._MEIPASS  # carpeta temporal usada por PyInstaller
+            base_path = sys._MEIPASS
         except AttributeError:
-            base_path = os.path.abspath(".")
+            base_path = os.path.abspath(os.path.dirname(__file__))
         return os.path.join(base_path, relative_path)
 
     def setup_ui(self):
-        # Obtener las traducciones según el idioma seleccionado
         tr = self.translations[self.lang]
-
         self.pack(fill="both", expand=True)
 
         # Cargar imagen del logo
         logo_path = self.resource_path("logo.png")
-        image = Image.open(logo_path)
+        
+        try:
+            # 1. Carga la imagen con PIL (como antes)
+            pil_image = Image.open(logo_path)
+            
+            # 2. Convierte la imagen de PIL a CTkImage
+            # Puedes especificar un tamaño si quieres controlarlo,
+            # pero para mantener el tamaño original, solo pasas la imagen PIL.
+            self.logo = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(pil_image.width, pil_image.height))
+            # Si solo tienes un modo de color, puedes usar solo 'light_image' o 'dark_image'.
+            # light_image es para el tema claro, dark_image para el tema oscuro.
+            # Si son iguales, puedes pasar la misma imagen a ambos.
 
-        self.logo = ImageTk.PhotoImage(image)
-        logo_label = tk.Label(self, image=self.logo)
-        logo_label.pack(pady=20)
+        except FileNotFoundError:
+            print(f"Error: No se encontró el archivo de imagen en {logo_path}")
+            # Si no se encuentra el logo, puedes optar por:
+            # - No mostrar el label de imagen.
+            # - Usar una imagen de marcador de posición.
+            # - Salir o levantar una excepción.
+            self.logo = None # Asegurarse de que self.logo es None o una imagen por defecto
+            
+        if self.logo: # Solo crea el label si la imagen fue cargada
+            # 3. Usa CTkImage en el CTkLabel
+            logo_label = ctk.CTkLabel(self, image=self.logo, text="") # text="" para que no muestre texto adicional
+            logo_label.pack(pady=20)
+        else:
+            # Opcional: mostrar un mensaje si no se encuentra la imagen
+            error_label = ctk.CTkLabel(self, text="Logo no encontrado", font=("Helvetica", 14), text_color="red")
+            error_label.pack(pady=20)
+
 
         # Texto de descripción
         text_label = ctk.CTkLabel(self, text=tr["description"], font=("Helvetica", 16))
