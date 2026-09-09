@@ -14,6 +14,35 @@ La separación reciente entre interfaz y procesamiento permitiría añadir un le
 que normalice estos datos sin duplicar ventanas, gestión de tareas o exportación.
 La importación y validación usarían el mismo progreso y cancelación.
 
+## Alcance de especies y destinos
+
+La finalidad no es exportar cualquier especie del paquete. Sólo se podrán
+seleccionar taxones presentes en los datos que cumplan ambas condiciones:
+
+- Existe un Wildbook de destino que admite esa especie.
+- La especie puede registrarse mediante cámaras trampa.
+
+Mantener un catálogo explícito de destinos con URL, taxones admitidos, nombres
+científicos y sinónimos verificados, plantilla de importación y fecha de revisión.
+No deducir compatibilidad por nombre común ni por pertenecer al mismo género.
+Una especie sin correspondencia confirmada queda fuera de la selección, con motivo
+visible. Si tiene varios destinos, el usuario elige uno. Separar exportaciones por
+destino y validar sus campos obligatorios. No exigir identificación individual
+previa cuando el Wildbook permita encuentros de individuos desconocidos.
+
+## TRAPPER y Agouti como entradas prioritarias
+
+Usar exportaciones Camtrap DP de ambas plataformas como casos de aceptación del
+mismo lector. Registrar plataforma y versión cuando consten en los metadatos y
+validar el perfil declarado, sin asumir que sus exportaciones son idénticas.
+Necesitamos muestras representativas de ambas antes de declarar compatibilidad.
+
+El ejemplo oficial procede de Agouti y contiene anotaciones por evento:
+[ejemplo Camtrap DP](https://camtrap-dp.tdwg.org/example/). Por tanto, una primera
+entrega limitada a observaciones por medio sería un piloto parcial, no soporte
+completo de Agouti. Hay que validar la relación evento-medios sin multiplicar
+conteos ni atribuir una especie a cada imagen sin evidencia suficiente.
+
 ## Correspondencias propuestas
 
 Esta tabla propone un diseño, no afirma equivalencia completa con los CSV de WI.
@@ -59,7 +88,8 @@ Los campos y relaciones se describen en el
 
 Un flujo **Camtrap DP → vista previa/validación → Excel Wildbook** para una versión
 del esquema declarada como compatible y paquetes locales. Empezar con observaciones
-por medio (`observationLevel=media`) y una selección explícita del taxón de interés.
+por medio (`observationLevel=media`) y una selección limitada a taxones con Wildbook de destino confirmado y
+compatibles con cámaras trampa.
 Los paquetes con observaciones por evento deben identificarse y notificarse; añadir
 ese soporte con reglas y pruebas propias, sin expandir eventos arbitrariamente.
 

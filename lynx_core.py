@@ -2,7 +2,7 @@
 import math
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import piexif
@@ -21,11 +21,10 @@ def set_file_timestamp(path, timestamp):
     os.utime(path, (timestamp, timestamp))
     if sys.platform == "win32":
         import win32file
-        import pywintypes
         handle = win32file.CreateFile(str(path), win32file.GENERIC_WRITE, 0, None,
                                      win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
         try:
-            value = pywintypes.Time(timestamp)
+            value = datetime.fromtimestamp(timestamp, tz=timezone.utc)
             win32file.SetFileTime(handle, value, value, value)
         finally:
             handle.Close()

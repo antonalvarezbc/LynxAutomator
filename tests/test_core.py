@@ -1,16 +1,16 @@
 import os
 from pathlib import Path
 import tempfile
-from datetime import timedelta
+from datetime import timedelta, timezone
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 import pandas as pd
 import piexif
 from PIL import Image
 
-from lynx_core import file_timestamp, frame_step, merge_deployments, shift_file_date, unique_path
+from lynx_core import file_timestamp, frame_step, merge_deployments, set_file_timestamp, shift_file_date, unique_path
 
 
 class FileDateTests(unittest.TestCase):
@@ -43,6 +43,42 @@ class FileDateTests(unittest.TestCase):
             shift_file_date(file, timedelta(seconds=20), original_timestamp=1000)
             self.assertEqual(file.read_bytes(), b'example video')
             self.assertAlmostEqual(file.stat().st_mtime, 1020, places=2)
+
+    def test_timestamp_roundtrip_preserves_subseconds(self):
+        with tempfile.TemporaryDirectory() as folder:
+            file = Path(folder) / 'photo.bin'
+            file.write_bytes(b'unchanged')
+            for timestamp in (1020.125, 1788989369.365818):
+                with self.subTest(timestamp=timestamp):
+                    set_file_timestamp(file, timestamp)
+                    self.assertAlmostEqual(file.stat().st_mtime, timestamp, places=5)
+                    self.assertAlmostEqual(file_timestamp(file), timestamp, places=5)
+                    self.assertEqual(file.read_bytes(), b'unchanged')
+
+    def test_windows_dates_use_utc_and_preserve_fractional_seconds(self):
+        for timestamp in (1020.0, 1788989369.365818):
+            with self.subTest(timestamp=timestamp):
+                win32 = Mock()
+                handle = win32.CreateFile.return_value
+                with patch.dict('sys.modules', {'win32file': win32}), \
+                        patch('lynx_core.sys.platform', 'win32'), \
+                        patch('lynx_core.os.utime'):
+                    set_file_timestamp('photo.jpg', timestamp)
+                args = win32.SetFileTime.call_args.args
+                self.assertIs(args[0], handle)
+                for value in args[1:]:
+                    self.assertEqual(value.tzinfo, timezone.utc)
+                    self.assertAlmostEqual(value.timestamp(), timestamp, places=6)
+                handle.Close.assert_called_once()
+
+    def test_windows_timestamp_error_closes_handle(self):
+        win32 = Mock()
+        win32.SetFileTime.side_effect = OSError('write failed')
+        with patch.dict('sys.modules', {'win32file': win32}), \
+                patch('lynx_core.sys.platform', 'win32'), \
+                patch('lynx_core.os.utime'), self.assertRaises(OSError):
+            set_file_timestamp('photo.jpg', 1020)
+        win32.CreateFile.return_value.Close.assert_called_once()
 
     def test_multiple_name_collisions(self):
         with tempfile.TemporaryDirectory() as folder:

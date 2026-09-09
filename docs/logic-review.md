@@ -115,3 +115,17 @@ cancelación, errores, recuperación de controles, cambio de idioma y puntos de
 entrada completa/mini. Esas pruebas requieren Tk y una pantalla: se ejecutaron con el Python temporal
 y se omiten únicamente si se usa el intérprete sin entorno gráfico. El manual está disponible en español,
 inglés y portugués.
+
+## Corrección del fallo de Windows en Actions
+
+El registro de Windows del commit `5bd1a50` fallaba antes del empaquetado, en
+las pruebas de fechas: `SetFileTime` rechazaba el timestamp 1020 y las copias
+perdían fracciones de segundo. Se sustituye `pywintypes.Time(timestamp)` por
+`datetime.fromtimestamp(timestamp, tz=timezone.utc)`, pasando una fecha con zona
+horaria explícita y microsegundos a la API de Windows.
+
+Se añaden regresiones de conversión UTC, precisión, cierre del descriptor ante
+error y escritura/lectura real de fechas cercanas a 1970 y fechas fraccionarias.
+La comprobación local en Linux supera 30 pruebas; las cuatro pruebas gráficas se
+omiten en este intérprete sin Tk. La confirmación nativa de Windows requiere
+volver a ejecutar Actions con el parche.
