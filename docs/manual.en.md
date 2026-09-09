@@ -217,11 +217,12 @@ Subfolders are not scanned. JPEG frames are sampled at whole-frame intervals,
 with a minimum step of one frame. Output names include the video and frame number;
 existing files are preserved using suffixes.
 
-All extracted frames receive the same base timestamp: the video's filesystem
-creation time on Windows or modification time on Linux/macOS. The app does not
-read the embedded video recording date or add each frame's offset. Copied videos
-may therefore produce dates that do not represent capture time. This qualifies
-the old manual's statement about preserving capture dates.
+The base date is the video's creation time on Windows or modification time on
+Linux/macOS. Each frame adds its position (frame number / FPS). EXIF capture,
+digitized and modification dates, including subseconds, and filesystem access and
+modification dates are set. Windows also sets creation time (millisecond precision);
+Linux/macOS do not. Embedded video recording dates are not read. Check the base
+date for copied/edited videos. Variable-frame-rate timing is approximate.
 
 ## 10. Image Renamer
 

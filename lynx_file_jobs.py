@@ -49,14 +49,11 @@ def extract_videos(task, folder, destination, interval):
         try:
             if not capture.isOpened():
                 raise ValueError('Cannot open video.')
-            step = frame_step(capture.get(cv2.CAP_PROP_FPS), interval)
+            fps = capture.get(cv2.CAP_PROP_FPS)
+            step = frame_step(fps, interval)
             total = capture.get(cv2.CAP_PROP_FRAME_COUNT)
             total = total if math.isfinite(total) and total > 0 else 0
             timestamp = file_timestamp(video)
-            exif_date = datetime.fromtimestamp(timestamp).strftime('%Y:%m:%d %H:%M:%S').encode('ascii')
-            metadata = piexif.dump({'Exif': {
-                piexif.ExifIFD.DateTimeOriginal: exif_date,
-                piexif.ExifIFD.DateTimeDigitized: exif_date}})
             frame = 0
             output_index = 0
             while True:
@@ -67,13 +64,25 @@ def extract_videos(task, folder, destination, interval):
                         raise ValueError('The video has no readable frames.')
                     break
                 if frame % step == 0:
+                    frame_timestamp = timestamp + frame / fps
+                    date = datetime.fromtimestamp(frame_timestamp)
+                    exif_date = date.strftime('%Y:%m:%d %H:%M:%S').encode('ascii')
+                    subseconds = f'{date.microsecond:06d}'.encode('ascii')
+                    metadata = piexif.dump({
+                        '0th': {piexif.ImageIFD.DateTime: exif_date},
+                        'Exif': {
+                            piexif.ExifIFD.DateTimeOriginal: exif_date,
+                            piexif.ExifIFD.DateTimeDigitized: exif_date,
+                            piexif.ExifIFD.SubSecTime: subseconds,
+                            piexif.ExifIFD.SubSecTimeOriginal: subseconds,
+                            piexif.ExifIFD.SubSecTimeDigitized: subseconds}})
                     target = unique_path(Path(destination) / f'{video.name}_frame{output_index}.jpg')
                     with tempfile.TemporaryDirectory(dir=destination, prefix='.lynx-') as staging:
                         temporary = Path(staging) / 'frame.jpg'
                         if not cv2.imwrite(str(temporary), pixels, [cv2.IMWRITE_JPEG_QUALITY, 100]):
                             raise OSError('Could not write frame.')
                         piexif.insert(metadata, str(temporary))
-                        set_file_timestamp(temporary, timestamp)
+                        set_file_timestamp(temporary, frame_timestamp)
                         task.checkpoint()
                         os.replace(temporary, target)
                     result.completed += 1

@@ -267,12 +267,13 @@ Se generan JPEG. El intervalo se aproxima a fotogramas enteros y no puede ser
 menor que un fotograma. Los nombres incorporan el vídeo y el número de fotograma;
 si ya existen, se añade un sufijo para conservarlos.
 
-La fecha asignada es la fecha de archivo del vídeo: creación en Windows y
-modificación en Linux/macOS. Todos los fotogramas reciben esa misma fecha base.
-**No se lee la fecha de grabación de los metadatos internos del vídeo ni se suma
-el instante de cada fotograma**. Si el vídeo fue copiado y su fecha de archivo no
-representa la captura, revisa las fechas generadas. Esto precisa la afirmación
-“conservar la fecha de captura” del manual antiguo.
+La fecha base es la del archivo de vídeo: creación en Windows y modificación en
+Linux/macOS. A cada fotograma se suma su posición (número de fotograma / FPS).
+Se escriben DateTimeOriginal, DateTimeDigitized, DateTime y sus fracciones de
+segundo en EXIF, además de las fechas de acceso/modificación del archivo.
+Windows también ajusta la creación (precisión de milisegundos); Linux/macOS no.
+No se lee la fecha interna de grabación. Si el archivo se copió o editó, comprueba
+la fecha base. Para vídeos de FPS variable, la posición calculada es aproximada.
 
 ## 10. Funcionalidades → Renombrador de imágenes
 
@@ -311,3 +312,11 @@ Guarda los resultados antes de cerrar o cambiar de idioma. El programa no ofrece
 un historial de deshacer para todos los módulos. La generación del Excel no
 valida por sí sola todas las reglas de Wildbook ni la integridad de un conjunto de
 datos. Consulta las [limitaciones y mejoras pendientes](logic-review.md).
+
+## Selección de archivos en Ubuntu
+
+Los selectores de entrada admiten `.xlsx` y `.xlsm`, también en mayúsculas.
+Los `.xls` antiguos deben convertirse a `.xlsx` con Excel o LibreOffice.
+En Linux se utiliza el selector de Zenity si está instalado; si no está disponible
+o falla, se utiliza Tk. Se recuerda la última carpeta durante la sesión y hay un
+filtro de todos los archivos. Mostrar un archivo no implica admitir su formato.

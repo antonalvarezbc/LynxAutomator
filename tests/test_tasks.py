@@ -1,3 +1,5 @@
+from datetime import datetime
+from lynx_core import file_timestamp
 from pathlib import Path
 import tempfile
 from threading import Event, get_ident
@@ -164,7 +166,15 @@ class MediaTaskTests(unittest.TestCase):
             self.assertEqual(result.errors, [])
             self.assertEqual(result.completed, 5)
             self.assertEqual(len(list(output.glob('*.jpg'))), 5)
-            for frame in output.glob('*.jpg'):
+            base = file_timestamp(video)
+            for index, frame in enumerate(sorted(output.glob('*.jpg'))):
+                expected = datetime.fromtimestamp(base + index * 0.2)
+                metadata = piexif.load(str(frame))
+                for tag in (piexif.ExifIFD.DateTimeOriginal, piexif.ExifIFD.DateTimeDigitized):
+                    self.assertEqual(metadata['Exif'][tag], expected.strftime('%Y:%m:%d %H:%M:%S').encode('ascii'))
+                self.assertEqual(metadata['0th'][piexif.ImageIFD.DateTime], metadata['Exif'][piexif.ExifIFD.DateTimeOriginal])
+                self.assertEqual(metadata['Exif'][piexif.ExifIFD.SubSecTimeOriginal], f'{expected.microsecond:06d}'.encode('ascii'))
+                self.assertAlmostEqual(frame.stat().st_mtime, base + index * 0.2, delta=0.001)
                 with Image.open(frame) as image:
                     self.assertEqual(image.size, (16, 16))
             workbook = output / 'result.xlsx'

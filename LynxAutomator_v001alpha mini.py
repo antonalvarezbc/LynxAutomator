@@ -1,6 +1,7 @@
 from lynx_ui_jobs import (JobPanel, FolderJobs, CatalogJobs, WIJobs, LynxJobs, VideoJobs, DateJobs, RenamerJobs, DownloadJobs)
 import customtkinter as ctk
-from tkinter import filedialog, messagebox, IntVar, StringVar, ttk, BooleanVar
+import lynx_dialogs as filedialog
+from tkinter import messagebox, IntVar, StringVar, ttk, BooleanVar
 import pandas as pd
 import os
 from PIL import Image, ImageTk, ImageFile
@@ -491,7 +492,7 @@ class WBFolderApp(FolderJobs):
 
     def select_file(self):
         # Open a dialog to select an Excel file
-        self.file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        self.file_path = filedialog.askopenfilename(filetypes=[("Excel files", ("*.xlsx", "*.xlsm"))])
         if self.file_path:
             self.file_label.configure(text=os.path.basename(self.file_path))
             self.check_ready_to_process()
@@ -626,7 +627,7 @@ class WBCatalogApp(CatalogJobs):
             messagebox.showinfo("Information", f"Selected folder: {self.folder_path}")
 
     def select_file(self):
-        self.file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        self.file_path = filedialog.askopenfilename(filetypes=[("Excel files", ("*.xlsx", "*.xlsm"))])
         if self.file_path:
             self.file_label.configure(text=os.path.basename(self.file_path))
             messagebox.showinfo("Information", f"Selected file: {self.file_path}")
@@ -959,7 +960,7 @@ class ExcelCombinerApp(WIJobs):
         
         
     def select_initial_excel(self):
-        self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        self.initial_excel_path = filedialog.askopenfilename(filetypes=[("Excel files", ("*.xlsx", "*.xlsm"))])
         if self.initial_excel_path:
             self.excel_label.configure(text=os.path.basename(self.initial_excel_path))
         self.check_all_selected()
@@ -1161,13 +1162,13 @@ class LynxOne(LynxJobs):
             messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['source_directory']} {self.source_folder}")
 
     def select_estaciones_file(self):
-        self.estaciones_file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        self.estaciones_file = filedialog.askopenfilename(filetypes=[("Excel files", ("*.xlsx", "*.xlsm"))])
         if self.estaciones_file:
             self.estaciones_file_label.configure(text=self.estaciones_file)
             messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['estaciones_file']} {self.estaciones_file}")
 
     def select_individuos_file(self):
-        self.individuos_file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        self.individuos_file = filedialog.askopenfilename(filetypes=[("Excel files", ("*.xlsx", "*.xlsm"))])
         if self.individuos_file:
             self.individuos_file_label.configure(text=self.individuos_file)
             messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['individuos_file']} {self.individuos_file}")

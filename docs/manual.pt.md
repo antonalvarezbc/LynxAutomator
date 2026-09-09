@@ -248,10 +248,12 @@ Os nomes incluem o vídeo e um número; são acrescentados sufixos para preserva
 ficheiros existentes. Uma falha num vídeo é apresentada no resumo, sem impedir o
 processamento dos restantes. Cancelar liberta o vídeo e limpa a saída temporária.
 
-Todos os fotogramas recebem a mesma data base do ficheiro de vídeo: criação no
-Windows e modificação no Linux/macOS. **Não é lida a data de gravação dos metadados
-internos nem somado o instante de cada fotograma.** Se a data do ficheiro tiver
-mudado ao copiar o vídeo, pode não representar a captura real.
+A data base é a criação do vídeo no Windows ou a modificação no Linux/macOS.
+Cada fotograma soma a sua posição (número do fotograma / FPS). São gravadas as
+datas EXIF de captura, digitalização e modificação, incluindo frações de segundo,
+e as datas de acesso/modificação do ficheiro. O Windows também ajusta a criação
+(precisão de milissegundos); Linux/macOS não. A data interna de gravação não é lida.
+Verifique a data base de vídeos copiados/editados. Com FPS variável, o tempo é aproximado.
 
 ## 10. Renomeação de imagens
 

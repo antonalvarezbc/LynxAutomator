@@ -2,7 +2,8 @@
 from functools import wraps
 import math
 import shutil
-from tkinter import filedialog, messagebox, TclError
+import lynx_dialogs as filedialog
+from tkinter import messagebox, TclError
 
 import customtkinter as ctk
 
