@@ -1,0 +1,56 @@
+name: Build desktop apps
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install Linux GUI libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb libegl1 libopengl0
+      - name: Install dependencies
+        run: python -m pip install -r requirements-build.txt
+      - name: Check source syntax
+        run: python -m compileall -q LynxAutomator_v001alpha.py "LynxAutomator_v001alpha mini.py" lynx_core.py scripts tests
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Check desktop startup (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python scripts/smoke_test.py
+      - name: Check desktop startup (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: python scripts/smoke_test.py
+      - name: Build and archive application
+        run: python scripts/build.py
+      - name: Check packaged startup (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python scripts/smoke_test.py --packaged
+      - name: Check packaged startup (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: python scripts/smoke_test.py --packaged
+      - name: Record dependency versions
+        shell: bash
+        run: python -m pip freeze > artifacts/dependencies.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LynxAutomator-${{ matrix.os }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30

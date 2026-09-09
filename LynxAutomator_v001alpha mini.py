@@ -8,10 +8,11 @@ from datetime import datetime
 import tempfile
 import cv2
 import platform
-import win32file
-import pywintypes
+from lynx_core import file_timestamp, set_file_timestamp, shift_file_date, frame_step, unique_path, merge_deployments
 import tkinter as tk
 import threading
+import queue
+import math
 import subprocess
 import shutil
 import piexif
@@ -209,6 +210,10 @@ class BaseApp:
         self.lynxone_app = LynxOne(self.lynx_feature_1_tab, lang=lang)
 
     def change_language(self, *args):
+        worker = getattr(self.gcs_downloader_app, 'download_thread', None)
+        if worker and worker.is_alive():
+            messagebox.showwarning("Download in progress", "Stop the download before changing language.")
+            return
         # Limpiar y reconstruir la interfaz cuando se cambia el idioma
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -626,7 +631,7 @@ class WBFolderApp:
         if self.temp_file_path:
             save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
             if save_path:
-                os.rename(self.temp_file_path, save_path)
+                shutil.move(self.temp_file_path, save_path)
                 messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
                 self.download_btn.configure(state=ctk.DISABLED)
                 self.temp_file_path = None
@@ -854,7 +859,7 @@ class WBCatalogApp:
         if self.temp_file_path:
             save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
             if save_path:
-                os.rename(self.temp_file_path, save_path)
+                shutil.move(self.temp_file_path, save_path)
                 messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
                 self.download_btn.configure(state=ctk.DISABLED)
                 self.temp_file_path = None
@@ -956,10 +961,10 @@ class FrameExtractorApp:
     def start_extraction(self):
         try:
             interval = float(self.interval_var.get())
-            if interval <= 0:
+            if not math.isfinite(interval) or interval <= 0:
                 raise ValueError("The interval must be greater than zero.")
             
-            if not self.folder_path:
+            if not getattr(self, "folder_path", None):
                 self.status_label.configure(text="Please select a folder with videos.")
                 return
             
@@ -1002,20 +1007,28 @@ class FrameExtractorApp:
             print(f"Error opening video {video_path}")
             return
         fps = vidcap.get(cv2.CAP_PROP_FPS)
+        try:
+            step = frame_step(fps, interval)
+        except ValueError:
+            vidcap.release()
+            raise
         success, image = vidcap.read()
         count = 0
         frame_number = 0
-        creation_time = datetime.fromtimestamp(os.path.getctime(video_path))
+        creation_time = datetime.fromtimestamp(file_timestamp(video_path))
 
         total_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.status_label.configure(text=f"Processing {os.path.basename(video_path)}")
 
         while success:
-            if count % int(fps * interval) == 0:
+            if count % step == 0:
                 frame_path = os.path.join(self.output_folder, f"{os.path.basename(video_path)}_frame{frame_number}.jpg")
-                cv2.imwrite(frame_path, image, [cv2.IMWRITE_JPEG_QUALITY, 100])
-                self.change_file_dates(frame_path, creation_time)
+                frame_path = str(unique_path(frame_path))
+                if not cv2.imwrite(frame_path, image, [cv2.IMWRITE_JPEG_QUALITY, 100]):
+                    vidcap.release()
+                    raise ValueError(f"Could not write frame: {frame_path}")
                 self.set_exif_date(frame_path, creation_time)
+                self.change_file_dates(frame_path, creation_time)
                 frame_number += 1
             
             success, image = vidcap.read()
@@ -1033,15 +1046,7 @@ class FrameExtractorApp:
         piexif.insert(exif_bytes, image_path)
 
     def change_file_dates(self, file_path, creation_time):
-        try:
-            os.utime(file_path, (creation_time.timestamp(), creation_time.timestamp()))
-            if platform.system() == 'Windows':
-                wintime = pywintypes.Time(creation_time.timestamp())
-                fh = win32file.CreateFile(file_path, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
-                win32file.SetFileTime(fh, wintime, wintime, wintime)
-                fh.close()
-        except Exception as e:
-            print(f"Error setting file dates: {e}")
+        set_file_timestamp(file_path, creation_time.timestamp())
 
 
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
@@ -1141,29 +1146,113 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             self.download_btn.configure(state=ctk.DISABLED)
 
     def start_download(self):
-        # Open file dialog to select destination folder
-        self.folder_path = filedialog.askdirectory(title="Select Destination Folder")
-        if not self.folder_path:
-            messagebox.showerror("Error", "No folder selected.")
+        if getattr(self, "download_thread", None) and self.download_thread.is_alive():
             return
-
-        # Ensure the destination folder exists
-        if self.use_multiple_folders.get():
-            deployment_folders = self.get_deployment_folders()
-            for folder in deployment_folders:
-                os.makedirs(folder, exist_ok=True)
-        else:
-            os.makedirs(self.folder_path, exist_ok=True)
-        
+        if not getattr(self, "csv_path", None):
+            messagebox.showerror("Error", "Please select a CSV file.")
+            return
+        executable = shutil.which("gsutil")
+        if not executable:
+            messagebox.showerror("Error", "Install Google Cloud CLI with gsutil and configure access before downloading.")
+            return
+        try:
+            df = pd.read_csv(self.csv_path, dtype=str)
+            if not {'location', 'deployment_id'}.issubset(df.columns):
+                raise ValueError("The CSV must contain location and deployment_id columns.")
+            if df[['location', 'deployment_id']].isna().any().any():
+                raise ValueError("Locations and deployment IDs cannot be empty.")
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        folder = filedialog.askdirectory(title="Select Destination Folder")
+        if not folder:
+            return
+        self.folder_path = folder
+        self.download_events = queue.Queue()
+        self.stop_event = threading.Event()
         self.download_btn.configure(state=ctk.DISABLED)
         self.stop_btn.configure(state=ctk.NORMAL)
-        self.stop_flag = False
-        threading.Thread(target=self.download_and_rename_files).start()
+        self.download_thread = threading.Thread(
+            target=self.download_and_rename_files,
+            args=(df, folder, bool(self.use_multiple_folders.get()), executable), daemon=True)
+        self.download_thread.start()
+        self.after(100, self.poll_download_events)
 
     def stop_download(self):
-        self.stop_flag = True
-        self.download_btn.configure(state=ctk.NORMAL)
+        self.stop_event.set()
         self.stop_btn.configure(state=ctk.DISABLED)
+        self.status_var.set("Stopping after the current file...")
+
+    def poll_download_events(self):
+        # Only the Tk thread reads/writes widgets. The worker only posts data.
+        try:
+            while True:
+                kind, text = self.download_events.get_nowait()
+                if kind == 'status':
+                    self.status_var.set(text)
+                elif kind == 'done':
+                    self.download_btn.configure(state=ctk.NORMAL)
+                    self.stop_btn.configure(state=ctk.DISABLED)
+                    self.status_var.set(text)
+                    return
+                elif kind == 'error':
+                    messagebox.showerror("Download error", text)
+        except queue.Empty:
+            pass
+        self.after(100, self.poll_download_events)
+
+    def download_and_rename_files(self, df, folder, multiple_folders, executable):
+        failures = 0
+        downloaded = 0
+        skipped = 0
+        targets = {}
+        try:
+            for i, row in enumerate(df.itertuples(index=False), 1):
+                if self.stop_event.is_set():
+                    break
+                try:
+                    url = str(row.location)
+                    if not url.startswith('gs://') or any(c in url for c in '\r\n'):
+                        raise ValueError("Expected a gs:// image location.")
+                    filename = url.rsplit('/', 1)[-1]
+                    if Path(filename).suffix.lower() not in {'.jpg', '.jpeg'}:
+                        raise ValueError(f"Expected a JPEG image: {filename}")
+                    deployment = self.clean_deployment_id(str(row.deployment_id))
+                    if deployment in {'', '.', '..'}:
+                        raise ValueError("Invalid deployment folder name.")
+                    destination = Path(folder) / deployment if multiple_folders else Path(folder)
+                    destination.mkdir(parents=True, exist_ok=True)
+                    target = destination / (Path(self.clean_filename(filename)).stem + '.JPG')
+                    key = str(target).casefold()
+                    if key in targets and targets[key] != url:
+                        raise ValueError(f"Different images map to the same output name: {target.name}")
+                    targets[key] = url
+                    if target.exists():
+                        skipped += 1
+                        continue
+                    # Download into a temporary folder so failures cannot leave a
+                    # partial file that a subsequent run treats as complete.
+                    with tempfile.TemporaryDirectory(dir=destination) as staging:
+                        temporary_file = Path(staging) / 'download.jpg'
+                        subprocess.run([executable, 'cp', url, str(temporary_file)],
+                                       check=True, capture_output=True, text=True, timeout=300)
+                        with Image.open(temporary_file) as downloaded_image:
+                            if downloaded_image.format != 'JPEG':
+                                raise ValueError("The downloaded file is not a JPEG image.")
+                            downloaded_image.verify()
+                        if target.exists():
+                            raise FileExistsError(target)
+                        shutil.move(str(temporary_file), str(target))
+                    downloaded += 1
+                    self.download_events.put(('status', f'Downloading... {i} of {len(df)}'))
+                except Exception as exc:
+                    failures += 1
+                    detail = getattr(exc, 'stderr', None) or str(exc)
+                    self.download_events.put(('error', f'{row.location}: {detail}'))
+        finally:
+            state = 'Stopped' if self.stop_event.is_set() else 'Completed'
+            self.download_events.put(('done', f'{state}: {downloaded} downloaded, {skipped} skipped, {failures} failed.'))
+
 
     def clean_filename(self, name):
         # Replace any character that is not alphanumeric, dot, underscore, hyphen, space, or parentheses with an underscore
@@ -1179,76 +1268,6 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
         deployment_ids = df['deployment_id'].unique()
         return [os.path.join(self.folder_path, self.clean_deployment_id(str(deployment_id))) for deployment_id in deployment_ids]
 
-    def download_and_rename_files(self):
-        if not hasattr(self, 'csv_path') or not self.csv_path:
-            messagebox.showerror("Error", "Please select a CSV file.")
-            self.download_btn.configure(state=ctk.NORMAL)
-            self.stop_btn.configure(state=ctk.DISABLED)
-            return
-
-        try:
-            df = pd.read_csv(self.csv_path)
-            if 'location' not in df.columns or 'deployment_id' not in df.columns:
-                messagebox.showerror("Error", "The CSV file must contain columns named 'location' and 'deployment_id'.")
-                self.download_btn.configure(state=ctk.NORMAL)
-                self.stop_btn.configure(state=ctk.DISABLED)
-                return
-
-            urls = df['location'].tolist()
-            deployment_ids = df['deployment_id'].tolist()
-            total_urls = len(urls)
-
-            for i, (url, deployment_id) in enumerate(zip(urls, deployment_ids)):
-                if self.stop_flag:
-                    break
-
-                try:
-                    if self.use_multiple_folders.get():
-                        # Create folder for deployment_id if it doesn't exist
-                        clean_deployment_id = self.clean_deployment_id(str(deployment_id))
-                        deployment_folder = os.path.join(self.folder_path, clean_deployment_id)
-                        os.makedirs(deployment_folder, exist_ok=True)
-                    else:
-                        deployment_folder = self.folder_path
-
-                    # Ensure the deployment folder exists
-                    os.makedirs(deployment_folder, exist_ok=True)
-
-                    filename = os.path.basename(url)
-                    clean_filename = self.clean_filename(filename)
-                    new_name = clean_filename.rsplit('.', 1)[0] + '.JPG'
-                    new_file = os.path.join(deployment_folder, new_name)
-
-                    # Check if the file already exists
-                    if os.path.exists(new_file):
-                        # If the file exists, skip downloading
-                        self.status_var.set(f"File already exists, skipping... {i + 1} of {total_urls}")
-                        continue
-
-                    # Download the file
-                    command = f"gsutil -m cp {url} \"{deployment_folder}\""
-                    result = subprocess.run(command, check=True, shell=True, capture_output=True, text=True)
-                    if result.returncode != 0:
-                        raise subprocess.CalledProcessError(result.returncode, command, result.stdout, result.stderr)
-
-                    old_file = os.path.join(deployment_folder, filename)
-                    shutil.move(old_file, new_file)
-
-                    # Update the status label
-                    self.status_var.set(f"Downloading... {i + 1} of {total_urls} files")
-                except subprocess.CalledProcessError as e:
-                    error_message = f"Failed to download file {url} to {deployment_folder}\n{e.stderr}"
-                    messagebox.showerror("Error", error_message)
-
-            if not self.stop_flag:
-                messagebox.showinfo("Success", "All files have been downloaded.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to process the CSV file: {e}")
-        finally:
-            self.download_btn.configure(state=ctk.NORMAL)
-            self.stop_btn.configure(state=ctk.DISABLED)
-            # Reset the status label
-            self.status_var.set("Download process completed.")
 
        
 class ExcelCombinerApp:
@@ -1503,14 +1522,14 @@ class ExcelCombinerApp:
     def process_multiple_images(self, result_df, initial_df):
         try:
             # Sort the DataFrame by deployment_id and timestamp
-            result_df = result_df.sort_values(by=['deployment_id', 'timestamp'])
+            result_df = result_df.sort_values(by=['project_id', 'deployment_id', 'timestamp'])
 
             # Get the time threshold from user input
             time_threshold = int(self.time_threshold_entry.get())
 
             # Group images by deployment and time difference
             combined_images = []
-            for deployment_id, group in result_df.groupby('deployment_id'):
+            for deployment_id, group in result_df.groupby(['project_id', 'deployment_id']):
                 group['time_diff'] = group['timestamp'].diff().dt.total_seconds().fillna(time_threshold + 1)
                 group_images = []
                 for _, row in group.iterrows():

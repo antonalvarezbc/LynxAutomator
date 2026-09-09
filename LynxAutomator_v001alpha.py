@@ -8,10 +8,11 @@ from datetime import datetime
 import tempfile
 import cv2
 import platform
-import win32file
-import pywintypes
+from lynx_core import file_timestamp, set_file_timestamp, shift_file_date, frame_step, unique_path, merge_deployments
 import tkinter as tk
 import threading
+import queue
+import math
 import subprocess
 import shutil
 import piexif
@@ -215,6 +216,10 @@ class BaseApp:
         self.lynxone_app = LynxOne(self.lynx_feature_1_tab, lang=lang)
 
     def change_language(self, *args):
+        worker = getattr(self.gcs_downloader_app, 'download_thread', None)
+        if worker and worker.is_alive():
+            messagebox.showwarning("Download in progress", "Stop the download before changing language.")
+            return
         # Limpiar y reconstruir la interfaz cuando se cambia el idioma
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -230,36 +235,6 @@ class BaseApp:
         #     height=30   # Altura reducida para hacerlo más pequeño
         # )
         # self.language_menu.pack(pady=10, side="right", padx=10, anchor="ne") 
-
-class Presentation(ctk.CTkFrame):
-    def __init__(self, root, lang="es"):
-        super().__init__(root)
-        self.lang = lang  # Guardar el idioma actual
-
-        # Diccionario de traducciones
-        self.translations = {
-            "es": {
-                "title": "LynxAutomator",
-                "description": "LynxAutomator ha sido desarrollada por WWF España\n"
-                               "en el ámbito del proyecto LIFE LynxConnect 19NAT/ES/001055\n"
-                               "en la acción A8 Nuevas técnicas complementarias para el seguimiento de las poblaciones de lince"
-            },
-            "pt": {
-                "title": "LynxAutomator",
-                "description": "LynxAutomator foi desenvolvida pela WWF Espanha\n"
-                               "no âmbito do projeto LIFE LynxConnect 19NAT/ES/001055\n"
-                               "na ação A8 Novas técnicas complementares para o monitoramento das populações de lince"
-            },
-            "en": {
-                "title": "LynxAutomator",
-                "description": "LynxAutomator has been developed by WWF Spain\n"
-                               "within the framework of the LIFE LynxConnect project 19NAT/ES/001055\n"
-                               "under Action A8 New complementary techniques for monitoring lynx populations"
-            }
-        }
-
-        # Configuración de la interfaz
-        self.setup_ui()
 
 class Presentation(ctk.CTkFrame):
     def __init__(self, root, lang="es"):
@@ -696,7 +671,7 @@ class WBFolderApp:
         if self.temp_file_path:
             save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
             if save_path:
-                os.rename(self.temp_file_path, save_path)
+                shutil.move(self.temp_file_path, save_path)
                 messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
                 self.download_btn.configure(state=ctk.DISABLED)
                 self.temp_file_path = None
@@ -923,7 +898,7 @@ class WBCatalogApp:
         if self.temp_file_path:
             save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
             if save_path:
-                os.rename(self.temp_file_path, save_path)
+                shutil.move(self.temp_file_path, save_path)
                 messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
                 self.download_btn.configure(state=ctk.DISABLED)
                 self.temp_file_path = None
@@ -1025,10 +1000,10 @@ class FrameExtractorApp:
     def start_extraction(self):
         try:
             interval = float(self.interval_var.get())
-            if interval <= 0:
+            if not math.isfinite(interval) or interval <= 0:
                 raise ValueError("The interval must be greater than zero.")
             
-            if not self.folder_path:
+            if not getattr(self, "folder_path", None):
                 self.status_label.configure(text="Please select a folder with videos.")
                 return
             
@@ -1071,20 +1046,28 @@ class FrameExtractorApp:
             print(f"Error opening video {video_path}")
             return
         fps = vidcap.get(cv2.CAP_PROP_FPS)
+        try:
+            step = frame_step(fps, interval)
+        except ValueError:
+            vidcap.release()
+            raise
         success, image = vidcap.read()
         count = 0
         frame_number = 0
-        creation_time = datetime.fromtimestamp(os.path.getctime(video_path))
+        creation_time = datetime.fromtimestamp(file_timestamp(video_path))
 
         total_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.status_label.configure(text=f"Processing {os.path.basename(video_path)}")
 
         while success:
-            if count % int(fps * interval) == 0:
+            if count % step == 0:
                 frame_path = os.path.join(self.output_folder, f"{os.path.basename(video_path)}_frame{frame_number}.jpg")
-                cv2.imwrite(frame_path, image, [cv2.IMWRITE_JPEG_QUALITY, 100])
-                self.change_file_dates(frame_path, creation_time)
+                frame_path = str(unique_path(frame_path))
+                if not cv2.imwrite(frame_path, image, [cv2.IMWRITE_JPEG_QUALITY, 100]):
+                    vidcap.release()
+                    raise ValueError(f"Could not write frame: {frame_path}")
                 self.set_exif_date(frame_path, creation_time)
+                self.change_file_dates(frame_path, creation_time)
                 frame_number += 1
             
             success, image = vidcap.read()
@@ -1102,15 +1085,7 @@ class FrameExtractorApp:
         piexif.insert(exif_bytes, image_path)
 
     def change_file_dates(self, file_path, creation_time):
-        try:
-            os.utime(file_path, (creation_time.timestamp(), creation_time.timestamp()))
-            if platform.system() == 'Windows':
-                wintime = pywintypes.Time(creation_time.timestamp())
-                fh = win32file.CreateFile(file_path, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
-                win32file.SetFileTime(fh, wintime, wintime, wintime)
-                fh.close()
-        except Exception as e:
-            print(f"Error setting file dates: {e}")
+        set_file_timestamp(file_path, creation_time.timestamp())
 
 
 class GCSDownloaderAndRenamer(ctk.CTkFrame):
@@ -1210,29 +1185,113 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
             self.download_btn.configure(state=ctk.DISABLED)
 
     def start_download(self):
-        # Open file dialog to select destination folder
-        self.folder_path = filedialog.askdirectory(title="Select Destination Folder")
-        if not self.folder_path:
-            messagebox.showerror("Error", "No folder selected.")
+        if getattr(self, "download_thread", None) and self.download_thread.is_alive():
             return
-
-        # Ensure the destination folder exists
-        if self.use_multiple_folders.get():
-            deployment_folders = self.get_deployment_folders()
-            for folder in deployment_folders:
-                os.makedirs(folder, exist_ok=True)
-        else:
-            os.makedirs(self.folder_path, exist_ok=True)
-        
+        if not getattr(self, "csv_path", None):
+            messagebox.showerror("Error", "Please select a CSV file.")
+            return
+        executable = shutil.which("gsutil")
+        if not executable:
+            messagebox.showerror("Error", "Install Google Cloud CLI with gsutil and configure access before downloading.")
+            return
+        try:
+            df = pd.read_csv(self.csv_path, dtype=str)
+            if not {'location', 'deployment_id'}.issubset(df.columns):
+                raise ValueError("The CSV must contain location and deployment_id columns.")
+            if df[['location', 'deployment_id']].isna().any().any():
+                raise ValueError("Locations and deployment IDs cannot be empty.")
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        folder = filedialog.askdirectory(title="Select Destination Folder")
+        if not folder:
+            return
+        self.folder_path = folder
+        self.download_events = queue.Queue()
+        self.stop_event = threading.Event()
         self.download_btn.configure(state=ctk.DISABLED)
         self.stop_btn.configure(state=ctk.NORMAL)
-        self.stop_flag = False
-        threading.Thread(target=self.download_and_rename_files).start()
+        self.download_thread = threading.Thread(
+            target=self.download_and_rename_files,
+            args=(df, folder, bool(self.use_multiple_folders.get()), executable), daemon=True)
+        self.download_thread.start()
+        self.after(100, self.poll_download_events)
 
     def stop_download(self):
-        self.stop_flag = True
-        self.download_btn.configure(state=ctk.NORMAL)
+        self.stop_event.set()
         self.stop_btn.configure(state=ctk.DISABLED)
+        self.status_var.set("Stopping after the current file...")
+
+    def poll_download_events(self):
+        # Only the Tk thread reads/writes widgets. The worker only posts data.
+        try:
+            while True:
+                kind, text = self.download_events.get_nowait()
+                if kind == 'status':
+                    self.status_var.set(text)
+                elif kind == 'done':
+                    self.download_btn.configure(state=ctk.NORMAL)
+                    self.stop_btn.configure(state=ctk.DISABLED)
+                    self.status_var.set(text)
+                    return
+                elif kind == 'error':
+                    messagebox.showerror("Download error", text)
+        except queue.Empty:
+            pass
+        self.after(100, self.poll_download_events)
+
+    def download_and_rename_files(self, df, folder, multiple_folders, executable):
+        failures = 0
+        downloaded = 0
+        skipped = 0
+        targets = {}
+        try:
+            for i, row in enumerate(df.itertuples(index=False), 1):
+                if self.stop_event.is_set():
+                    break
+                try:
+                    url = str(row.location)
+                    if not url.startswith('gs://') or any(c in url for c in '\r\n'):
+                        raise ValueError("Expected a gs:// image location.")
+                    filename = url.rsplit('/', 1)[-1]
+                    if Path(filename).suffix.lower() not in {'.jpg', '.jpeg'}:
+                        raise ValueError(f"Expected a JPEG image: {filename}")
+                    deployment = self.clean_deployment_id(str(row.deployment_id))
+                    if deployment in {'', '.', '..'}:
+                        raise ValueError("Invalid deployment folder name.")
+                    destination = Path(folder) / deployment if multiple_folders else Path(folder)
+                    destination.mkdir(parents=True, exist_ok=True)
+                    target = destination / (Path(self.clean_filename(filename)).stem + '.JPG')
+                    key = str(target).casefold()
+                    if key in targets and targets[key] != url:
+                        raise ValueError(f"Different images map to the same output name: {target.name}")
+                    targets[key] = url
+                    if target.exists():
+                        skipped += 1
+                        continue
+                    # Download into a temporary folder so failures cannot leave a
+                    # partial file that a subsequent run treats as complete.
+                    with tempfile.TemporaryDirectory(dir=destination) as staging:
+                        temporary_file = Path(staging) / 'download.jpg'
+                        subprocess.run([executable, 'cp', url, str(temporary_file)],
+                                       check=True, capture_output=True, text=True, timeout=300)
+                        with Image.open(temporary_file) as downloaded_image:
+                            if downloaded_image.format != 'JPEG':
+                                raise ValueError("The downloaded file is not a JPEG image.")
+                            downloaded_image.verify()
+                        if target.exists():
+                            raise FileExistsError(target)
+                        shutil.move(str(temporary_file), str(target))
+                    downloaded += 1
+                    self.download_events.put(('status', f'Downloading... {i} of {len(df)}'))
+                except Exception as exc:
+                    failures += 1
+                    detail = getattr(exc, 'stderr', None) or str(exc)
+                    self.download_events.put(('error', f'{row.location}: {detail}'))
+        finally:
+            state = 'Stopped' if self.stop_event.is_set() else 'Completed'
+            self.download_events.put(('done', f'{state}: {downloaded} downloaded, {skipped} skipped, {failures} failed.'))
+
 
     def clean_filename(self, name):
         # Replace any character that is not alphanumeric, dot, underscore, hyphen, space, or parentheses with an underscore
@@ -1248,76 +1307,6 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
         deployment_ids = df['deployment_id'].unique()
         return [os.path.join(self.folder_path, self.clean_deployment_id(str(deployment_id))) for deployment_id in deployment_ids]
 
-    def download_and_rename_files(self):
-        if not hasattr(self, 'csv_path') or not self.csv_path:
-            messagebox.showerror("Error", "Please select a CSV file.")
-            self.download_btn.configure(state=ctk.NORMAL)
-            self.stop_btn.configure(state=ctk.DISABLED)
-            return
-
-        try:
-            df = pd.read_csv(self.csv_path)
-            if 'location' not in df.columns or 'deployment_id' not in df.columns:
-                messagebox.showerror("Error", "The CSV file must contain columns named 'location' and 'deployment_id'.")
-                self.download_btn.configure(state=ctk.NORMAL)
-                self.stop_btn.configure(state=ctk.DISABLED)
-                return
-
-            urls = df['location'].tolist()
-            deployment_ids = df['deployment_id'].tolist()
-            total_urls = len(urls)
-
-            for i, (url, deployment_id) in enumerate(zip(urls, deployment_ids)):
-                if self.stop_flag:
-                    break
-
-                try:
-                    if self.use_multiple_folders.get():
-                        # Create folder for deployment_id if it doesn't exist
-                        clean_deployment_id = self.clean_deployment_id(str(deployment_id))
-                        deployment_folder = os.path.join(self.folder_path, clean_deployment_id)
-                        os.makedirs(deployment_folder, exist_ok=True)
-                    else:
-                        deployment_folder = self.folder_path
-
-                    # Ensure the deployment folder exists
-                    os.makedirs(deployment_folder, exist_ok=True)
-
-                    filename = os.path.basename(url)
-                    clean_filename = self.clean_filename(filename)
-                    new_name = clean_filename.rsplit('.', 1)[0] + '.JPG'
-                    new_file = os.path.join(deployment_folder, new_name)
-
-                    # Check if the file already exists
-                    if os.path.exists(new_file):
-                        # If the file exists, skip downloading
-                        self.status_var.set(f"File already exists, skipping... {i + 1} of {total_urls}")
-                        continue
-
-                    # Download the file
-                    command = f"gsutil -m cp {url} \"{deployment_folder}\""
-                    result = subprocess.run(command, check=True, shell=True, capture_output=True, text=True)
-                    if result.returncode != 0:
-                        raise subprocess.CalledProcessError(result.returncode, command, result.stdout, result.stderr)
-
-                    old_file = os.path.join(deployment_folder, filename)
-                    shutil.move(old_file, new_file)
-
-                    # Update the status label
-                    self.status_var.set(f"Downloading... {i + 1} of {total_urls} files")
-                except subprocess.CalledProcessError as e:
-                    error_message = f"Failed to download file {url} to {deployment_folder}\n{e.stderr}"
-                    messagebox.showerror("Error", error_message)
-
-            if not self.stop_flag:
-                messagebox.showinfo("Success", "All files have been downloaded.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to process the CSV file: {e}")
-        finally:
-            self.download_btn.configure(state=ctk.NORMAL)
-            self.stop_btn.configure(state=ctk.DISABLED)
-            # Reset the status label
-            self.status_var.set("Download process completed.")
 
 
 class ExcelCombinerApp:
@@ -1584,6 +1573,8 @@ class ExcelCombinerApp:
         Implementa la lógica para separar imágenes con múltiples objetos o agruparlas por tiempo.
         Maneja errores y actualiza el estado de la interfaz.
         """
+        self.final_df = None
+        self.download_btn.configure(state=ctk.DISABLED)
         tr = self.translations[self.lang] # Obtiene las traducciones para mensajes de error
         try:
             # Verifica que todas las rutas de archivo estén seleccionadas.
@@ -1621,7 +1612,7 @@ class ExcelCombinerApp:
             initial_df = initial_df_dict[first_sheet_name].reset_index(drop=True)
 
             # Fusiona los DataFrames de imágenes y despliegues usando 'project_id' y 'deployment_id'.
-            merged_df = images_df.merge(deployments_df, on=['project_id', 'deployment_id'], suffixes=('_image', '_deployment'))
+            merged_df = merge_deployments(images_df, deployments_df)
             # Reinicia el índice del DataFrame fusionado para asegurar un índice numérico único y predeterminado.
             merged_df = merged_df.reset_index(drop=True)
 
@@ -1653,7 +1644,9 @@ class ExcelCombinerApp:
             # errors='coerce': Convierte los valores no válidos a NaT (Not a Time) en lugar de lanzar un error.
             result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], errors='coerce') 
             # Elimina las filas donde la conversión de 'timestamp' falló (contienen NaT).
-            result_df = result_df.dropna(subset=['timestamp']) 
+            invalid_dates = result_df['timestamp'].isna().sum()
+            if invalid_dates:
+                raise ValueError(f'{invalid_dates} images have invalid timestamps. Correct the CSV before exporting.')
 
             self.final_df = pd.DataFrame() # Inicializa el DataFrame final
 
@@ -1834,7 +1827,9 @@ class ExcelCombinerApp:
         # Asegura que 'timestamp' sea de tipo datetime antes de ordenar.
         if not pd.api.types.is_datetime64_any_dtype(result_df['timestamp']):
             result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], errors='coerce')
-            result_df = result_df.dropna(subset=['timestamp']) # Elimina filas con timestamps inválidos
+            invalid_dates = result_df['timestamp'].isna().sum()
+            if invalid_dates:
+                raise ValueError(f'{invalid_dates} images have invalid timestamps. Correct the CSV before exporting.') # Elimina filas con timestamps inválidos
 
         if result_df.empty: # Si el DataFrame está vacío después de limpiar timestamps
             # Construye un DataFrame vacío con el esquema esperado si no hay datos para procesar.
@@ -1852,13 +1847,13 @@ class ExcelCombinerApp:
             return pd.DataFrame(columns=list(dict.fromkeys(temp_final_cols)))
 
         # Ordena el DataFrame por 'deployment_id' y 'timestamp' para una agrupación cronológica.
-        result_df = result_df.sort_values(by=['deployment_id', 'timestamp'])
+        result_df = result_df.sort_values(by=['project_id', 'deployment_id', 'timestamp'])
         
         all_processed_rows = [] # Lista para almacenar los diccionarios de las filas combinadas
         max_assets_in_any_group = 0 # Rastrea el número máximo de assets en cualquier grupo
 
         # Itera sobre cada grupo de 'deployment_id'.
-        for deployment_id, group_df in result_df.groupby('deployment_id'):
+        for deployment_id, group_df in result_df.groupby(['project_id', 'deployment_id']):
             # Crea una copia del grupo y reinicia su índice para evitar SettingWithCopyWarning.
             current_group_processed = group_df.copy().reset_index(drop=True)
             
@@ -2157,7 +2152,7 @@ class DateChangerApp:
             if exif_date:
                 dates.append(exif_date.timestamp())
             else:
-                dates.append(os.path.getctime(file))
+                dates.append(file_timestamp(file))
         
         if dates:
             self.newest_date.set(datetime.fromtimestamp(max(dates)).strftime("%Y-%m-%d %H:%M:%S"))
@@ -2166,132 +2161,65 @@ class DateChangerApp:
             self.newest_date.set("")
             self.oldest_date.set("")
 
-    def correct_exif_format(self, exif_data):
-        for ifd in ("0th", "Exif", "GPS", "1st"):
-            for tag in exif_data[ifd]:
-                if isinstance(exif_data[ifd][tag], int):
-                    exif_data[ifd][tag] = (exif_data[ifd][tag], 1)
-        return exif_data
+    def get_date_difference(self):
+        if not getattr(self, "selected_folder", None):
+            raise ValueError("Please select a folder first.")
+        real_date = datetime.strptime(self.real_date_entry.get(), "%Y-%m-%d %H:%M:%S")
+        options = {1: self.newest_date, 2: self.oldest_date, 3: self.custom_date_entry}
+        reference = datetime.strptime(options[self.date_option.get()].get(), "%Y-%m-%d %H:%M:%S")
+        return real_date - reference
 
     def change_dates(self):
-        real_date = datetime.strptime(self.real_date_entry.get(), "%Y-%m-%d %H:%M:%S")
-        
-        if self.date_option.get() == 1:
-            reference_date = datetime.strptime(self.newest_date.get(), "%Y-%m-%d %H:%M:%S")
-        elif self.date_option.get() == 2:
-            reference_date = datetime.strptime(self.oldest_date.get(), "%Y-%m-%d %H:%M:%S")
+        try:
+            difference = self.get_date_difference()
+        except (ValueError, KeyError) as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        failures = []
+        for file in Path(self.selected_folder).iterdir():
+            if file.is_file():
+                try:
+                    shift_file_date(file, difference)
+                except Exception as exc:
+                    failures.append(f"{file.name}: {exc}")
+        self.get_file_dates(self.selected_folder)
+        if failures:
+            messagebox.showerror("Some files could not be updated", "\n".join(failures))
         else:
-            reference_date = datetime.strptime(self.custom_date_entry.get(), "%Y-%m-%d %H:%M:%S")
-
-        difference = real_date - reference_date
-
-        folder = self.selected_folder
-        files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
-
-        for file in files:
-            # Update EXIF dates if it's an image
-            exif_data = piexif.load(file)
-            date_time_original = exif_data['Exif'].get(piexif.ExifIFD.DateTimeOriginal)
-            if date_time_original:
-                new_exif_date = datetime.strptime(date_time_original.decode('utf-8'), "%Y:%m:%d %H:%M:%S") + difference
-                new_date_str = new_exif_date.strftime("%Y:%m:%d %H:%M:%S")
-                exif_data['Exif'][piexif.ExifIFD.DateTimeOriginal] = new_date_str.encode('utf-8')
-                exif_data['Exif'][piexif.ExifIFD.DateTimeDigitized] = new_date_str.encode('utf-8')
-                exif_data['0th'][piexif.ImageIFD.DateTime] = new_date_str.encode('utf-8')
-                exif_data = self.correct_exif_format(exif_data)
-                exif_bytes = piexif.dump(exif_data)
-                piexif.insert(exif_bytes, file)
-
-            # Update file creation dates
-            handle = win32file.CreateFile(
-                file, 
-                win32file.GENERIC_WRITE, 
-                0, 
-                None, 
-                win32file.OPEN_EXISTING, 
-                win32file.FILE_ATTRIBUTE_NORMAL, 
-                None
-            )
-
-            new_creation_date = datetime.fromtimestamp(os.path.getctime(file)) + difference
-            new_creation_date_filetime = pywintypes.Time(new_creation_date)
-
-            (creation, access, modification) = win32file.GetFileTime(handle)
-
-            win32file.SetFileTime(handle, new_creation_date_filetime, access, modification)
-            handle.close()
-        
-        messagebox.showinfo("Success", "File dates updated successfully!")
+            messagebox.showinfo("Success", "File dates updated successfully!")
 
     def copy_to_folder(self):
-        destination_folder = filedialog.askdirectory(title="Select Destination Folder")
-        if destination_folder:
-            folder = self.selected_folder
-            files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
-
-            for file in files:
-                file_name = os.path.basename(file)
-                destination_path = os.path.join(destination_folder, file_name)
-
-                if os.path.exists(destination_path):
-                    base_name, extension = os.path.splitext(file_name)
-                    destination_path = os.path.join(destination_folder, f"{base_name}_datechanged{extension}")
-
-                # Apply date change only to the file being copied
-                self.apply_date_change_to_copy(file, destination_path)
-
+        try:
+            difference = self.get_date_difference()
+        except (ValueError, KeyError) as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        destination = filedialog.askdirectory(title="Select Destination Folder")
+        if not destination:
+            return
+        failures = []
+        # Snapshot the source list before creating copies, including same-folder copies.
+        files = [p for p in Path(self.selected_folder).iterdir() if p.is_file()]
+        for file in files:
+            target = unique_path(Path(destination) / file.name)
+            try:
+                original_timestamp = file_timestamp(file)
+                shutil.copy2(file, target)
+                shift_file_date(target, difference, original_timestamp)
+            except Exception as exc:
+                failures.append(f"{file.name}: {exc}")
+        if failures:
+            messagebox.showerror("Some files could not be copied or updated", "\n".join(failures))
+        else:
             messagebox.showinfo("Success", "Files copied successfully!")
 
     def apply_date_change_to_copy(self, source_file, destination_file):
-        # Copy the file first
-        shutil.copy(source_file, destination_file)
-
-        # Then apply the date changes to the copied file
-        real_date = datetime.strptime(self.real_date_entry.get(), "%Y-%m-%d %H:%M:%S")
-        
-        if self.date_option.get() == 1:
-            reference_date = datetime.strptime(self.newest_date.get(), "%Y-%m-%d %H:%M:%S")
-        elif self.date_option.get() == 2:
-            reference_date = datetime.strptime(self.oldest_date.get(), "%Y-%m-%d %H:%M:%S")
-        else:
-            reference_date = datetime.strptime(self.custom_date_entry.get(), "%Y-%m-%d %H:%M:%S")
-
-        difference = real_date - reference_date
-
-        # Update EXIF dates if it's an image
-        try:
-            exif_data = piexif.load(destination_file)
-            date_time_original = exif_data['Exif'].get(piexif.ExifIFD.DateTimeOriginal)
-            if date_time_original:
-                new_exif_date = datetime.strptime(date_time_original.decode('utf-8'), "%Y:%m:%d %H:%M:%S") + difference
-                new_date_str = new_exif_date.strftime("%Y:%m:%d %H:%M:%S")
-                exif_data['Exif'][piexif.ExifIFD.DateTimeOriginal] = new_date_str.encode('utf-8')
-                exif_data['Exif'][piexif.ExifIFD.DateTimeDigitized] = new_date_str.encode('utf-8')
-                exif_data['0th'][piexif.ImageIFD.DateTime] = new_date_str.encode('utf-8')
-                exif_data = self.correct_exif_format(exif_data)
-                exif_bytes = piexif.dump(exif_data)
-                piexif.insert(exif_bytes, destination_file)
-        except:
-            pass  # Ignore if not an image
-
-        # Update file creation dates
-        handle = win32file.CreateFile(
-            destination_file, 
-            win32file.GENERIC_WRITE, 
-            0, 
-            None, 
-            win32file.OPEN_EXISTING, 
-            win32file.FILE_ATTRIBUTE_NORMAL, 
-            None
-        )
-
-        new_creation_date = datetime.fromtimestamp(os.path.getctime(destination_file)) + difference
-        new_creation_date_filetime = pywintypes.Time(new_creation_date)
-
-        (creation, access, modification) = win32file.GetFileTime(handle)
-
-        win32file.SetFileTime(handle, new_creation_date_filetime, access, modification)
-        handle.close()
+        difference = self.get_date_difference()
+        if Path(destination_file).exists():
+            raise FileExistsError(destination_file)
+        timestamp = file_timestamp(source_file)
+        shutil.copy2(source_file, destination_file)
+        shift_file_date(destination_file, difference, timestamp)
 
 
 class ImagesRenamer:
@@ -2502,8 +2430,18 @@ class ImagesRenamer:
             return
 
         custom_text = self.custom_text_var.get().strip()
+        if any(char in custom_text for char in '/\\'):
+            messagebox.showerror("Error", "Custom text cannot contain path separators.")
+            self.processing_label.configure(text="")
+            return
+        if dest_path and dest_path.resolve() == source_path.resolve():
+            messagebox.showerror("Error", "Select a destination different from the source folder.")
+            self.processing_label.configure(text="")
+            return
 
         for root, dirs, files in os.walk(source_path):
+            if dest_path:
+                dirs[:] = [d for d in dirs if (Path(root) / d).resolve() != dest_path.resolve()]
             root_path = Path(root)
             folder_name = root_path.name.split()[0].title()
 
@@ -2527,6 +2465,9 @@ class ImagesRenamer:
                         new_name = new_name.replace(" ", "_")
 
                     new_path = (dest_path / new_name) if self.copy_photos_var.get() else (root_path / new_name)
+
+                    if not self.copy_photos_var.get() and new_path == file:
+                        continue
 
                     # Check if the new file name already exists and modify it if necessary
                     counter = 1
@@ -2781,9 +2722,9 @@ class LynxOne:
                     # Extract parts of the path depending on whether Lince and Revision exist
                     parts = root_path.parts
                     if lince_exists and revision_exists and len(parts) >= 6:
-                        finca = parts[-4]
-                        estacion = parts[-3]
-                        revision = parts[-2]
+                        finca = parts[-5]
+                        estacion = parts[-4]
+                        revision = parts[-3]
                         lince = parts[-1]
                     elif lince_exists and not revision_exists and len(parts) >= 5:
                         finca = parts[-4]
@@ -2904,4 +2845,13 @@ class LynxOne:
 if __name__ == "__main__":
     root = ctk.CTk()
     app = BaseApp(root)
+    smoke_marker = os.environ.get("LYNXAUTOMATOR_SMOKE_TEST")
+    if smoke_marker:
+        def finish_smoke_test():
+            if app.presentation_app.logo is None:
+                root.destroy()
+                return
+            Path(smoke_marker).write_text("started", encoding="utf-8")
+            root.destroy()
+        root.after(500, finish_smoke_test)
     root.mainloop()
