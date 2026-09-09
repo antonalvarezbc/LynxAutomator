@@ -13,7 +13,17 @@ def main():
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean",
                "--onedir", "--windowed", "--name", "LynxAutomator",
                "--collect-all", "customtkinter", "--hidden-import", "openpyxl",
+               "--hidden-import", "PIL._tkinter_finder",
                "--add-data", f"{ROOT / 'logo.png'}{';' if sys.platform == 'win32' else ':'}."]
+    if sys.platform.startswith("linux"):
+        # Standalone Python can resolve Tcl/Tk through the interpreter's RPATH,
+        # which is unavailable when PyInstaller analyzes the _tkinter extension.
+        # Include those private libraries explicitly when the interpreter has them.
+        library_dir = Path(sys.base_prefix) / "lib"
+        for pattern in ("libtcl*.so*", "libtk*.so*"):
+            for library in sorted(library_dir.glob(pattern)):
+                if library.is_file():
+                    command += ["--add-binary", f"{library}:."]
     if sys.platform == "win32":
         command += ["--icon", str(ROOT / "favicon.ico")]
     command.append(str(ROOT / "LynxAutomator_v001alpha.py"))

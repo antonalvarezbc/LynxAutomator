@@ -29,6 +29,11 @@ def main():
         subprocess.run(command, cwd=folder, env=env, timeout=90, check=True)
         if not marker.is_file():
             raise RuntimeError("The GUI did not finish initializing.")
+    if not args.packaged:
+        env = dict(os.environ, LYNX_GUI_TESTS="1")
+        subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests",
+                        "-p", "test_gui_jobs.py", "-v"], cwd=ROOT, env=env, timeout=90, check=True)
+
 
 
 if __name__ == "__main__":

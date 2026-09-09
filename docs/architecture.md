@@ -40,10 +40,10 @@ La aplicación ya ofrece los formularios necesarios y una migración obligaría 
 reescribir sus controles, diálogos, traducciones y conexiones con la lógica.
 
 El bloqueo de la ventana procede de ejecutar trabajo largo en el hilo de la
-interfaz. Cambiar a Qt sin separar esas tareas conservaría el problema. Primero
-conviene extraer los servicios de fechas, archivos y transformación de datos, y
-usar trabajadores con progreso/cancelación. La descarga ya usa una cola para no
-actualizar Tk desde el trabajador.
+interfaz. Cambiar a Qt sin separar esas tareas conservaría el problema. Esta rama
+ya extrae los servicios de fechas, archivos, vídeo y transformación de datos y
+usa trabajadores con progreso/cancelación en ambas versiones. Los trabajadores
+no acceden a Tk; los controles y resultados se gestionan desde el hilo principal.
 
 Si el siguiente objetivo es una aplicación con tablas editables, filtros, vistas
 previas y navegación más elaborada, evaluaría **PySide6/Qt**. Ofrece una arquitectura
@@ -53,10 +53,10 @@ El coste incluye la reescritura de la interfaz, dependencias Qt y una nueva rond
 de pruebas de distribución. Su modelo de licencias se describe en
 [Qt for Python](https://doc.qt.io/qtforpython-6/commercial/index.html).
 
-Orden propuesto, aún no implementado:
+Próximos pasos (la separación del procesamiento ya está implementada):
 
 1. Completar los builds y pruebas reales de Windows, Linux y macOS.
-2. Separar lógica e interfaz y unificar las funciones de completa/mini.
+2. Unificar también la construcción de formularios de completa/mini.
 3. Definir qué funciones incluye Lite y cuáles requieren escritura sobre originales.
 4. Si hacen falta las nuevas vistas, prototipar una pantalla en PySide6 antes de
    comprometer una migración completa.
@@ -66,7 +66,7 @@ Orden propuesto, aún no implementado:
 ## Contraste del manual
 
 Se conserva el DOCX original y sus capturas como histórico. Los manuales Markdown
-en español e inglés sustituyen sus instrucciones para esta rama. Cambios principales:
+en español, inglés y portugués sustituyen sus instrucciones para esta rama. Cambios principales:
 
 - “Multiespecies” se sustituye por agrupación de varias imágenes por encuentro.
   `number_of_objects > 1` separa imágenes con varios objetos; no clasifica especies.
@@ -79,3 +79,9 @@ en español e inglés sustituyen sus instrucciones para esta rama. Cambios princ
   un desfase de una carpeta en la versión completa. La mini ya usaba los índices
   correctos. Se corrigió la completa y se probaron las cuatro combinaciones de
   carpetas opcionales.
+
+
+## Posible entrada Camtrap DP
+
+Se ha documentado una [propuesta de importación Camtrap DP](camtrap-dp.md). Es una
+valoración para una futura entrada; no se ha añadido ese formato al programa.

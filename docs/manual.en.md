@@ -1,6 +1,6 @@
 # LynxAutomator user manual
 
-[Español](manual.md) · [Installation and packages](../README.md#linux-macos-and-windows-builds)
+[Español](manual.md) · [Português](manual.pt.md) · [Installation and packages](../README.md#linux-macos-and-windows-builds)
 
 This revised manual describes the full application on `feature/cross-platform-builds`.
 Older release executables may behave differently. The original
@@ -13,12 +13,12 @@ LynxAutomator prepares spreadsheets, downloads authorized Wildlife Insights imag
 and provides camera-trap utilities. It does not automatically upload spreadsheets
 or photos to Wildbook. Select Spanish, Portuguese or English in the interface;
 some messages remain in English. Save results before changing language: doing so
-rebuilds the forms. Language changes are blocked during an active download.
+rebuilds the forms. Language changes are blocked during any active task.
 
 | Feature | Full | Historical alpha mini |
 | --- | --- | --- |
 | Wildbook folder import and catalog | Yes | Yes |
-| WI download and CSV conversion | Yes | Yes, with logic differences |
+| WI download and CSV conversion | Yes | Yes, with fewer UI options |
 | Iberian lynx spreadsheets | Yes | Yes |
 | Video frame extraction | Yes | Yes |
 | Dedicated original-file date correction | Yes | No |
@@ -31,6 +31,28 @@ current CI workflow builds the full app only. See the [architecture review](arch
 Follow the README to download and extract the package for your OS. Builds from
 this branch still need successful CI runs on their target systems. Use copies of
 original media when testing date correction or renaming.
+
+### Long tasks, progress and cancellation
+
+Video extraction, spreadsheet reads/processing/saves, catalogs, lynx data, date
+scanning/correction, renaming and downloads run in the background in both editions.
+The bottom panel shows the task, stage/current file and **Cancel**. An activity
+indicator is used when a reliable completion percentage is unavailable.
+
+Input fields and operation buttons are disabled during a task to keep parameters
+stable and prevent conflicting file operations. The window continues handling
+events. Wait or cancel before starting another task or changing language.
+
+Cancellation is checked between frames, files and processing stages. An Excel
+read/write, copy, decoder call or active transfer may need to finish first; this is
+not an instant interruption. Each gsutil transfer has a five-minute timeout.
+Completed files remain; cancelling does not undo original-file date changes or
+renames. Frames, copies and Excel use temporary output; a workbook replaces its
+destination only after a complete write and cancellation check.
+
+Closing the window requests cancellation and waits for the worker to finish before
+exiting. After original-file date changes, dates are rescanned even on cancellation
+or failure to refresh the form's reference values.
 
 ## 2. Initial Wildbook spreadsheet
 
@@ -100,7 +122,7 @@ Transfers use a temporary directory so incomplete downloads do not occupy the fi
 filename. Distinct locations mapping to the same output name during a run are
 reported as conflicts.
 
-Stop takes effect after the current transfer, which has a five-minute timeout.
+Cancel in the bottom task panel takes effect after the current transfer, which has a five-minute timeout.
 Wait for completion before starting again.
 
 ## 6. Wildlife Insights–Wildbook → WI CSVs to BIWbE
@@ -210,8 +232,7 @@ in their existing locations.
 
 Options include the first word of the folder name, original filename, EXIF date,
 custom text and replacing spaces with underscores. Folder/original-name options
-apply capitalization. Custom text cannot contain `/` or `\`. Missing EXIF may
-appear as `None` when the date option is enabled; disable that option for such files.
+apply capitalization. Custom text cannot contain `/` or `\`. If EXIF is missing, the date component is omitted.
 
 Copying collects images into one destination instead of preserving the directory
 tree. Name collisions receive suffixes. A destination nested under the source is
@@ -227,7 +248,8 @@ excluded from recursive processing.
 - Rejected CSV: check columns, identifiers, duplicate/unmatched deployments and dates.
 - Missing photos in folder import: check readable capture EXIF and nonrecursive input.
 - Cannot save Excel: close the workbook and choose a writable folder/new filename.
-- Busy window: video, Excel and renaming still run in the GUI thread. Try a small batch.
+- Cancelling: wait for the current read/write, frame or transfer to finish.
+- Disabled controls: wait for the active task or use Cancel in the bottom panel.
 
 Save before closing or changing language. There is no universal undo history.
 Generating a spreadsheet does not certify all Wildbook rules or dataset integrity.

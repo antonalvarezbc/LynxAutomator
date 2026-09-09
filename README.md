@@ -52,6 +52,7 @@ If security software flags a downloaded build, verify its source and review the 
 
 - [Manual actualizado en español](docs/manual.md)
 - [Updated English manual](docs/manual.en.md)
+- [Manual em português](docs/manual.pt.md)
 - [Alpha mini, signing and UI architecture review (Spanish)](docs/architecture.md)
 - [Original DOCX guide (historical)](WIP%20LynxAutomator%20GUIDE%20.docx)
 
@@ -105,7 +106,7 @@ headless package handles video decoding; the desktop interface uses Tk.
 The Wildlife Insights downloader additionally requires Google Cloud CLI with
 `gsutil` available on `PATH` and credentials authorized to access the input
 `gs://` locations. It accepts JPEG images, keeps existing output files, and reports
-failed downloads. Stop waits for the current transfer, with a five-minute timeout
+failed downloads. Cancel waits for the current transfer, with a five-minute timeout
 per transfer. Google Cloud credentials are not bundled into the app or CI.
 
 ### Dates and data handling
@@ -136,3 +137,21 @@ On Linux without a display, run the smoke tests using `xvfb-run -a`. Packaging m
 run on the target OS. The build script includes the logo and CustomTkinter assets.
 The historical `mini` script shares compatibility fixes but is not distributed by
 this workflow; the full application is the supported CI entry point.
+
+
+## Responsive background tasks
+
+Both desktop editions share UI-independent processing services. Video extraction,
+Excel processing and saving, folder scans, date correction, renaming and downloads
+run in a worker thread. The bottom task panel shows progress and **Cancel**; input
+controls are restored after completion, cancellation or failure. Closing requests
+cancellation and waits for the worker to finish safely.
+
+Cancellation is cooperative between frames, files or processing stages. A pending
+Excel read/write, copy, decoder call or gsutil transfer must return first. Completed
+outputs remain; original-file changes are not rolled back. New frames, copies and
+Excel exports use temporary output to avoid publishing incomplete files.
+
+`python scripts/smoke_test.py` now also runs real Tk responsiveness/cancellation
+and full/mini integration tests. On headless Linux use `xvfb-run -a`. Pure processing
+and task tests remain runnable without Tk via `python -m unittest discover -s tests -v`.

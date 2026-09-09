@@ -1,6 +1,6 @@
 # Manual de LynxAutomator
 
-[English version](manual.en.md) · [Instalación y paquetes](../README.md#linux-macos-and-windows-builds)
+[English version](manual.en.md) · [Português](manual.pt.md) · [Instalación y paquetes](../README.md#linux-macos-and-windows-builds)
 
 Este manual actualiza el documento original [WIP LynxAutomator GUIDE.docx](../WIP%20LynxAutomator%20GUIDE%20.docx)
 y describe la versión completa de la rama `feature/cross-platform-builds`.
@@ -16,12 +16,12 @@ ni las imágenes a Wildbook.
 
 La interfaz permite elegir español, portugués o inglés. Algunos mensajes y
 pestañas conservan textos en inglés. Cambiar de idioma reconstruye los formularios:
-guarda primero los resultados. No se permite hacerlo durante una descarga activa.
+guarda primero los resultados. No se permite hacerlo durante una tarea activa.
 
 | Función | Completa | Alpha mini histórica |
 | --- | --- | --- |
 | BIWbE desde carpeta y catálogo | Sí | Sí |
-| Descarga WI y conversión CSV → Excel | Sí | Sí, con diferencias de lógica |
+| Descarga WI y conversión CSV → Excel | Sí | Sí, con opciones de interfaz reducidas |
 | Seguimiento de lince ibérico | Sí | Sí |
 | Extracción de fotogramas | Sí | Sí |
 | Corrección de fechas de originales | Sí | Sin módulo dedicado |
@@ -36,6 +36,29 @@ Para empezar, descarga y extrae el paquete de tu sistema según el README. Los
 paquetes de esta rama necesitan superar su ejecución de GitHub Actions antes de
 considerarse comprobados en cada sistema. Trabaja con una copia de los originales
 cuando vayas a corregir fechas o renombrar imágenes.
+
+### Tareas largas, progreso y cancelación
+
+Vídeos, lectura y generación de Excel, catálogos, seguimiento de lince, lectura y
+corrección de fechas, renombrado y descargas se procesan en segundo plano en ambas
+versiones. La barra inferior muestra la tarea, fase o archivo actual y **Cancelar**.
+Si no se conoce la duración, indica actividad en lugar de una proporción exacta.
+
+Durante una tarea se desactivan los campos y botones de operación para mantener
+estables los parámetros y evitar operaciones simultáneas sobre los archivos. La
+ventana sigue atendiendo eventos; espera o cancela antes de empezar otra tarea.
+
+La cancelación se comprueba entre fotogramas, archivos y etapas. Una lectura/escritura
+de Excel, copia, llamada al decodificador o transferencia iniciada puede necesitar
+terminar primero. No es una interrupción inmediata; cada transferencia gsutil tiene
+un límite de cinco minutos. Los archivos ya completados se conservan y cancelar no
+deshace correcciones ni renombrados de originales. Fotogramas, copias y Excel usan
+salidas temporales; el Excel sólo sustituye al destino tras terminar de escribirse
+y comprobar la cancelación.
+
+Cerrar la ventana durante una tarea solicita cancelarla y espera al trabajador antes
+de cerrar. Después de cambiar fechas de originales, se vuelven a leer las fechas,
+incluso si hubo cancelación o error, para actualizar las referencias del formulario.
 
 ## 2. Excel inicial para Wildbook
 
@@ -124,7 +147,7 @@ transferencia nueva se realiza en una carpeta temporal para no dejar un archivo
 parcial con el nombre definitivo. Si dos ubicaciones distintas producen el mismo
 nombre de salida dentro de una ejecución, se informa del conflicto.
 
-**Parar** solicita detenerse después del archivo en curso; cada transferencia
+**Cancelar**, en la barra inferior, solicita detenerse después del archivo en curso; cada transferencia
 tiene un límite de cinco minutos. Espera al resumen antes de iniciar otra descarga.
 
 ## 6. Wildlife Insights–Wildbook → WI CSVs a BIWbE
@@ -264,8 +287,7 @@ Recorre la carpeta de origen y sus subcarpetas para procesar JPG, JPEG, PNG y GI
 
 “Nombre de carpeta” usa sólo su primera palabra y aplica capitalización. La opción
 que conserva el nombre original también modifica su capitalización. El texto
-personalizado no admite `/` ni `\`. Si falta EXIF, la opción de añadir fecha puede
-introducir el texto `None`; desactívala para esos archivos.
+personalizado no admite `/` ni `\`. Si falta EXIF, se omite ese componente del nombre.
 
 Al copiar, las imágenes se reúnen en la carpeta de destino, sin reproducir el
 árbol de carpetas. Se añaden sufijos si los nombres ya existen. Una carpeta de
@@ -282,7 +304,8 @@ salida dentro del origen se excluye del recorrido para no reprocesar sus copias.
 | CSV rechazado | Columnas, identificadores, despliegues duplicados, fechas y correspondencias entre ambos CSV. |
 | Faltan fotos en BIWbE desde Carpeta | EXIF de captura y selección de una carpeta sin subcarpetas que deban incluirse. |
 | Excel bloqueado o no se puede guardar | Cierra el archivo en Excel y elige una carpeta con permiso de escritura y un nombre nuevo. |
-| Ventana ocupada al procesar vídeo/Excel/renombrado | Esas operaciones aún se ejecutan en el hilo de la interfaz; empieza con un lote pequeño. |
+| Cancelando durante una operación larga | Espera a que termine la lectura, escritura, fotograma o transferencia en curso; no se interrumpe a la fuerza. |
+| Campos y botones desactivados | Hay una tarea activa; espera o usa Cancelar en la barra inferior. |
 
 Guarda los resultados antes de cerrar o cambiar de idioma. El programa no ofrece
 un historial de deshacer para todos los módulos. La generación del Excel no

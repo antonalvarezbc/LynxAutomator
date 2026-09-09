@@ -1,3 +1,4 @@
+from lynx_ui_jobs import (JobPanel, FolderJobs, CatalogJobs, WIJobs, LynxJobs, VideoJobs, DateJobs, RenamerJobs, DownloadJobs)
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, IntVar, StringVar, ttk, BooleanVar
 import pandas as pd
@@ -100,6 +101,8 @@ class BaseApp:
         # Obtener las traducciones según el idioma seleccionado
         lang = "es" if self.language.get() == "Español" else "pt" if self.language.get() == "Português" else "en"
         tr = self.translations[lang]
+
+        self.root.jobs = JobPanel(self.root, lang)
 
         # Actualizar el título de la ventana
         self.root.title(tr["title"])
@@ -210,14 +213,10 @@ class BaseApp:
         self.lynxone_app = LynxOne(self.lynx_feature_1_tab, lang=lang)
 
     def change_language(self, *args):
-        worker = getattr(self.gcs_downloader_app, 'download_thread', None)
-        if worker and worker.is_alive():
-            messagebox.showwarning("Download in progress", "Stop the download before changing language.")
+        if self.root.jobs.busy:
             return
-        # Limpiar y reconstruir la interfaz cuando se cambia el idioma
         for widget in self.root.winfo_children():
             widget.destroy()
-            
         self.setup_ui()
 
         # self.language_menu = ctk.CTkOptionMenu(
@@ -364,7 +363,7 @@ class AppHelp:
         self.text_widget.configure(state="disabled")    
 
 
-class WBFolderApp:
+class WBFolderApp(FolderJobs):
     def __init__(self, root, lang="es"):
         self.root = root
         self.lang = lang  # Guardar el idioma actual
@@ -482,7 +481,6 @@ class WBFolderApp:
         self.download_btn.pack(side="left", padx=5)
 
         # Variable to store the path of the temporary file
-        self.temp_file_path = None
 
     def select_folder(self):
         # Open a dialog to select a folder
@@ -503,142 +501,8 @@ class WBFolderApp:
         if hasattr(self, 'folder_path') and hasattr(self, 'file_path'):
             self.process_btn.configure(state=ctk.NORMAL)
 
-    def get_exif_data(self, image_path):
-        # Retrieve EXIF data from an image
-        image = Image.open(image_path)
-        exif_data = image._getexif()
-        if not exif_data:
-            return None
-        exif = {}
-        for tag, value in exif_data.items():
-            decoded = TAGS.get(tag, tag)
-            exif[decoded] = value
-        return exif
 
-    def get_date_taken(self, exif_data):
-        # Extract the date when the photo was taken from EXIF data
-        date_taken = exif_data.get("DateTimeOriginal")
-        if date_taken:
-            return datetime.strptime(date_taken, '%Y:%m:%d %H:%M:%S')
-        return None
-
-    def process_files(self):
-        # Ensure both folder and file are selected
-        if not hasattr(self, 'folder_path') or not hasattr(self, 'file_path'):
-            messagebox.showerror("Error", "Please select both a folder and a file.")
-            return
-
-        photo_data = []
-
-        # Iterate over files in the selected folder
-        for filename in os.listdir(self.folder_path):
-            if filename.lower().endswith(('png', 'jpg', 'jpeg')):
-                file_path = os.path.join(self.folder_path, filename)
-                exif_data = self.get_exif_data(file_path)
-                if exif_data:
-                    date_taken = self.get_date_taken(exif_data)
-                    if date_taken:
-                        photo_data.append([filename, date_taken])
-
-        if not photo_data:
-            messagebox.showinfo("Information", "No photos with date information found.")
-            return
-
-        df = pd.read_excel(self.file_path)
-        
-        # Ensure the 'Encounter.mediaAsset0' column exists, create it if it doesn't
-        if 'Encounter.mediaAsset0' not in df.columns:
-            df['Encounter.mediaAsset0'] = ""
-
-        df['Encounter.mediaAsset0'] = df['Encounter.mediaAsset0'].astype(str)  # Ensure column is string type
-
-        new_data = pd.DataFrame(photo_data, columns=['Encounter.mediaAsset0', 'Date'])
-        new_data['Encounter.mediaAsset0'] = new_data['Encounter.mediaAsset0'].astype(str) 
-        
-        # Convert 'Date' column to datetime and sort data by date
-        new_data['Date'] = pd.to_datetime(new_data['Date'])
-        new_data.sort_values(by='Date', inplace=True)
-
-        # Check if grouping by time is enabled
-        if self.multiple_images_var.get():
-            # Determine time threshold for grouping
-            time_threshold = int(self.time_threshold_entry.get())
-            new_data['TimeDiff'] = new_data['Date'].diff().dt.total_seconds().fillna(0)
-            
-            grouped_data = []
-            current_group = []
-            for index, row in new_data.iterrows():
-                if current_group and row['TimeDiff'] > time_threshold:
-                    grouped_data.append(current_group)
-                    current_group = []
-                current_group.append(row)
-            if current_group:
-                grouped_data.append(current_group)
-            
-            # Create a new DataFrame to store the grouped data
-            final_data = []
-            for group in grouped_data:
-                base_row = group[0].copy()
-                for i, additional_row in enumerate(group[1:], start=1):
-                    base_row[f'Encounter.mediaAsset{i}'] = additional_row['Encounter.mediaAsset0']
-                final_data.append(base_row)
-            
-            final_df = pd.DataFrame(final_data).drop(columns=['TimeDiff'])
-        else:
-            final_df = new_data.copy()
-
-        # Add date-related columns
-        final_df['Encounter.year'] = final_df['Date'].dt.year
-        final_df['Encounter.month'] = final_df['Date'].dt.month
-        final_df['Encounter.day'] = final_df['Date'].dt.day
-        final_df['Encounter.hour'] = final_df['Date'].dt.hour
-        final_df['Encounter.minutes'] = final_df['Date'].dt.minute
-        final_df = final_df.drop('Date', axis=1)
-
-        # Merge with original DataFrame
-        df_merged = pd.merge(df, final_df, on='Encounter.mediaAsset0', how='right')
-
-        # Fill missing data in original DataFrame columns with the first row value
-        for column in df.columns:
-            if column in df_merged.columns:
-                first_row_value = df[column].iloc[0]
-                df_merged[column] = df_merged[column].fillna(first_row_value)
-
-        # Ensure only one set of date-related columns appears
-        for time_unit in ['year', 'month', 'day', 'hour', 'minutes']:  
-            column_x = f'Encounter.{time_unit}_x'
-            column_y = f'Encounter.{time_unit}_y'
-            column = f'Encounter.{time_unit}'
-            if column_x in df_merged.columns and column_y in df_merged.columns:
-                # Remove empty entries before combining
-                df_merged[column_x].replace('', pd.NA, inplace=True)
-                df_merged[column_y].replace('', pd.NA, inplace=True)
-                df_merged[column] = df_merged[column_x].combine_first(df_merged[column_y])
-                df_merged.drop([column_x, column_y], axis=1, inplace=True)
-            elif column_y in df_merged.columns:
-                df_merged.rename(columns={column_y: column}, inplace=True)
-
-        # Create a temporary file to save the updated Excel data
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-            self.temp_file_path = tmp.name
-            df_merged.to_excel(self.temp_file_path, index=False)
-
-        messagebox.showinfo("Information", "Excel file processed successfully!")
-        self.download_btn.configure(state=ctk.NORMAL)
-
-    def download_file(self):
-        # Open a dialog to save the processed Excel file
-        if self.temp_file_path:
-            save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
-            if save_path:
-                shutil.move(self.temp_file_path, save_path)
-                messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
-                self.download_btn.configure(state=ctk.DISABLED)
-                self.temp_file_path = None
-
-
-
-class WBCatalogApp:
+class WBCatalogApp(CatalogJobs):
     def __init__(self, root, lang="es"):
         self.root = root
         self.lang = lang  # Guardar el idioma actual
@@ -767,105 +631,8 @@ class WBCatalogApp:
             self.file_label.configure(text=os.path.basename(self.file_path))
             messagebox.showinfo("Information", f"Selected file: {self.file_path}")
 
-    def process_files(self):
-        # Ensure both folder and file are selected
-        if not hasattr(self, 'folder_path') or not hasattr(self, 'file_path'):
-            messagebox.showerror("Error", "Please select both a folder and a file.")
-            return
 
-        photo_data = []
-
-        # Iterate over files in the selected folder
-        for root, dirs, files in os.walk(self.folder_path):
-            # Use the first word of the filename without the extension as the individual name
-            individual_name = {
-                file: os.path.splitext(file)[0].split()[0] for file in files if file.lower().endswith(('png', 'jpg', 'jpeg'))
-            }
-
-            # Capitalize individualID if the checkbox is checked
-            if self.capitalize_var.get():
-                individual_name = {file: name.capitalize() for file, name in individual_name.items()}
-
-            for file in files:
-                if file.lower().endswith(('png', 'jpg', 'jpeg')):
-                    file_path = os.path.join(root, file)
-                    relative_path = os.path.relpath(file_path, self.folder_path)  # Get the relative path
-                    relative_path = relative_path.replace("\\", "/")  # Replace backslashes with forward slashes
-                    name_used = individual_name[file]
-                    photo_data.append([relative_path, name_used])
-
-        if not photo_data:
-            messagebox.showinfo("Information", "No photos found.")
-            return
-
-        try:
-            df_original = pd.read_excel(self.file_path)
-            original_columns = df_original.columns.tolist()  # Save the original column order
-            first_row_data = df_original.iloc[0]  # Get the first row to propagate values
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load Excel file: {str(e)}")
-            return
-
-        # Check if the 'Encounter.mediaAsset0' column exists
-        if 'Encounter.mediaAsset0' not in df_original.columns:
-            df_original['Encounter.mediaAsset0'] = pd.NA
-
-        df_original['Encounter.mediaAsset0'] = df_original['Encounter.mediaAsset0'].astype(str)
-        
-        new_data = pd.DataFrame(photo_data, columns=['Encounter.mediaAsset0', 'MarkedIndividual.individualID'])
-        new_data['Encounter.mediaAsset0'] = new_data['Encounter.mediaAsset0'].astype(str)
-
-        # Perform the merge operation
-        df_merged = pd.merge(df_original, new_data, on='Encounter.mediaAsset0', how='right')
-
-        # Ensure 'MarkedIndividual.individualID' is correctly placed
-        if 'MarkedIndividual.individualID_x' in df_merged.columns and 'MarkedIndividual.individualID_y' in df_merged.columns:
-            df_merged['MarkedIndividual.individualID'] = df_merged['MarkedIndividual.individualID_y'].fillna(df_merged['MarkedIndividual.individualID_x'])
-            df_merged.drop(['MarkedIndividual.individualID_x', 'MarkedIndividual.individualID_y'], axis=1, inplace=True)
-        elif 'MarkedIndividual.individualID_y' in df_merged.columns:
-            df_merged.rename(columns={'MarkedIndividual.individualID_y': 'MarkedIndividual.individualID'}, inplace=True)
-        elif 'MarkedIndividual.individualID_x' in df_merged.columns:
-            df_merged.rename(columns={'MarkedIndividual.individualID_x': 'MarkedIndividual.individualID'}, inplace=True)
-
-        if self.collapse_var.get():
-            # Collapse rows with the same 'MarkedIndividual.individualID'
-            df_merged['RowNumber'] = df_merged.groupby('MarkedIndividual.individualID').cumcount()
-            df_pivot = df_merged.pivot_table(index='MarkedIndividual.individualID', columns='RowNumber', values='Encounter.mediaAsset0', aggfunc='first')
-            df_pivot.columns = [f'Encounter.mediaAsset{int(col)}' for col in df_pivot.columns]
-            df_merged = pd.merge(df_merged.drop(columns='Encounter.mediaAsset0').drop_duplicates('MarkedIndividual.individualID'), df_pivot, on='MarkedIndividual.individualID')
-
-            # Drop the 'RowNumber' column after use
-            df_merged.drop(columns=['RowNumber'], inplace=True)
-
-        # Reorder columns to match the original Excel file order
-        new_column_order = [col for col in original_columns if col in df_merged.columns] + \
-                        [col for col in df_merged.columns if col not in original_columns]
-        df_merged = df_merged[new_column_order]
-
-        # Fill in missing values from the first row where appropriate
-        for column in df_merged.columns:
-            if df_merged[column].isnull().any():
-                if column in first_row_data.index:  # Corrected to check the index
-                    df_merged[column] = df_merged[column].fillna(first_row_data[column])
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-            self.temp_file_path = tmp.name
-            df_merged.to_excel(self.temp_file_path, index=False)
-
-        messagebox.showinfo("Information", "Excel file processed successfully!")
-        self.download_btn.configure(state=ctk.NORMAL)
-
-    def download_file(self):
-        if self.temp_file_path:
-            save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
-            if save_path:
-                shutil.move(self.temp_file_path, save_path)
-                messagebox.showinfo("Information", f"Excel file saved successfully at {save_path}!")
-                self.download_btn.configure(state=ctk.DISABLED)
-                self.temp_file_path = None
-
-
-class FrameExtractorApp:
+class FrameExtractorApp(VideoJobs):
     def __init__(self, root, lang="es"):
         self.root = root
         self.lang = lang  # Guardar el idioma actual
@@ -958,98 +725,8 @@ class FrameExtractorApp:
         else:
             self.status_label.configure(text="Please select a folder with videos.")
 
-    def start_extraction(self):
-        try:
-            interval = float(self.interval_var.get())
-            if not math.isfinite(interval) or interval <= 0:
-                raise ValueError("The interval must be greater than zero.")
-            
-            if not getattr(self, "folder_path", None):
-                self.status_label.configure(text="Please select a folder with videos.")
-                return
-            
-            # Ask the user to select the output folder
-            self.output_folder = filedialog.askdirectory(title="Select the output folder")
-            if not self.output_folder:
-                self.status_label.configure(text="Please select an output folder.")
-                return
 
-            # Mostrar mensaje de "Processing..." antes de comenzar
-            self.status_label.configure(text="Processing...")
-            self.status_label.update_idletasks()  # Forzar actualización de la UI
-
-            total_frames = 0
-            for filename in os.listdir(self.folder_path):
-                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
-                    video_path = os.path.join(self.folder_path, filename)
-                    vidcap = cv2.VideoCapture(video_path)
-                    if vidcap.isOpened():
-                        total_frames += int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
-                        vidcap.release()
-
-            self.status_label.configure(text="")
-
-            for filename in os.listdir(self.folder_path):
-                if filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.flv')):
-                    video_path = os.path.join(self.folder_path, filename)
-                    self.extract_frames(video_path, interval)
-
-            # Actualizar el mensaje una vez que el procesamiento haya terminado
-            self.status_label.configure(text="Frames extracted and saved successfully.")
-
-        except ValueError as e:
-            self.status_label.configure(text=f"Error: {e}")
-
-
-    def extract_frames(self, video_path, interval):
-        vidcap = cv2.VideoCapture(video_path)
-        if not vidcap.isOpened():
-            print(f"Error opening video {video_path}")
-            return
-        fps = vidcap.get(cv2.CAP_PROP_FPS)
-        try:
-            step = frame_step(fps, interval)
-        except ValueError:
-            vidcap.release()
-            raise
-        success, image = vidcap.read()
-        count = 0
-        frame_number = 0
-        creation_time = datetime.fromtimestamp(file_timestamp(video_path))
-
-        total_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.status_label.configure(text=f"Processing {os.path.basename(video_path)}")
-
-        while success:
-            if count % step == 0:
-                frame_path = os.path.join(self.output_folder, f"{os.path.basename(video_path)}_frame{frame_number}.jpg")
-                frame_path = str(unique_path(frame_path))
-                if not cv2.imwrite(frame_path, image, [cv2.IMWRITE_JPEG_QUALITY, 100]):
-                    vidcap.release()
-                    raise ValueError(f"Could not write frame: {frame_path}")
-                self.set_exif_date(frame_path, creation_time)
-                self.change_file_dates(frame_path, creation_time)
-                frame_number += 1
-            
-            success, image = vidcap.read()
-            count += 1
-
-        vidcap.release()
-        self.status_label.configure(text="Frames extracted and saved successfully.")
-
-    def set_exif_date(self, image_path, creation_time):
-        exif_date = creation_time.strftime("%Y:%m:%d %H:%M:%S")
-        exif_dict = piexif.load(image_path)
-        exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal] = exif_date
-        exif_dict['Exif'][piexif.ExifIFD.DateTimeDigitized] = exif_date
-        exif_bytes = piexif.dump(exif_dict)
-        piexif.insert(exif_bytes, image_path)
-
-    def change_file_dates(self, file_path, creation_time):
-        set_file_timestamp(file_path, creation_time.timestamp())
-
-
-class GCSDownloaderAndRenamer(ctk.CTkFrame):
+class GCSDownloaderAndRenamer(DownloadJobs, ctk.CTkFrame):
     def __init__(self, root, lang="es"):
         super().__init__(root)  # Llamada correcta al constructor de la clase base
         self.root = root
@@ -1128,10 +805,6 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
         self.download_btn = ctk.CTkButton(self.buttons_frame, text=self.translations[self.lang]["download_images"], command=self.start_download, state=ctk.DISABLED)
         self.download_btn.pack(side="left", padx=5)
 
-        self.stop_btn = ctk.CTkButton(self.buttons_frame, text=self.translations[self.lang]["stop"], command=self.stop_download, state=ctk.DISABLED)
-        self.stop_btn.pack(side="left", padx=5)
-
-        self.stop_flag = False
 
     def select_csv(self):
         self.csv_path = filedialog.askopenfilename(title="Select CSV File", filetypes=[("CSV files", "*.csv")])
@@ -1145,132 +818,9 @@ class GCSDownloaderAndRenamer(ctk.CTkFrame):
         else:
             self.download_btn.configure(state=ctk.DISABLED)
 
-    def start_download(self):
-        if getattr(self, "download_thread", None) and self.download_thread.is_alive():
-            return
-        if not getattr(self, "csv_path", None):
-            messagebox.showerror("Error", "Please select a CSV file.")
-            return
-        executable = shutil.which("gsutil")
-        if not executable:
-            messagebox.showerror("Error", "Install Google Cloud CLI with gsutil and configure access before downloading.")
-            return
-        try:
-            df = pd.read_csv(self.csv_path, dtype=str)
-            if not {'location', 'deployment_id'}.issubset(df.columns):
-                raise ValueError("The CSV must contain location and deployment_id columns.")
-            if df[['location', 'deployment_id']].isna().any().any():
-                raise ValueError("Locations and deployment IDs cannot be empty.")
-        except Exception as exc:
-            messagebox.showerror("Error", str(exc))
-            return
-        folder = filedialog.askdirectory(title="Select Destination Folder")
-        if not folder:
-            return
-        self.folder_path = folder
-        self.download_events = queue.Queue()
-        self.stop_event = threading.Event()
-        self.download_btn.configure(state=ctk.DISABLED)
-        self.stop_btn.configure(state=ctk.NORMAL)
-        self.download_thread = threading.Thread(
-            target=self.download_and_rename_files,
-            args=(df, folder, bool(self.use_multiple_folders.get()), executable), daemon=True)
-        self.download_thread.start()
-        self.after(100, self.poll_download_events)
-
-    def stop_download(self):
-        self.stop_event.set()
-        self.stop_btn.configure(state=ctk.DISABLED)
-        self.status_var.set("Stopping after the current file...")
-
-    def poll_download_events(self):
-        # Only the Tk thread reads/writes widgets. The worker only posts data.
-        try:
-            while True:
-                kind, text = self.download_events.get_nowait()
-                if kind == 'status':
-                    self.status_var.set(text)
-                elif kind == 'done':
-                    self.download_btn.configure(state=ctk.NORMAL)
-                    self.stop_btn.configure(state=ctk.DISABLED)
-                    self.status_var.set(text)
-                    return
-                elif kind == 'error':
-                    messagebox.showerror("Download error", text)
-        except queue.Empty:
-            pass
-        self.after(100, self.poll_download_events)
-
-    def download_and_rename_files(self, df, folder, multiple_folders, executable):
-        failures = 0
-        downloaded = 0
-        skipped = 0
-        targets = {}
-        try:
-            for i, row in enumerate(df.itertuples(index=False), 1):
-                if self.stop_event.is_set():
-                    break
-                try:
-                    url = str(row.location)
-                    if not url.startswith('gs://') or any(c in url for c in '\r\n'):
-                        raise ValueError("Expected a gs:// image location.")
-                    filename = url.rsplit('/', 1)[-1]
-                    if Path(filename).suffix.lower() not in {'.jpg', '.jpeg'}:
-                        raise ValueError(f"Expected a JPEG image: {filename}")
-                    deployment = self.clean_deployment_id(str(row.deployment_id))
-                    if deployment in {'', '.', '..'}:
-                        raise ValueError("Invalid deployment folder name.")
-                    destination = Path(folder) / deployment if multiple_folders else Path(folder)
-                    destination.mkdir(parents=True, exist_ok=True)
-                    target = destination / (Path(self.clean_filename(filename)).stem + '.JPG')
-                    key = str(target).casefold()
-                    if key in targets and targets[key] != url:
-                        raise ValueError(f"Different images map to the same output name: {target.name}")
-                    targets[key] = url
-                    if target.exists():
-                        skipped += 1
-                        continue
-                    # Download into a temporary folder so failures cannot leave a
-                    # partial file that a subsequent run treats as complete.
-                    with tempfile.TemporaryDirectory(dir=destination) as staging:
-                        temporary_file = Path(staging) / 'download.jpg'
-                        subprocess.run([executable, 'cp', url, str(temporary_file)],
-                                       check=True, capture_output=True, text=True, timeout=300)
-                        with Image.open(temporary_file) as downloaded_image:
-                            if downloaded_image.format != 'JPEG':
-                                raise ValueError("The downloaded file is not a JPEG image.")
-                            downloaded_image.verify()
-                        if target.exists():
-                            raise FileExistsError(target)
-                        shutil.move(str(temporary_file), str(target))
-                    downloaded += 1
-                    self.download_events.put(('status', f'Downloading... {i} of {len(df)}'))
-                except Exception as exc:
-                    failures += 1
-                    detail = getattr(exc, 'stderr', None) or str(exc)
-                    self.download_events.put(('error', f'{row.location}: {detail}'))
-        finally:
-            state = 'Stopped' if self.stop_event.is_set() else 'Completed'
-            self.download_events.put(('done', f'{state}: {downloaded} downloaded, {skipped} skipped, {failures} failed.'))
-
-
-    def clean_filename(self, name):
-        # Replace any character that is not alphanumeric, dot, underscore, hyphen, space, or parentheses with an underscore
-        return re.sub(r'[^a-zA-Z0-9._Ññ\-\(\) ]', '_', name)
-
-    def clean_deployment_id(self, deployment_id):
-        # Clean the deployment_id only
-        return self.clean_filename(deployment_id)
-
-    def get_deployment_folders(self):
-        # Get unique deployment_ids from CSV and return their corresponding folder paths
-        df = pd.read_csv(self.csv_path)
-        deployment_ids = df['deployment_id'].unique()
-        return [os.path.join(self.folder_path, self.clean_deployment_id(str(deployment_id))) for deployment_id in deployment_ids]
-
 
        
-class ExcelCombinerApp:
+class ExcelCombinerApp(WIJobs):
     def __init__(self, root, lang="es"):
         self.root = root
         self.lang = lang  # Guardar el idioma actual
@@ -1431,203 +981,15 @@ class ExcelCombinerApp:
             self.process_btn.configure(state=ctk.NORMAL)
 
     # Function to sanitize and generate Occurrence.occurrenceID
-    def generate_occurrence_id(self, row):
-        # Convert to string and handle NaN by replacing with an empty string
-        sanitized_project_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['project_id']) if pd.notna(row['project_id']) else '')
-        sanitized_subproject_name = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['subproject_name']) if pd.notna(row['subproject_name']) else '')
-        sanitized_deployment_id = re.sub(r'[^a-zA-Z0-9-_]', '_', str(row['deployment_id']) if pd.notna(row['deployment_id']) else '')
-        return f"{sanitized_project_id}-{sanitized_subproject_name}-{sanitized_deployment_id}"
 
-    def process_files(self):
-        try:
-            # Load the provided files with dtype=str to avoid DtypeWarning
-            images_df = pd.read_csv(self.images_csv_path, dtype=str, low_memory=False)
-            deployments_df = pd.read_csv(self.deployments_csv_path, dtype=str, low_memory=False)
-            
-            # Load the initial Excel file
-            initial_excel_path = self.initial_excel_path
-            if initial_excel_path is None:
-                raise ValueError("No se ha seleccionado un archivo de Excel inicial.")
-            
-            initial_df = pd.read_excel(initial_excel_path, sheet_name=None)
-            sheet_names = initial_df.keys()
-            first_sheet_name = list(sheet_names)[0]
-            initial_df = initial_df[first_sheet_name]
-
-            # Merge the dataframes on project_id and deployment_id
-            merged_df = images_df.merge(deployments_df, on=['project_id', 'deployment_id'], suffixes=('_image', '_deployment'))
-
-            # Select the relevant columns
-            result_df = merged_df[['latitude', 'longitude', 'placename', 'location', 'timestamp', 'project_id', 'deployment_id', 'subproject_name']]
-
-            # Convert 'timestamp' column to datetime
-            result_df['timestamp'] = pd.to_datetime(result_df['timestamp'], format='%Y-%m-%d %H:%M:%S')
-
-            # Check if the "Multiple Images" checkbox is selected
-            if self.multiple_images_var.get():
-                self.process_multiple_images(result_df, initial_df)
-            else:
-                # Process as single image per row, no grouping
-                combined_df = pd.DataFrame()
-
-                # Add the columns for location and media asset
-                combined_df['Encounter.decimalLatitude'] = result_df['latitude']
-                combined_df['Encounter.decimalLongitude'] = result_df['longitude']
-                combined_df['Encounter.verbatimLocality'] = result_df['placename']
-                combined_df['Encounter.mediaAsset0'] = result_df['location'].apply(lambda x: x.split('/')[-1] if pd.notna(x) else x)
-
-                # Generate Occurrence.occurrenceID
-                combined_df['Occurrence.occurrenceID'] = result_df.apply(self.generate_occurrence_id, axis=1)
-
-                # Ensure the file extension is .JPG
-                combined_df['Encounter.mediaAsset0'] = combined_df['Encounter.mediaAsset0'].apply(self.ensure_jpg_extension)
-
-                # Add time-related columns
-                combined_df['Encounter.year'] = result_df['timestamp'].dt.year
-                combined_df['Encounter.month'] = result_df['timestamp'].dt.month
-                combined_df['Encounter.day'] = result_df['timestamp'].dt.day
-                combined_df['Encounter.hour'] = result_df['timestamp'].dt.hour
-                combined_df['Encounter.minutes'] = result_df['timestamp'].dt.minute
-
-                # Fill missing columns from initial_df to combined_df with default values from initial_df
-                for column in initial_df.columns:
-                    if column not in combined_df.columns:
-                        combined_df[column] = initial_df[column].iloc[0]
-
-                # Ensure the columns are in the same order as initial_df and include the new Occurrence.occurrenceID column
-                final_columns = ['Occurrence.occurrenceID', 
-                                'Encounter.decimalLatitude', 
-                                'Encounter.decimalLongitude', 
-                                'Encounter.verbatimLocality', 
-                                'Encounter.mediaAsset0', 
-                                'Encounter.year', 
-                                'Encounter.month', 
-                                'Encounter.day', 
-                                'Encounter.hour', 
-                                'Encounter.minutes'] + [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID', 'Encounter.decimalLatitude', 'Encounter.decimalLongitude', 'Encounter.verbatimLocality', 'Encounter.mediaAsset0', 'Encounter.year', 'Encounter.month', 'Encounter.day', 'Encounter.hour', 'Encounter.minutes']]
-                
-                combined_df = combined_df[final_columns]
-
-                # Store the final DataFrame in the class variable
-                self.final_df = combined_df
-
-                messagebox.showinfo("Process Completed", f"File processed successfully.")
-                self.download_btn.configure(state=ctk.NORMAL)
-        
-        except Exception as e:
-            messagebox.showerror("Error", f"Se produjo un error: {e}")
-            print(e)
     
            
-    def process_multiple_images(self, result_df, initial_df):
-        try:
-            # Sort the DataFrame by deployment_id and timestamp
-            result_df = result_df.sort_values(by=['project_id', 'deployment_id', 'timestamp'])
-
-            # Get the time threshold from user input
-            time_threshold = int(self.time_threshold_entry.get())
-
-            # Group images by deployment and time difference
-            combined_images = []
-            for deployment_id, group in result_df.groupby(['project_id', 'deployment_id']):
-                group['time_diff'] = group['timestamp'].diff().dt.total_seconds().fillna(time_threshold + 1)
-                group_images = []
-                for _, row in group.iterrows():
-                    if group_images and row['time_diff'] > time_threshold:
-                        combined_images.append(group_images)
-                        group_images = []
-                    group_images.append(row)
-                if group_images:
-                    combined_images.append(group_images)
-
-            # Create the new combined DataFrame
-            rows_list = []
-            max_assets = 0
-            for idx, images_group in enumerate(combined_images):
-                if isinstance(images_group, list) or isinstance(images_group, pd.DataFrame):
-                    base_row = images_group[0]
-                    new_row = {
-                        'Encounter.decimalLatitude': base_row['latitude'],
-                        'Encounter.decimalLongitude': base_row['longitude'],
-                        'Encounter.verbatimLocality': base_row['placename'],
-                        'Occurrence.occurrenceID': self.generate_occurrence_id(base_row),  # Generate Occurrence ID
-                        'Encounter.year': base_row['timestamp'].year,
-                        'Encounter.month': base_row['timestamp'].month,
-                        'Encounter.day': base_row['timestamp'].day,
-                        'Encounter.hour': base_row['timestamp'].hour,
-                        'Encounter.minutes': base_row['timestamp'].minute
-                    }
-                    for i, image in enumerate(images_group):
-                        image_location = image['location'].split('/')[-1]
-                        new_row[f'Encounter.mediaAsset{i}'] = self.ensure_jpg_extension(image_location)
-                    rows_list.append(new_row)
-                    max_assets = max(max_assets, len(images_group))
-
-            # Convert the list of rows into a DataFrame
-            combined_df = pd.DataFrame(rows_list)
-
-            # Ensure all rows have columns Encounter.mediaAsset0 to Encounter.mediaAsset{max_assets-1}
-            for i in range(max_assets):
-                if f'Encounter.mediaAsset{i}' not in combined_df.columns:
-                    combined_df[f'Encounter.mediaAsset{i}'] = None
-
-            # Fill missing columns from initial_df to combined_df with default values from initial_df
-            for column in initial_df.columns:
-                if column not in combined_df.columns:
-                    combined_df[column] = initial_df[column].iloc[0]
-
-            # Ensure the columns are in the correct order and include the new Occurrence.occurrenceID column
-            final_columns = ['Occurrence.occurrenceID',
-                            'Encounter.decimalLatitude', 
-                            'Encounter.decimalLongitude', 
-                            'Encounter.verbatimLocality', 
-                            'Encounter.year', 
-                            'Encounter.month', 
-                            'Encounter.day', 
-                            'Encounter.hour', 
-                            'Encounter.minutes'] + \
-                            [col for col in initial_df.columns if col not in ['Occurrence.occurrenceID',
-                                                                            'Encounter.decimalLatitude', 
-                                                                            'Encounter.decimalLongitude', 
-                                                                            'Encounter.verbatimLocality', 
-                                                                            'Encounter.year', 
-                                                                            'Encounter.month', 
-                                                                            'Encounter.day', 
-                                                                            'Encounter.hour', 
-                                                                            'Encounter.minutes']]
-
-            combined_df = combined_df[final_columns + [col for col in combined_df.columns if col.startswith('Encounter.mediaAsset')]]
-
-            # Store the final DataFrame in the class variable
-            self.final_df = combined_df
-
-            messagebox.showinfo("Process Completed", f"Files processed successfully with multiple images handling.")
-            self.download_btn.configure(state=ctk.NORMAL)
-        
-        except Exception as e:
-            messagebox.showerror("Error", f"Se produjo un error: {e}")
-            print(e)
 
 
     # Ensure the file extension is .JPG
-    def ensure_jpg_extension(self, location):
-        if pd.isna(location):
-            return location
-        parts = location.split('.')
-        if len(parts) > 1 and parts[-1].lower() != 'jpg':
-            return '.'.join(parts[:-1]) + '.JPG'
-        return location
 
 
-    def save_file(self):
-        if self.final_df is not None:
-            save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
-            if save_path:
-                self.final_df.to_excel(save_path, index=False)
-                messagebox.showinfo("File Saved", f"File saved successfully to {save_path}")
-
-
-class LynxOne:
+class LynxOne(LynxJobs):
     def __init__(self, root, lang="es"):
         self.root = root
         self.lang = lang  # Guardar el idioma actual
@@ -1810,152 +1172,6 @@ class LynxOne:
             self.individuos_file_label.configure(text=self.individuos_file)
             messagebox.showinfo(self.translations[self.lang]["info"], f"{self.translations[self.lang]['individuos_file']} {self.individuos_file}")
 
-
-    def get_exif_data(self, image_path):
-        # Retrieve EXIF data from an image
-        image = Image.open(image_path)
-        exif_data = image._getexif()
-        if not exif_data:
-            return None
-        exif = {}
-        for tag, value in exif_data.items():
-            decoded = TAGS.get(tag, tag)
-            exif[decoded] = value
-        return exif
-
-    def get_date_taken(self, exif_data):
-        # Extract the date when the photo was taken from EXIF data
-        date_taken = exif_data.get("DateTimeOriginal")
-        if date_taken:
-            return datetime.strptime(date_taken, '%Y:%m:%d %H:%M:%S')
-        return None
-
-    def generate_excel(self):
-        if not self.source_folder:
-            messagebox.showwarning(self.translations[self.lang]["warning"], self.translations[self.lang]["no_source_folder"])
-            return
-
-        # File extensions to look for
-        valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif', 
-                            '.mp4', '.avi', '.mov', '.mkv', '.wmv')
-
-        # Determine if the "Lince/linces" and "Revision" folders exist
-        lince_exists = self.lince_checkbox_var.get()
-        revision_exists = self.revision_checkbox_var.get()
-
-        # Get the number of minutes to group by
-        try:
-            minutes_to_group = int(self.minutes_entry.get())
-        except ValueError:
-            messagebox.showerror("Error", "Please enter a valid number for minutes.")
-            return
-
-        # Traverse the directory and extract information
-        data = []
-        for root, dirs, files in os.walk(self.source_folder):
-            for file in files:
-                if file.lower().endswith(valid_extensions):
-                    # Convert the path to a standard format with Path
-                    root_path = Path(root)
-
-                    # Extract parts of the path depending on whether Lince and Revision exist
-                    parts = root_path.parts
-                    if lince_exists and revision_exists and len(parts) >= 6:
-                        finca = parts[-5]  # Fifth folder from the end
-                        estacion = parts[-4]  # Fourth folder from the end
-                        revision = parts[-3]  # Third folder from the end
-                        lince = parts[-1]  # Current folder name
-                    elif lince_exists and not revision_exists and len(parts) >= 5:
-                        finca = parts[-4]  # Fourth folder from the end
-                        estacion = parts[-3]  # Third folder from the end
-                        revision = "N/A"  # No Revision folder
-                        lince = parts[-1]  # Current folder name
-                    elif not lince_exists and revision_exists and len(parts) >= 5:
-                        finca = parts[-4]  # Fourth folder from the end
-                        estacion = parts[-3]  # Third folder from the end
-                        revision = parts[-2]  # Second folder from the end
-                        lince = parts[-1]  # Current folder name
-                    elif not lince_exists and not revision_exists and len(parts) >= 4:
-                        finca = parts[-3]  # Third folder from the end
-                        estacion = parts[-2]  # Second folder from the end
-                        revision = "N/A"  # No Revision folder
-                        lince = parts[-1]  # Current folder name
-                    else:
-                        continue  # Skip if the expected structure is not met
-
-                    # Get the Capture Date (EXIF DateTimeOriginal) from the image
-                    file_name = root_path / file  # Combine path and file
-                    exif_data = self.get_exif_data(str(file_name))
-                    if exif_data:
-                        capture_date = self.get_date_taken(exif_data)
-                    else:
-                        capture_date = None
-
-                    # Handle multiple linces
-                    # Replace both " y " and " Y " with a common separator
-                    lince = re.sub(r' y | Y ', ' y ', lince)
-                    lince_names = lince.split(" y ")
-
-                    # Add individual rows for each lince
-                    for individual_lince in lince_names:
-                        individual_lince_row = {
-                            "Finca": finca,
-                            "Estación": estacion,
-                            "Revisión": revision,
-                            "Linces": lince,  # Combined names
-                            "Lince": individual_lince.strip(),  # Individual lince name
-                            "Archivo": str(file_name),
-                            "Fecha de Captura": capture_date
-                        }
-                        data.append(individual_lince_row)
-
-        if not data:
-            messagebox.showinfo("Info", "No image or video files were found in the selected directory.")
-            return
-
-        # Convert to DataFrame
-        df = pd.DataFrame(data, columns=["Finca", "Estación", "Revisión", "Linces", "Lince", "Archivo", "Fecha de Captura"])
-
-        if minutes_to_group > 0:
-            # Group by individual and collapse rows based on time difference
-            grouped_data = []
-            for name, group in df.groupby(["Finca", "Estación", "Revisión", "Lince"]):
-                group = group.sort_values(by="Fecha de Captura")
-                collapsed_files = []
-                last_time = None
-                for _, row in group.iterrows():
-                    if last_time and row["Fecha de Captura"] and (row["Fecha de Captura"] - last_time).total_seconds() / 60 <= minutes_to_group:
-                        collapsed_files[-1]["Archivo"] += ";" + row["Archivo"]
-                    else:
-                        collapsed_files.append(row.to_dict())
-                    last_time = row["Fecha de Captura"]
-                grouped_data.extend(collapsed_files)
-            df = pd.DataFrame(grouped_data)
-
-        # Perform join with Estaciones and Individuos if the files are provided
-        if self.estaciones_file:
-            estaciones_df = pd.read_excel(self.estaciones_file)
-            df = df.merge(estaciones_df, how='left', left_on='Estación', right_on='Estacion')
-
-        if self.individuos_file:
-            individuos_df = pd.read_excel(self.individuos_file)
-            df = df.merge(individuos_df, how='left', left_on='Lince', right_on='Lince')
-
-        # Store the DataFrame to use it later for saving
-        self.excel_data = df
-
-    def save_excel(self):
-        if not hasattr(self, 'excel_data') or self.excel_data is None:
-            messagebox.showerror("Error", "No Excel data to save. Please generate the Excel file first.")
-            return
-
-        # Open save file dialog to choose where to save the file
-        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx",
-                                                 filetypes=[("Excel files", "*.xlsx")],
-                                                 title="Save Excel File")
-        if file_path:
-            self.excel_data.to_excel(file_path, index=False)
-            messagebox.showinfo("Success", f"Excel file successfully saved at {file_path}")
 
         
 if __name__ == "__main__":
