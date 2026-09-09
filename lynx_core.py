@@ -17,7 +17,7 @@ def file_timestamp(path):
 
 
 def set_file_timestamp(path, timestamp):
-    """Set mtime/atime everywhere, and creation time on Windows."""
+    """Set mtime/atime and Windows creation time (pywin32 precision: 1 ms)."""
     os.utime(path, (timestamp, timestamp))
     if sys.platform == "win32":
         import win32file

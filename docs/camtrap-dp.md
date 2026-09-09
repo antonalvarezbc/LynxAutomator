@@ -97,3 +97,36 @@ Probar al menos: múltiples observaciones por imagen, eventos, varios individuos
 IDs repetidos entre paquetes, zonas horarias, medios privados/ausentes y perfiles no
 compatibles. Una fase posterior podría usar los mismos datos para el Excel de
 seguimiento de lince o exportar Camtrap DP, pero son alcances distintos.
+
+## Cómo obtener las fotografías
+
+El ZIP de metadatos no equivale a descargar las fotos. El lector debe resolver
+`media.filePath`: copiar un archivo local o descargar su URL con el acceso que
+corresponda, conservando la relación con `mediaID`.
+
+- **Agouti:** un Principal Investigator o Admin genera el paquete desde
+  **Export data → Create export**. El ZIP contiene JSON y CSV.
+  [Guía de exportación](https://docs.agouti.eu/using/export_data.html).
+  El ejemplo oficial incluye enlaces a imágenes alojadas en
+  `multimedia.agouti.eu`, además de algunos archivos locales; esto demuestra el
+  flujo de descarga por URL, pero no garantiza acceso público a otros proyectos.
+  [Ejemplo](https://camtrap-dp.tdwg.org/example/).
+  Si las imágenes requieren autenticación, hay que confirmar el mecanismo del
+  proyecto. Para integrar la API, Agouti indica contactar con soporte para obtener
+  una clave; no se presupone que el ZIP conceda acceso a medios privados.
+  [API de Agouti](https://docs.agouti.eu/api/general.html).
+- **TRAPPER:** exportar desde el proyecto de clasificación con **Export results**.
+  La documentación contempla `trapper_url_token` y, en la guía renovada,
+  **URLs with token** para permitir acceso a los medios mediante sus enlaces.
+  Descargar después los archivos referenciados; el enlace del ZIP y los enlaces
+  de sus imágenes son recursos distintos. La opción y los endpoints deben
+  comprobarse en la versión instalada: las guías publicadas difieren.
+  [Tutorial](https://trapper-project.readthedocs.io/en/latest/tutorial.html#camtrap-dp-data-export),
+  [guía de exportación renovada](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/).
+
+Para LynxAutomator, filtrar primero las especies admitidas por un Wildbook y
+resolver sus medios sin duplicarlos. Mostrar los inaccesibles o las asociaciones
+por evento ambiguas. La descarga HTTP necesitará progreso, cancelación, reintentos,
+validación del contenido y un registro `mediaID → archivo local`; el descargador
+actual basado en `gsutil` no cubre este flujo. No registrar tokens de descarga ni
+reenviar credenciales de una plataforma a otro servidor.

@@ -129,3 +129,11 @@ error y escritura/lectura real de fechas cercanas a 1970 y fechas fraccionarias.
 La comprobación local en Linux supera 30 pruebas; las cuatro pruebas gráficas se
 omiten en este intérprete sin Tk. La confirmación nativa de Windows requiere
 volver a ejecutar Actions con el parche.
+
+El segundo registro de Windows confirma que las dos regresiones originales pasan.
+La nueva prueba de ida y vuelta exigía 10 microsegundos, pero pywin32 convierte
+las fechas mediante `SYSTEMTIME`, truncando a milisegundos. Se ajusta únicamente
+la tolerancia de escritura/lectura en Windows a menos de 1 ms; Unix mantiene
+10 microsegundos. La conversión UTC se sigue probando por separado.
+[Conversión de pywin32](https://github.com/mhammond/pywin32/blob/main/win32/src/PyTime.cpp).
+No se afirma precisión de microsegundos para las fechas escritas en Windows.

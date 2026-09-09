@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 import tempfile
 from datetime import timedelta, timezone
@@ -51,8 +52,11 @@ class FileDateTests(unittest.TestCase):
             for timestamp in (1020.125, 1788989369.365818):
                 with self.subTest(timestamp=timestamp):
                     set_file_timestamp(file, timestamp)
-                    self.assertAlmostEqual(file.stat().st_mtime, timestamp, places=5)
-                    self.assertAlmostEqual(file_timestamp(file), timestamp, places=5)
+                    # pywin32 converts through SYSTEMTIME (millisecond precision).
+                    # Keep this below 1 ms so losing whole seconds still fails.
+                    tolerance = 0.001 if sys.platform == 'win32' else 0.00001
+                    self.assertLess(abs(file.stat().st_mtime - timestamp), tolerance)
+                    self.assertLess(abs(file_timestamp(file) - timestamp), tolerance)
                     self.assertEqual(file.read_bytes(), b'unchanged')
 
     def test_windows_dates_use_utc_and_preserve_fractional_seconds(self):
