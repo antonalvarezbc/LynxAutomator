@@ -155,3 +155,14 @@ Excel exports use temporary output to avoid publishing incomplete files.
 `python scripts/smoke_test.py` now also runs real Tk responsiveness/cancellation
 and full/mini integration tests. On headless Linux use `xvfb-run -a`. Pure processing
 and task tests remain runnable without Tk via `python -m unittest discover -s tests -v`.
+
+### Pre-releases automáticas
+
+Cada `push` a una rama o ejecución manual publica una pre-release si pasan los
+cuatro trabajos de compilación y pruebas (Linux, Windows, macOS ARM e Intel).
+Las pull requests y los pushes de etiquetas no publican. Se etiqueta el commit
+probado con `prerelease-<run_id>-<run_attempt>`; una repetición crea otra versión.
+La publicación reúne los paquetes de esa ejecución, los tres manuales, las
+versiones de dependencias por sistema y sus sumas SHA256. Primero sube los archivos
+a un borrador y lo publica cuando termina; no sustituye la última versión estable.
+Si falla una compilación o falta un archivo, no se publica la pre-release.
