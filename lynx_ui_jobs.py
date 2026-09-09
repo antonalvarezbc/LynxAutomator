@@ -7,6 +7,7 @@ from tkinter import messagebox, TclError
 
 import customtkinter as ctk
 
+from lynx_video_dates import inspect_video_dates, parse_capture_date
 from lynx_tasks import BackgroundTask
 from lynx_processing import FolderProcessor, CatalogProcessor, WIProcessor, LynxProcessor
 from lynx_file_jobs import (BatchResult, extract_videos, scan_dates, change_dates,
@@ -249,7 +250,8 @@ class VideoJobs:
             raise ValueError('Use a finite interval greater than zero.')
         destination = filedialog.askdirectory(title='Select output folder')
         if destination:
-            start(self, 'Video', lambda task: extract_videos(task, folder, destination, interval))
+            start(self, 'Video metadata', lambda task: inspect_video_dates(task, folder),
+                  lambda rows: review_video_dates(self, rows, folder, destination, interval))
 
 
 class DateJobs:
@@ -311,3 +313,57 @@ class DownloadJobs:
 
     def stop_download(self):
         self.root.winfo_toplevel().jobs.cancel()
+
+
+def review_video_dates(owner, rows, folder, destination, interval):
+    translations = {
+        'es': ('Confirmar fechas de grabación',
+               'Revisa cada vídeo con la hora impresa por la cámara. Los metadatos pueden ser de una exportación.\nFormato: AAAA-MM-DD HH:MM:SS; añade +02:00 (por ejemplo) si conoces el desfase UTC.\nSin desfase se conserva la hora en EXIF, pero no se ajustan las fechas del archivo.\nSi falta ffprobe, introduce las fechas manualmente; nunca se usa la fecha de descarga.',
+               'Confirmar y extraer', 'Cancelar', 'Confirma la fecha de cada vídeo', 'Fecha confirmada'),
+        'pt': ('Confirmar datas de gravação',
+               'Confira cada vídeo com a hora impressa pela câmara. Os metadados podem ser de uma exportação.\nFormato: AAAA-MM-DD HH:MM:SS; acrescente +02:00 (por exemplo) se conhecer o desvio UTC.\nSem desvio, a hora é preservada no EXIF, mas as datas do ficheiro não são ajustadas.\nSem ffprobe, introduza as datas manualmente; nunca se usa a data de transferência.',
+               'Confirmar e extrair', 'Cancelar', 'Confirme a data de cada vídeo', 'Data confirmada'),
+        'en': ('Confirm recording dates',
+               'Check each video against the camera overlay. Metadata may describe an export.\nFormat: YYYY-MM-DD HH:MM:SS; add +02:00 (for example) if you know the UTC offset.\nWithout an offset, EXIF retains the clock time; filesystem dates are not changed.\nIf ffprobe is unavailable, enter dates manually; download dates are never used.',
+               'Confirm and extract', 'Cancel', 'Confirm every video date', 'Date confirmed')}
+    title, help_text, accept, cancel, error, confirmed = translations[owner.lang]
+    window = ctk.CTkToplevel(owner.root)
+    window.title(title)
+    window.geometry('950x650')
+    window.transient(owner.root.winfo_toplevel())
+    ctk.CTkLabel(window, text=help_text, justify='left', wraplength=900).pack(padx=15, pady=10)
+    body = ctk.CTkScrollableFrame(window)
+    body.pack(fill='both', expand=True, padx=15)
+    entries = []
+    for row in rows:
+        box = ctk.CTkFrame(body)
+        box.pack(fill='x', pady=5)
+        ctk.CTkLabel(box, text=row['path'], anchor='w', wraplength=850).pack(fill='x', padx=8)
+        ctk.CTkLabel(box, text=row['source'], justify='left', wraplength=850).pack(fill='x', padx=8)
+        entry = ctk.CTkEntry(box, width=420, placeholder_text='YYYY-MM-DD HH:MM:SS')
+        entry.insert(0, row['date'])
+        entry.pack(side='left', padx=8, pady=8)
+        check = ctk.CTkCheckBox(box, text=confirmed)
+        check.pack(side='left', padx=8)
+        entries.append((row, entry, check))
+
+    def submit():
+        dates = {}
+        try:
+            for row, entry, check in entries:
+                if not check.get():
+                    raise ValueError(row['path'])
+                dates[row['path']] = parse_capture_date(entry.get())
+        except ValueError as exc:
+            messagebox.showerror(error, str(exc), parent=window)
+            return
+        window.grab_release()
+        window.destroy()
+        start(owner, 'Video', lambda task: extract_videos(task, folder, destination, interval, dates))
+
+    buttons = ctk.CTkFrame(window)
+    buttons.pack(fill='x', padx=15, pady=10)
+    ctk.CTkButton(buttons, text=cancel, command=window.destroy).pack(side='right', padx=8)
+    ctk.CTkButton(buttons, text=accept, command=submit).pack(side='right', padx=8)
+    window.wait_visibility()
+    window.grab_set()

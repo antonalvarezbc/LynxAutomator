@@ -267,13 +267,20 @@ Se generan JPEG. El intervalo se aproxima a fotogramas enteros y no puede ser
 menor que un fotograma. Los nombres incorporan el vídeo y el número de fotograma;
 si ya existen, se añade un sufijo para conservarlos.
 
-La fecha base es la del archivo de vídeo: creación en Windows y modificación en
-Linux/macOS. A cada fotograma se suma su posición (número de fotograma / FPS).
-Se escriben DateTimeOriginal, DateTimeDigitized, DateTime y sus fracciones de
-segundo en EXIF, además de las fechas de acceso/modificación del archivo.
-Windows también ajusta la creación (precisión de milisegundos); Linux/macOS no.
-No se lee la fecha interna de grabación. Si el archivo se copió o editó, comprueba
-la fecha base. Para vídeos de FPS variable, la posición calculada es aproximada.
+Antes de extraer se leen las fechas internas con **ffprobe** (parte de FFmpeg,
+debe estar disponible en PATH). Se abre una revisión con el vídeo, los valores
+hallados y su procedencia. Confirma o corrige cada fecha usando la hora impresa
+por la cámara. Si faltan metadatos, hay contradicciones o ffprobe no está instalado,
+introduce la fecha manualmente. Nunca se usa automáticamente la fecha del archivo.
+
+Formato: `2024-07-15 14:30:00`, opcionalmente con desfase UTC, por ejemplo `+02:00`.
+Sin desfase se conserva la hora de cámara en EXIF y no se ajustan las fechas del
+archivo. Con desfase también se escriben las etiquetas EXIF de zona y se ajusta
+acceso/modificación; Windows además ajusta creación (precisión de milisegundos).
+Linux/macOS no ajustan creación. Cada fotograma suma su posición (número/FPS) a
+la fecha confirmada. Se escriben captura, digitalización, modificación y fracciones
+de segundo EXIF. En vídeos de FPS variable la posición es aproximada.
+La hora impresa no se lee automáticamente mediante OCR.
 
 ## 10. Funcionalidades → Renombrador de imágenes
 

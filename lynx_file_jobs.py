@@ -1,6 +1,6 @@
 """Cancellable media and filesystem jobs. These functions never access widgets."""
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 import math
 import os
 from pathlib import Path
@@ -36,12 +36,16 @@ def files_in(task, folder):
     return sorted(files)
 
 
-def extract_videos(task, folder, destination, interval):
+def extract_videos(task, folder, destination, interval, capture_dates=None):
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError('The interval must be finite and greater than zero.')
     videos = [p for p in files_in(task, folder) if p.suffix.lower() in {'.mp4', '.avi', '.mov', '.mkv', '.flv'}]
     if not videos:
         raise ValueError('No videos found in the selected folder.')
+    if capture_dates is None or any(str(video) not in capture_dates for video in videos):
+        raise ValueError('Confirm the capture date of every video before extracting frames.')
+    if any(not isinstance(capture_dates[str(video)], datetime) for video in videos):
+        raise ValueError('Invalid confirmed capture date.')
     result = BatchResult()
     for video_index, video in enumerate(videos):
         task.checkpoint()
@@ -53,7 +57,7 @@ def extract_videos(task, folder, destination, interval):
             step = frame_step(fps, interval)
             total = capture.get(cv2.CAP_PROP_FRAME_COUNT)
             total = total if math.isfinite(total) and total > 0 else 0
-            timestamp = file_timestamp(video)
+            base_date = capture_dates[str(video)]
             frame = 0
             output_index = 0
             while True:
@@ -64,25 +68,31 @@ def extract_videos(task, folder, destination, interval):
                         raise ValueError('The video has no readable frames.')
                     break
                 if frame % step == 0:
-                    frame_timestamp = timestamp + frame / fps
-                    date = datetime.fromtimestamp(frame_timestamp)
+                    date = base_date + timedelta(seconds=frame / fps)
                     exif_date = date.strftime('%Y:%m:%d %H:%M:%S').encode('ascii')
                     subseconds = f'{date.microsecond:06d}'.encode('ascii')
-                    metadata = piexif.dump({
+                    metadata_values = {
                         '0th': {piexif.ImageIFD.DateTime: exif_date},
                         'Exif': {
                             piexif.ExifIFD.DateTimeOriginal: exif_date,
                             piexif.ExifIFD.DateTimeDigitized: exif_date,
                             piexif.ExifIFD.SubSecTime: subseconds,
                             piexif.ExifIFD.SubSecTimeOriginal: subseconds,
-                            piexif.ExifIFD.SubSecTimeDigitized: subseconds}})
+                            piexif.ExifIFD.SubSecTimeDigitized: subseconds}}
+                    if date.tzinfo is not None:
+                        offset = date.strftime("%z")
+                        offset = (offset[:3] + ":" + offset[3:]).encode("ascii")
+                        for tag in (36880, 36881, 36882):
+                            metadata_values["Exif"][tag] = offset
+                    metadata = piexif.dump(metadata_values)
                     target = unique_path(Path(destination) / f'{video.name}_frame{output_index}.jpg')
                     with tempfile.TemporaryDirectory(dir=destination, prefix='.lynx-') as staging:
                         temporary = Path(staging) / 'frame.jpg'
                         if not cv2.imwrite(str(temporary), pixels, [cv2.IMWRITE_JPEG_QUALITY, 100]):
                             raise OSError('Could not write frame.')
                         piexif.insert(metadata, str(temporary))
-                        set_file_timestamp(temporary, frame_timestamp)
+                        if date.tzinfo is not None:
+                            set_file_timestamp(temporary, date.timestamp())
                         task.checkpoint()
                         os.replace(temporary, target)
                     result.completed += 1

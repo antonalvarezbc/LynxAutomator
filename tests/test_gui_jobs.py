@@ -38,6 +38,30 @@ class GuiJobsTests(unittest.TestCase):
             time.sleep(0.005)
         self.assertTrue(condition(), 'GUI callback did not finish')
 
+    def test_video_review_requires_explicit_confirmation(self):
+        from types import SimpleNamespace
+        from lynx_ui_jobs import review_video_dates
+        owner = SimpleNamespace(root=self.root, lang='es')
+        rows = [{'path': '/tmp/video.mp4', 'date': '', 'source': 'No metadata'}]
+        review_video_dates(owner, rows, '/tmp', '/tmp/output', 1)
+        window = next(w for w in self.root.winfo_children() if isinstance(w, self.ctk.CTkToplevel))
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        widgets = list(descendants(window))
+        entry = next(w for w in widgets if isinstance(w, self.ctk.CTkEntry))
+        check = next(w for w in widgets if isinstance(w, self.ctk.CTkCheckBox))
+        button = next(w for w in widgets if isinstance(w, self.ctk.CTkButton) and w.cget('text') == 'Confirmar y extraer')
+        with patch('lynx_ui_jobs.messagebox.showerror') as error, patch('lynx_ui_jobs.start') as start:
+            button.invoke()
+            error.assert_called_once()
+            start.assert_not_called()
+            entry.insert(0, '2024-02-03 12:13:14')
+            check.select()
+            button.invoke()
+            start.assert_called_once()
+
     def test_window_ticks_and_cancels_without_worker_touching_tk(self):
         entered = Event()
         ticks = []

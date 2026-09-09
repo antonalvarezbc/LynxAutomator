@@ -248,12 +248,18 @@ Os nomes incluem o vídeo e um número; são acrescentados sufixos para preserva
 ficheiros existentes. Uma falha num vídeo é apresentada no resumo, sem impedir o
 processamento dos restantes. Cancelar liberta o vídeo e limpa a saída temporária.
 
-A data base é a criação do vídeo no Windows ou a modificação no Linux/macOS.
-Cada fotograma soma a sua posição (número do fotograma / FPS). São gravadas as
-datas EXIF de captura, digitalização e modificação, incluindo frações de segundo,
-e as datas de acesso/modificação do ficheiro. O Windows também ajusta a criação
-(precisão de milissegundos); Linux/macOS não. A data interna de gravação não é lida.
-Verifique a data base de vídeos copiados/editados. Com FPS variável, o tempo é aproximado.
+Antes da extração, **ffprobe** (do FFmpeg, disponível no PATH) lê as datas internas.
+Reveja os valores e a origem de cada vídeo; confirme ou corrija usando a hora
+impressa pela câmara. Sem metadados, com conflitos ou sem ffprobe, introduza a data
+manualmente. Nunca se usa automaticamente a data do ficheiro.
+
+Formato: `2024-07-15 14:30:00`, opcionalmente com desvio UTC como `+02:00`.
+Sem desvio, o EXIF mantém a hora da câmara e as datas do ficheiro não são alteradas.
+Com desvio, são gravadas as etiquetas EXIF de zona e ajustados acesso/modificação;
+o Windows também ajusta criação com precisão de milissegundos, Linux/macOS não.
+Cada fotograma soma a sua posição (número/FPS). São gravadas captura, digitalização,
+modificação e frações de segundo EXIF. Com FPS variável, o tempo é aproximado.
+A hora impressa não é lida automaticamente por OCR.
 
 ## 10. Renomeação de imagens
 

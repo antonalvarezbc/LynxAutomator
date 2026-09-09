@@ -217,12 +217,18 @@ Subfolders are not scanned. JPEG frames are sampled at whole-frame intervals,
 with a minimum step of one frame. Output names include the video and frame number;
 existing files are preserved using suffixes.
 
-The base date is the video's creation time on Windows or modification time on
-Linux/macOS. Each frame adds its position (frame number / FPS). EXIF capture,
-digitized and modification dates, including subseconds, and filesystem access and
-modification dates are set. Windows also sets creation time (millisecond precision);
-Linux/macOS do not. Embedded video recording dates are not read. Check the base
-date for copied/edited videos. Variable-frame-rate timing is approximate.
+Before extraction, **ffprobe** (from FFmpeg, available on PATH) reads embedded
+dates. Review the candidates and their source for every video; confirm or correct
+them against the camera overlay. Missing/conflicting metadata or missing ffprobe
+requires manual entry. Filesystem dates are never used automatically.
+
+Enter `2024-07-15 14:30:00`, optionally with a UTC offset such as `+02:00`.
+Without an offset, EXIF keeps camera clock time and filesystem dates are unchanged.
+With an offset, EXIF offset tags and access/modification times are also set;
+Windows sets creation time with millisecond precision, Linux/macOS do not.
+Each frame adds its position (frame number/FPS). Capture, digitized, modification
+and subsecond EXIF tags are written. Variable-frame-rate timing is approximate.
+The camera overlay is not read automatically using OCR.
 
 ## 10. Image Renamer
 

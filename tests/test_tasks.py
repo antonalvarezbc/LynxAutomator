@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from lynx_core import file_timestamp
 from pathlib import Path
 import tempfile
@@ -100,7 +100,7 @@ class MediaTaskTests(unittest.TestCase):
             task.report = report
             with patch('lynx_file_jobs.cv2.VideoCapture', return_value=capture):
                 with self.assertRaises(TaskCancelled):
-                    extract_videos(task, source, output, 0.01)
+                    extract_videos(task, source, output, 0.01, {str(source / "test.mp4"): datetime(2024, 1, 1, tzinfo=timezone.utc)})
             self.assertTrue(capture.released)
             files = list(output.iterdir())
             self.assertEqual(len(files), 1)
@@ -118,7 +118,7 @@ class MediaTaskTests(unittest.TestCase):
             (source / 'test.mp4').touch()
             capture = self.fake_capture()
             with patch('lynx_file_jobs.cv2.VideoCapture', return_value=capture), patch('lynx_file_jobs.cv2.imwrite', return_value=False):
-                result = extract_videos(TaskContext(), source, output, 1)
+                result = extract_videos(TaskContext(), source, output, 1, {str(p): datetime(2024, 1, 1, tzinfo=timezone.utc) for p in source.iterdir()})
             self.assertEqual(result.completed, 0)
             self.assertEqual(len(result.errors), 1)
             self.assertTrue(capture.released)
@@ -162,16 +162,18 @@ class MediaTaskTests(unittest.TestCase):
                     writer.write(np.full((16, 16, 3), index * 20, dtype=np.uint8))
             finally:
                 writer.release()
-            result = extract_videos(TaskContext(), source, output, 0.2)
+            confirmed = datetime(2024, 1, 2, 3, 4, 5, 123456, tzinfo=timezone.utc)
+            result = extract_videos(TaskContext(), source, output, 0.2, {str(video): confirmed})
             self.assertEqual(result.errors, [])
             self.assertEqual(result.completed, 5)
             self.assertEqual(len(list(output.glob('*.jpg'))), 5)
-            base = file_timestamp(video)
+            base = confirmed.timestamp()
             for index, frame in enumerate(sorted(output.glob('*.jpg'))):
-                expected = datetime.fromtimestamp(base + index * 0.2)
+                expected = datetime.fromtimestamp(base + index * 0.2, tz=timezone.utc)
                 metadata = piexif.load(str(frame))
                 for tag in (piexif.ExifIFD.DateTimeOriginal, piexif.ExifIFD.DateTimeDigitized):
                     self.assertEqual(metadata['Exif'][tag], expected.strftime('%Y:%m:%d %H:%M:%S').encode('ascii'))
+                self.assertEqual(metadata['Exif'][36881], b'+00:00')
                 self.assertEqual(metadata['0th'][piexif.ImageIFD.DateTime], metadata['Exif'][piexif.ExifIFD.DateTimeOriginal])
                 self.assertEqual(metadata['Exif'][piexif.ExifIFD.SubSecTimeOriginal], f'{expected.microsecond:06d}'.encode('ascii'))
                 self.assertAlmostEqual(frame.stat().st_mtime, base + index * 0.2, delta=0.001)
