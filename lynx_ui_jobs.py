@@ -195,6 +195,11 @@ class SpreadsheetJobs:
 
 class FolderJobs(SpreadsheetJobs):
     @action
+    def open_bulk_import(self):
+        from lynx_folder_ui import FolderInput
+        FolderInput(self, catalog=False)
+
+    @action
     def process_files(self):
         self._clear_result(self.download_btn)
         folder, template = getattr(self, 'folder_path', None), getattr(self, 'file_path', None)
@@ -206,6 +211,11 @@ class FolderJobs(SpreadsheetJobs):
 
 
 class CatalogJobs(SpreadsheetJobs):
+    @action
+    def open_bulk_import(self):
+        from lynx_folder_ui import FolderInput
+        FolderInput(self, catalog=True)
+
     @action
     def process_files(self):
         self._clear_result(self.download_btn)

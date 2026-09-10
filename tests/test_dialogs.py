@@ -52,3 +52,20 @@ class DialogTests(unittest.TestCase):
                 patch.object(lynx_dialogs.subprocess, 'run', side_effect=OSError):
             self.assertEqual(lynx_dialogs.askopenfilename(), '/tmp/example.xlsx')
             fallback.assert_called_once_with(initialdir='/tmp')
+
+    def test_save_uses_native_picker_with_overwrite_and_extension(self):
+        with patch.object(lynx_dialogs.sys, 'platform', 'linux'), patch.object(lynx_dialogs.shutil, 'which', return_value='/usr/bin/zenity'), patch.object(lynx_dialogs.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='/tmp/export\n')) as run:
+            self.assertEqual(lynx_dialogs.asksaveasfilename(defaultextension='.xlsx'), '/tmp/export.xlsx')
+            self.assertIn('--save', run.call_args.args[0])
+            self.assertIn('--confirm-overwrite', run.call_args.args[0])
+
+    def test_native_extension_does_not_bypass_overwrite_confirmation(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            destination = Path(folder) / 'existing.xlsx'
+            destination.write_text('keep')
+            with patch.object(lynx_dialogs.sys, 'platform', 'linux'), patch.object(lynx_dialogs.shutil, 'which', return_value='/usr/bin/zenity'), patch.object(lynx_dialogs.subprocess, 'run', side_effect=[SimpleNamespace(returncode=0, stdout=str(destination.with_suffix('')) + '\n'), SimpleNamespace(returncode=1)]) as run:
+                self.assertEqual(lynx_dialogs.asksaveasfilename(defaultextension='.xlsx'), '')
+                self.assertIn('--question', run.call_args.args[0])
+            self.assertEqual(destination.read_text(), 'keep')

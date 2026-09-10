@@ -421,3 +421,13 @@ En **Opciones avanzadas → Consultar ramas GitHub** se descargan las ramas actu
 Selecciona varios despliegues o encuentros con **Ctrl/Shift**, busca la ubicación y pulsa **Aplicar ubicación**. Una asignación por encuentro prevalece sobre la de su despliegue y sobre el valor común. `*` aplica a todas las filas y elimina excepciones. Guarda el perfil para conservar las asignaciones. Las excepciones por encuentro corresponden a las fotos agrupadas con la configuración actual: si cambias la agrupación, revísalas antes de exportar.
 
 Las coordenadas de las cámaras se conservan. El catálogo de GitHub puede diferir del servidor desplegado. Al aplicar otro catálogo se borran asignaciones anteriores. Las ventanas del editor, selectores, errores y archivos se vinculan a su ventana de origen para aparecer delante.
+
+### Selección estable y flujo por localidades
+
+Los desplegables abren listas persistentes con buscador: selecciona una fila o cierra con Escape. No desaparecen por un cambio de foco. En Linux se utiliza Zenity para abrir, guardar y elegir carpetas; instala `zenity` si no está disponible. El selector de guardado confirma sobrescrituras y completa la extensión.
+
+En WI: **cargar ZIP/CSV → Leer especies → marcar especies → Configurar Bulk Import**. El buscador y la selección múltiple permiten filtrar antes de agrupar, igual que en Camtrap DP.
+
+En **Wildbook / locationID**, empieza por **Location / verbatimLocality**: selecciona localidades de origen con Ctrl/Shift y aplica el ID. También puedes agrupar por coordenadas o campos disponibles de localidad/país/sitio. Despliegue y encuentro quedan como alternativas. Al aplicar aparecen una marca y el número de filas afectadas. Las opciones avanzadas de ramas están debajo del botón de aplicación.
+
+**Wildbook → Desde carpeta / Desde catálogo** ahora ofrece el mismo editor de campos, perfiles, ubicaciones, agrupación, vista previa y exportación. Indica especie e inclusión de subcarpetas. Para catálogos, el método de identidad es explícito: sin asignar, primera palabra del nombre del archivo o nombre de la carpeta; revisa que esa convención corresponda a animales reales. Las fechas se leen del EXIF. Si falta la fecha, puedes aportar sólo el año: no se inventan mes ni día y esas fotos no se agrupan temporalmente. Sin EXIF ni año, se informa de las fotos omitidas. Completa ubicación en el editor y usa nombres de fotos únicos. La plantilla antigua sigue plegada como compatibilidad.

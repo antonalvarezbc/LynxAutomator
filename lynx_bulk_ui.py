@@ -1,9 +1,10 @@
+from lynx_choices import StableComboBox, StableOptionMenu
 """Reusable field editor and preview for both input formats."""
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 import lynx_dialogs as dialogs
 from lynx_bulk import (SOURCES, load_profile, save_profile, read_profiles, default_fields, build_table,
-                       write_excel, wi_rows, camtrap_rows)
+                       write_excel, wi_rows, camtrap_rows, wi_species)
 from lynx_ui_jobs import action, start
 from lynx_wildbook_fields import FIELDS
 from lynx_windows import foreground
@@ -56,7 +57,7 @@ class BulkEditor(ctk.CTkToplevel):
         except (ValueError, OSError, KeyError) as exc:
             messagebox.showwarning('Bulk Import', str(exc), parent=self)
             names = []
-        self.profile_choice = ctk.CTkOptionMenu(profile_bar, values=names or ['—'])
+        self.profile_choice = StableOptionMenu(profile_bar, values=names or ['—'])
         self.profile_choice.pack(side='left', padx=4)
         ctk.CTkButton(profile_bar, text=labels[1], command=self.use_profile).pack(side='left', padx=4)
         self.profile_name = ctk.CTkEntry(profile_bar, placeholder_text=labels[3])
@@ -142,16 +143,16 @@ class BulkEditor(ctk.CTkToplevel):
             enabled.pack(side='left')
             if field.get('enabled', True):
                 enabled.select()
-            name = ctk.CTkComboBox(line, width=250, values=FIELDS, command=self.invalidate)
+            name = StableComboBox(line, width=250, values=FIELDS, command=self.invalidate)
             name.set(field['name'])
             name.pack(side='left', padx=3)
-            source = ctk.CTkComboBox(line, values=['fixed', 'template', 'location_map'] + self.source_names, width=155, command=self.invalidate)
+            source = StableComboBox(line, values=['fixed', 'template', 'location_map'] + self.source_names, width=155, command=self.invalidate)
             source.set(field['source'])
             source.pack(side='left', padx=3)
             value = ctk.CTkEntry(line, width=230)
             value.insert(0, field.get('value', ''))
             value.pack(side='left', padx=3)
-            kind = ctk.CTkOptionMenu(line, values=['text', 'integer', 'decimal', 'boolean'], width=110, command=self.invalidate)
+            kind = StableOptionMenu(line, values=['text', 'integer', 'decimal', 'boolean'], width=110, command=self.invalidate)
             kind.set(field['type'])
             kind.pack(side='left', padx=3)
             for entry in (name, source, value):
@@ -185,7 +186,7 @@ class BulkEditor(ctk.CTkToplevel):
             window.geometry('620x540')
             window.transient(self)
             foreground(window, self, modal=True)
-            destination = ctk.CTkComboBox(window, width=400, values=['Sighting.comments', 'Encounter.sightingRemarks', 'Encounter.researcherComments'])
+            destination = StableComboBox(window, width=400, values=['Sighting.comments', 'Encounter.sightingRemarks', 'Encounter.researcherComments'])
             destination.pack(pady=8)
             destination.set('Sighting.comments')
             search = ctk.CTkEntry(window, placeholder_text='camera / setup / deployment / …', width=450)
@@ -259,7 +260,7 @@ class BulkEditor(ctk.CTkToplevel):
     def save(self):
         if not self.snapshot or self.snapshot[:2] != (self.collect(), self.group_options()):
             raise ValueError(self.words[2])
-        path = dialogs.asksaveasfilename(parent=self, defaultextension='.xlsx', filetypes=[('Excel', '*.xlsx')])
+        path = dialogs.asksaveasfilename(parent=self, initialfile='wildbook_bulk_import.xlsx', defaultextension='.xlsx', filetypes=[('Excel', '*.xlsx')])
         if path:
             fields, _, rows = self.snapshot
             start(self, 'Bulk Import', lambda task: write_excel(task, build_table(rows, fields, task), path),
@@ -276,7 +277,8 @@ class WIInput(ctk.CTkToplevel):
         self.archive = ''
         self.extra_paths = []
         self.title('Wildlife Insights → Bulk Import')
-        self.geometry('760x370')
+        self.geometry('800x680')
+        self.checks = {}
         words = {
             'es': ['Carga el ZIP de Wildlife Insights o sus dos CSV. No necesitas plantilla Excel ni fotos locales.',
                    'Cargar ZIP', 'Seleccionar images*.csv', 'Seleccionar deployments.csv', 'Configurar Bulk Import', 'Intervalo de agrupación (segundos)'],
@@ -290,6 +292,13 @@ class WIInput(ctk.CTkToplevel):
         self.selection = ctk.CTkLabel(self, text='', wraplength=700)
         self.selection.pack(padx=10, pady=6)
         ctk.CTkButton(self, text={'es': 'Añadir projects.csv / otro CSV', 'pt': 'Adicionar projects.csv / outro CSV', 'en': 'Add projects.csv / other CSV'}[self.lang], command=self.add_extra).pack(pady=4)
+        ctk.CTkButton(self, text={'es': 'Leer especies', 'pt': 'Ler espécies', 'en': 'Read species'}[self.lang], command=self.load_species).pack(pady=5)
+        self.species_search = ctk.CTkEntry(self, placeholder_text={'es': 'Buscar especie', 'pt': 'Pesquisar espécie', 'en': 'Search species'}[self.lang])
+        self.species_search.pack(fill='x', padx=10)
+        self.species_search.bind('<KeyRelease>', lambda _: self.filter_species())
+        self.species_list = ctk.CTkScrollableFrame(self, height=150)
+        self.species_list.pack(fill='both', expand=True, padx=10)
+        ctk.CTkButton(self, text={'es': 'Seleccionar visibles', 'pt': 'Selecionar visíveis', 'en': 'Select visible'}[self.lang], command=self.select_species).pack(pady=4)
         ctk.CTkButton(self, text=words[4], command=self.configure_bulk).pack(pady=10)
         self.show_selection()
         foreground(self, self.root)
@@ -302,9 +311,38 @@ class WIInput(ctk.CTkToplevel):
         path = dialogs.askopenfilename(parent=self, filetypes=[('ZIP', '*.zip')] if kind == 'archive' else [('CSV', '*.csv')])
         if path:
             setattr(self, kind, path)
+            for check in self.checks.values():
+                check.destroy()
+            self.checks = {}
             if kind != 'archive':
                 self.archive = ''
             self.show_selection()
+
+    @action
+    def load_species(self):
+        images, deployments = (self.archive, None) if self.archive else (self.images, self.deployments)
+        if not images:
+            raise ValueError('Selecciona un ZIP o los CSV.')
+        def receive(counts):
+            for check in self.checks.values():
+                check.destroy()
+            self.checks = {}
+            for species, count in sorted(counts.items()):
+                check = ctk.CTkCheckBox(self.species_list, text=f'{species} — {count}')
+                self.checks[species] = check
+            self.filter_species()
+        start(self, 'Wildlife Insights: species', lambda task: wi_species(task, images, deployments), receive)
+
+    def filter_species(self):
+        for name, check in self.checks.items():
+            check.pack_forget()
+            if self.species_search.get().casefold() in name.casefold():
+                check.pack(anchor='w', padx=6, pady=3)
+
+    def select_species(self):
+        for name, check in self.checks.items():
+            if self.species_search.get().casefold() in name.casefold():
+                check.select()
 
     @action
     def add_extra(self):
@@ -318,8 +356,11 @@ class WIInput(ctk.CTkToplevel):
         images, deployments = (self.archive, None) if self.archive else (self.images, self.deployments)
         if not images or (not self.archive and not deployments):
             raise ValueError('Selecciona images.csv y deployments.csv, o un ZIP con ambos.')
+        species = {name for name, check in self.checks.items() if check.get()}
+        if not species:
+            raise ValueError('Pulsa Leer especies y selecciona al menos una especie.')
         extra_paths = tuple(self.extra_paths)
-        BulkEditor(self, lambda task, options: wi_rows(task, images, deployments, group=options[0], threshold=options[1], extra_paths=extra_paths))
+        BulkEditor(self, lambda task, options: wi_rows(task, images, deployments, group=options[0], threshold=options[1], extra_paths=extra_paths, species=species))
         self.destroy()
 
 

@@ -98,6 +98,7 @@ class GuiJobsTests(unittest.TestCase):
         window = WIInput(owner)
         with patch('lynx_bulk_ui.dialogs.askopenfilename', return_value='/tmp/export.zip'), patch('lynx_bulk_ui.dialogs.askdirectory') as folder:
             window.choose('archive')
+            window.checks = {'Lynx pardinus': SimpleNamespace(get=lambda: True)}
             with patch('lynx_bulk_ui.BulkEditor') as editor:
                 window.configure_bulk()
                 editor.assert_called_once()
@@ -170,13 +171,17 @@ class GuiJobsTests(unittest.TestCase):
         field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
         self.assertEqual(field['value'], 'Exact-á')
         self.assertEqual(field['catalog_name'], 'Lynx')
-        picker.scope.selection_set(next(iid for iid, key in picker.scope_items.items() if key == deployment_key(row)))
+        picker.scope_mode.set('Deployment')
+        picker.populate_scopes()
+        picker.scope.selection_set(next(iid for iid, keys in picker.scope_items.items() if deployment_key(row) in keys))
         picker.tree.selection_set('0')
         picker.apply()
         field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
         self.assertEqual(field['locations'][deployment_key(row)], 'parent')
         self.assertEqual(field['value'], 'Exact-á')
-        picker.scope.selection_set('e0', 'e1')
+        picker.scope_mode.set('Encounter')
+        picker.populate_scopes()
+        picker.scope.selection_set('s0', 's1')
         picker.tree.selection_set('1')
         picker.apply()
         field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
@@ -184,6 +189,45 @@ class GuiJobsTests(unittest.TestCase):
         self.assertEqual(field['locations'][encounter_key(other)], 'Exact-á')
         picker.destroy()
         editor.destroy()
+
+    def test_choices_stay_open_and_accept_selection(self):
+        from lynx_choices import StableComboBox
+        from lynx_windows import foreground
+        dialog = self.ctk.CTkToplevel(self.root)
+        foreground(dialog, self.root, modal=True)
+        choice = StableComboBox(dialog, values=['Lynx', 'Deer'])
+        choice.pack()
+        choice._open_dropdown_menu()
+        popup = choice._choice_popup
+        deadline = time.monotonic() + 1.2
+        while time.monotonic() < deadline:
+            self.root.update()
+            time.sleep(0.01)
+        self.assertTrue(popup.winfo_exists())
+        popup.list.selection_set('1')
+        popup.choose()
+        self.assertEqual(choice.get(), 'Deer')
+        dialog.destroy()
+
+    def test_wi_species_selection_filters_before_editor(self):
+        import tempfile
+        from types import SimpleNamespace
+        import pandas as pd
+        from lynx_bulk_ui import WIInput
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pd.DataFrame([{'genus': 'Lynx', 'species': 'pardinus'}, {'genus': 'Vulpes', 'species': 'vulpes'}]).to_csv(root / 'images.csv', index=False)
+            pd.DataFrame([{'deployment_id': 'd'}]).to_csv(root / 'deployments.csv', index=False)
+            owner = SimpleNamespace(root=self.root, lang='es', images_csv_path=str(root / 'images.csv'), deployments_csv_path=str(root / 'deployments.csv'))
+            window = WIInput(owner)
+            window.load_species()
+            self.wait_until(lambda: not self.root.jobs.busy)
+            self.assertEqual(set(window.checks), {'Lynx pardinus', 'Vulpes vulpes'})
+            self.assertFalse(window.checks['Lynx pardinus'].get())
+            window.checks['Lynx pardinus'].select()
+            with patch('lynx_bulk_ui.BulkEditor') as editor:
+                window.configure_bulk()
+                editor.assert_called_once()
 
     def test_video_review_requires_explicit_confirmation(self):
         from types import SimpleNamespace

@@ -1,3 +1,4 @@
+from lynx_choices import StableComboBox, StableOptionMenu
 """Location picker: optional catalog and common/per-deployment assignments."""
 import customtkinter as ctk
 from tkinter import ttk
@@ -19,51 +20,37 @@ class LocationPicker(ctk.CTkToplevel):
         self.protocol('WM_DELETE_WINDOW', self.close)
         self.data = None
         self.entries = []
-        self.scopes = {'*': None}
-        for row in rows:
-            key = deployment_key(row)
-            import json
-            project, deployment = json.loads(key)
-            metadata = row.get('metadata', {})
-            locality = (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0]
-            label = ' / '.join(v for v in [project, deployment] if v)
-            if locality:
-                label += ' — ' + locality
-            self.scopes[label or key] = key
+        self.source_rows = rows
         scopes_frame = ctk.CTkFrame(self)
         scopes_frame.pack(fill='x', padx=10)
+        location_fields = sorted({key for row in rows for key in row.get('metadata', {}) if any(word in key.lower() for word in ['location', 'locality', 'placename', 'country', 'site'])})
+        self.scope_mode = StableOptionMenu(scopes_frame, values=['Location / verbatimLocality', 'Coordinates'] + location_fields + ['Deployment', 'Encounter'], command=lambda _: self.populate_scopes())
+        self.scope_mode.pack(anchor='w', pady=4)
         self.scope = ttk.Treeview(scopes_frame, columns=('label',), show='headings', selectmode='extended', height=5)
-        self.scope.heading('label', text={'es': 'Aplicar a: selecciona varios con Ctrl / Shift', 'pt': 'Aplicar a: selecione vários com Ctrl / Shift', 'en': 'Apply to: select multiple with Ctrl / Shift'}[editor.lang])
+        self.scope.heading('label', text={'es': 'Localidades de origen (Ctrl / Shift para seleccionar varias)', 'pt': 'Localizações de origem (Ctrl / Shift para selecionar várias)', 'en': 'Source locations (Ctrl / Shift for multiple selection)'}[editor.lang])
         self.scope_items = {}
-        for i, (label, key) in enumerate(self.scopes.items()):
-            iid = 'd' + str(i)
-            self.scope.insert('', 'end', iid=iid, values=(label,))
-            self.scope_items[iid] = key
-        for i, row in enumerate(rows):
-            iid = 'e' + str(i)
-            self.scope.insert('', 'end', iid=iid, values=(f"Encounter {i+1}: {row.get('species', '')} · {row.get('year', '')}-{row.get('month', '')}-{row.get('day', '')} · {len(row.get('media', []))} photos",))
-            self.scope_items[iid] = encounter_key(row)
+        self.populate_scopes()
         scroll = ttk.Scrollbar(scopes_frame, command=self.scope.yview)
         scroll.pack(side='right', fill='y')
         self.scope.configure(yscrollcommand=scroll.set)
         self.scope.pack(fill='x', expand=True)
-        self.scope.selection_set('d0')
+
         bar = ctk.CTkFrame(self)
         bar.pack(fill='x', padx=10)
-        self.book = ctk.CTkComboBox(bar, values=list(CATALOGS), width=240, command=self.select_book)
+        self.book = StableComboBox(bar, values=list(CATALOGS), width=240, command=self.select_book)
         self.book.pack(side='left', padx=5)
         self.url = ctk.CTkEntry(self, width=850)
         # Internal source storage: URLs are never shown in the normal flow.
         advanced = ctk.CTkFrame(self)
         toggle = ctk.CTkCheckBox(self, text={'es': 'Opciones avanzadas', 'pt': 'Opções avançadas', 'en': 'Advanced options'}[editor.lang], command=lambda: advanced.pack(fill='x', padx=10) if toggle.get() else advanced.pack_forget())
-        toggle.pack(anchor='w', padx=10, pady=4)
+        # Advanced controls are packed below the location application button.
         import json
         branch_cache = settings / 'locations' / 'branches.json'
         try:
             branch_names = json.loads(branch_cache.read_text(encoding='utf-8')) if branch_cache.exists() else []
         except (ValueError, OSError):
             branch_names = []
-        self.branch = ctk.CTkComboBox(advanced, values=branch_names, width=320, command=self.select_branch)
+        self.branch = StableComboBox(advanced, values=branch_names, width=320, command=self.select_branch)
         self.branch.pack(side='left', padx=4)
         ctk.CTkButton(advanced, text={'es': 'Consultar ramas GitHub', 'pt': 'Consultar ramos GitHub', 'en': 'Fetch GitHub branches'}[editor.lang], command=self.branches).pack(side='left', padx=4)
         ctk.CTkButton(advanced, text={'es': 'JSON local', 'pt': 'JSON local', 'en': 'Local JSON'}[editor.lang], command=self.local).pack(side='left', padx=4)
@@ -90,8 +77,41 @@ class LocationPicker(ctk.CTkToplevel):
         self.info.pack(padx=10, pady=5)
         ctk.CTkButton(self, text=labels[4], command=self.apply).pack(pady=8)
         current = next((f for f in editor.collect() if f['name'] == 'Encounter.locationID'), {})
+        toggle.pack(anchor='w', padx=10, pady=4)
         self.book.set(current.get('catalog_name', 'Lynx'))
         self.url.insert(0, current.get('catalog_source', CATALOGS['Lynx']))
+
+    def populate_scopes(self):
+        self.scope.delete(*self.scope.get_children())
+        self.scope_items = {'all': [None]}
+        self.scope.insert('', 'end', iid='all', values=('* — Todas / All',))
+        grouped = {}
+        mode = self.scope_mode.get()
+        for index, row in enumerate(self.source_rows):
+            metadata = row.get('metadata', {})
+            deployment = deployment_key(row)
+            if mode == 'Encounter':
+                label = f"Encounter {index+1}: {row.get('species', '')}"
+                key = encounter_key(row)
+            elif mode == 'Coordinates':
+                label = f"{row.get('latitude', '')}, {row.get('longitude', '')}"
+                key = deployment
+            elif mode not in ('Location / verbatimLocality', 'Deployment'):
+                label = ' | '.join(metadata.get(mode, [])) or '(Sin valor / No value)'
+                key = encounter_key(row)
+            elif mode == 'Deployment':
+                label = deployment
+                key = deployment
+            else:
+                label = str(row.get('locality') or (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0] or '(Sin localidad / No locality)')
+                key = deployment
+            grouped.setdefault(label, set()).add(key)
+        for index, (label, keys) in enumerate(sorted(grouped.items())):
+            iid = 's' + str(index)
+            self.scope_items[iid] = sorted(keys)
+            count = sum(1 for row in self.source_rows if deployment_key(row) in keys or encounter_key(row) in keys)
+            self.scope.insert('', 'end', iid=iid, values=(f'{label} · {count} filas / rows',))
+        self.scope.selection_set('all')
 
     @action
     def branches(self):
@@ -162,7 +182,7 @@ class LocationPicker(ctk.CTkToplevel):
             field['locations'] = {}
             field['value'] = ''
         field.update(enabled=True, type='text', catalog_name=self.book.get(), catalog_source=self.data['source'])
-        scopes = [self.scope_items[iid] for iid in self.scope.selection()]
+        scopes = list(dict.fromkeys(key for iid in self.scope.selection() for key in self.scope_items[iid]))
         if not scopes:
             raise ValueError('Selecciona al menos un despliegue o encuentro.')
         if None in scopes:
@@ -174,4 +194,8 @@ class LocationPicker(ctk.CTkToplevel):
             for scope in scopes:
                 field.setdefault('locations', {})[scope] = entry['id']
         self.editor.render(fields)
-        self.info.configure(text=entry['label'] + ' → ' + entry['id'])
+        count = sum(1 for row in self.source_rows if None in scopes or deployment_key(row) in scopes or encounter_key(row) in scopes)
+        self.info.configure(text={'es': f'✓ Aplicado: {entry["id"]} → {count} filas. Guarda el perfil para reutilizarlo.', 'pt': f'✓ Aplicado: {entry["id"]} → {count} linhas.', 'en': f'✓ Applied: {entry["id"]} → {count} rows.'}[self.lang])
+        for iid in self.scope.selection():
+            label = self.scope.item(iid, 'values')[0].split('  ✓')[0]
+            self.scope.item(iid, values=(label + '  ✓ ' + entry['id'],))

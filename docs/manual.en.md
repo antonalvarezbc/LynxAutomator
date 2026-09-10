@@ -325,3 +325,13 @@ WI accepts additional CSVs such as `projects.csv` and automatically reads extra 
 The normal picker shows only Wildbook names. **Advanced options → Fetch GitHub branches** retrieves the current WildMeOrg/Wildbook branches for selection by name, with URLs kept internal. Local JSON is available only in advanced options. Lists and catalogs are cached; development branches may lack a valid catalog.
 
 Select several deployments or encounters with **Ctrl/Shift** and apply one location. Encounter overrides deployment, then common value; `*` applies to all rows and removes overrides. Save assignments in a profile. Review encounter assignments after changing grouping. Camera coordinates are preserved; GitHub may differ from the deployed server. Dialogs are attached to their owning window to appear in front.
+
+### Stable selection and locality workflow
+
+Selection lists stay open and include search; choose a row or close with Escape. Linux uses Zenity for opening, saving and choosing folders; install `zenity` if unavailable.
+
+WI now follows: load ZIP/CSV, **Read species**, select species, then configure Bulk Import, matching the Camtrap DP multiselect workflow.
+
+locationID starts with source localities; coordinates and available country/site/location fields are also offered. Select several with Ctrl/Shift. Applying shows a check mark and affected row count. Advanced branch options are at the bottom.
+
+Folder and catalog inputs use the common editor. Choose species, recursion and an explicit identity convention (none, filename first word, or folder name). Dates come from EXIF; an optional fallback year leaves month/day blank and prevents temporal grouping of undated photos. Photos lacking both EXIF dates and a supplied year are reported as omitted. Complete location in the editor. The previous template workflow remains under compatibility options.

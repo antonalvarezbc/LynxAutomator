@@ -323,7 +323,24 @@ def group_rows(task, rows, threshold):
     return result
 
 
-def wi_rows(task, images_path, deployments_path=None, group=False, threshold=3, extra_paths=()):
+def wi_scientific_name(item):
+    return item.get('scientific_name') or item.get('scientificName') or ' '.join(str(item.get(k, '')) for k in ('genus', 'species')).strip()
+
+
+def wi_species(task, images_path, deployments_path=None):
+    from collections import Counter
+    images, _ = read_wi_tables(images_path, deployments_path)
+    counts = Counter()
+    for row in images.to_dict('records'):
+        task.checkpoint()
+        name = wi_scientific_name(row)
+        parts = name.split()
+        if len(parts) >= 2 and parts[1].lower() not in ('sp', 'sp.', 'spp', 'spp.'):
+            counts[name] += 1
+    return counts
+
+
+def wi_rows(task, images_path, deployments_path=None, group=False, threshold=3, extra_paths=(), species=None):
     from lynx_core import merge_deployments
     task.checkpoint()
     images, deployments = read_wi_tables(images_path, deployments_path)
@@ -333,6 +350,8 @@ def wi_rows(task, images_path, deployments_path=None, group=False, threshold=3, 
         absent = set(required) - set(table.columns)
         if absent:
             raise ValueError('Faltan columnas CSV: ' + ', '.join(sorted(absent)))
+    if species is not None:
+        images = images[images.apply(lambda row: wi_scientific_name(row) in species, axis=1)]
     data = merge_deployments(images, deployments)
     deployment_lookup = {(r['project_id'], r['deployment_id']): r for r in deployments.to_dict('records')}
     rows, missing, groups = [], [], {}
@@ -342,11 +361,10 @@ def wi_rows(task, images_path, deployments_path=None, group=False, threshold=3, 
         name = Path(unquote(urlparse(item['location']).path)).name
         if not name:
             raise ValueError('Una fila de images.csv no tiene nombre de fotografía en location.')
-        species = item.get('scientific_name') or item.get('scientificName') or ' '.join(
-            str(item.get(k, '')) for k in ('genus', 'species')).strip()
+        species_name = wi_scientific_name(item)
         stamp = pd.Timestamp(item['timestamp'])
         event = str(item.get('image_id') or item['location'])
-        row = normalize(species, stamp, str(item['location']), item['deployment_id'], event,
+        row = normalize(species_name, stamp, str(item['location']), item['deployment_id'], event,
                         item['project_id'], latitude=item.get('latitude', ''),
                         longitude=item.get('longitude', ''), locality=item.get('placename', ''), media_local=False)
         attach_metadata(row, deployment=[deployment_lookup[(item['project_id'], item['deployment_id'])]], media=[item.to_dict()])

@@ -48,3 +48,5 @@ un único Encounter: esta pestaña todavía no genera el Excel. La futura export
 deberá distinguir un avistamiento/evento de los encuentros individuales.
 
 [Modelo de entrada de Wildbook](https://wildbook.docs.wildme.org/introduction/data-entry.html).
+
+Los selectores de abrir, guardar y elegir carpetas usan Zenity cuando está instalado. Si tu Ubuntu no lo incluye, instala `sudo apt install zenity`. El diálogo de guardado propone un nombre y confirma sobrescrituras. Los desplegables de configuración usan listas persistentes con búsqueda; selecciona una fila o cierra con Escape.

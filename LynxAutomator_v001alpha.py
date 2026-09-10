@@ -1,3 +1,4 @@
+from lynx_choices import StableComboBox, StableOptionMenu
 from lynx_camtrap_ui import CamtrapTab
 from lynx_ui_jobs import (JobPanel, FolderJobs, CatalogJobs, WIJobs, LynxJobs, VideoJobs, DateJobs, RenamerJobs, DownloadJobs)
 import customtkinter as ctk
@@ -116,7 +117,7 @@ class BaseApp:
         self.header_frame.pack(pady=10, fill='x')
 
         # Mover el menú de selección de idioma a la esquina superior derecha
-        self.language_menu = ctk.CTkOptionMenu(
+        self.language_menu = StableOptionMenu(
             self.header_frame, 
             variable=self.language, 
             values=["Español", "Português", "English"], 
@@ -230,7 +231,7 @@ class BaseApp:
             widget.destroy()
         self.setup_ui()
 
-        # self.language_menu = ctk.CTkOptionMenu(
+        # self.language_menu = StableOptionMenu(
         #     self.header_frame, 
         #     variable=self.language, 
         #     values=["Español", "Português", "English"], 
@@ -463,6 +464,12 @@ class WBFolderApp(FolderJobs):
         # Main frame (single large square)
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
+        ctk.CTkButton(self.main_frame, text='Bulk Import', command=self.open_bulk_import).pack(pady=12)
+        container = self.main_frame
+        legacy = ctk.CTkFrame(container)
+        toggle = ctk.CTkCheckBox(container, text={'es': 'Compatibilidad: plantilla Excel anterior', 'pt': 'Compatibilidade: modelo Excel anterior', 'en': 'Compatibility: previous Excel template'}[self.lang], command=lambda: legacy.pack(fill='both', expand=True) if toggle.get() else legacy.pack_forget())
+        toggle.pack(anchor='w', padx=10)
+        self.main_frame = legacy
 
         # Label asking the user to select a folder
         self.label = ctk.CTkLabel(self.main_frame, text=tr["select_folder"], anchor="w")
@@ -605,6 +612,12 @@ class WBCatalogApp(CatalogJobs):
         # Frame principal
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
+        ctk.CTkButton(self.main_frame, text='Bulk Import', command=self.open_bulk_import).pack(pady=12)
+        container = self.main_frame
+        legacy = ctk.CTkFrame(container)
+        toggle = ctk.CTkCheckBox(container, text={'es': 'Compatibilidad: plantilla Excel anterior', 'pt': 'Compatibilidade: modelo Excel anterior', 'en': 'Compatibility: previous Excel template'}[self.lang], command=lambda: legacy.pack(fill='both', expand=True) if toggle.get() else legacy.pack_forget())
+        toggle.pack(anchor='w', padx=10)
+        self.main_frame = legacy
 
         # Etiqueta para selección de directorio
         self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_directory"], anchor="w")

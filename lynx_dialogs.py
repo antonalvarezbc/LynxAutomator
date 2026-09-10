@@ -22,11 +22,13 @@ def _select(kind, **options):
         options['filetypes'] = filters
     executable = shutil.which('zenity') if sys.platform.startswith('linux') else None
     result = None
-    if executable and kind != 'asksaveasfilename':
+    if executable:
         command = [executable, '--file-selection', '--width=900', '--height=650',
-                   '--filename=' + str(Path(options['initialdir'])) + os.sep]
+                   '--filename=' + str(Path(options['initialdir']) / options.get('initialfile', '')) + (os.sep if not options.get('initialfile') else '')]
         if options.get('parent') is not None:
             command.append('--attach=' + str(options['parent'].winfo_toplevel().winfo_id()))
+        if kind == 'asksaveasfilename':
+            command += ['--save', '--confirm-overwrite']
         if kind == 'askdirectory':
             command.append('--directory')
         if options.get('title'):
@@ -51,6 +53,13 @@ def _select(kind, **options):
     if result is None:
         from tkinter import filedialog as tk_dialogs
         result = getattr(tk_dialogs, kind)(**options)
+    if result and kind == 'asksaveasfilename' and options.get('defaultextension') and not Path(result).suffix:
+        result += options['defaultextension']
+        if executable and Path(result).exists():
+            # Zenity checked the unextended name; confirm the actual target too.
+            confirm = subprocess.run([executable, '--question', '--no-markup', '--text=Overwrite / Sobrescribir: ' + result + '?'], env=env)
+            if confirm.returncode != 0:
+                result = ''
     if result:
         _last_directory = str(Path(result) if kind == 'askdirectory' else Path(result).parent)
     return result

@@ -359,3 +359,13 @@ Em WI pode adicionar `projects.csv` ou outros CSV; os CSV adicionais do ZIP são
 O seletor normal mostra apenas nomes de Wildbooks. **Opções avançadas → Consultar ramos GitHub** obtém a lista atual de ramos para selecionar pelo nome, sem mostrar URLs. O JSON local fica nas opções avançadas; listas e catálogos são guardados em cache. Um ramo de desenvolvimento pode não conter catálogo válido.
 
 Selecione várias instalações ou encontros com **Ctrl/Shift** e aplique a mesma localização. Encontro tem prioridade sobre instalação e valor comum; `*` aplica a todas as linhas e elimina exceções. Guarde no perfil. Ao mudar o agrupamento, reveja atribuições por encontro. As coordenadas são preservadas; GitHub pode diferir do servidor. As janelas ficam associadas à janela de origem para aparecer à frente.
+
+### Seleção estável e fluxo por localizações
+
+As listas de seleção permanecem abertas e incluem pesquisa; escolha uma linha ou feche com Escape. No Linux, Zenity é utilizado para abrir, guardar e escolher pastas. Instale `zenity` se necessário.
+
+Em WI: carregar ZIP/CSV, **Ler espécies**, selecionar espécies e configurar Bulk Import, tal como a seleção múltipla em Camtrap DP.
+
+O seletor locationID começa por localidades de origem; também permite coordenadas e campos de país/localização disponíveis. Selecione várias com Ctrl/Shift. Ao aplicar, mostra uma marca e o número de linhas afetadas. Ramos avançados ficam no fundo.
+
+Pasta e catálogo usam o editor comum. Indique espécie, subpastas e método de identidade explícito (nenhum, primeira palavra do ficheiro ou nome da pasta). Datas vêm do EXIF; pode indicar apenas um ano quando falta a data, sem inventar mês/dia nem agrupar essas fotos por tempo. Sem EXIF nem ano, as fotos omitidas são indicadas. Complete a localização no editor. O modelo anterior continua nas opções de compatibilidade.

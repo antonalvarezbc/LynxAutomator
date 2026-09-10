@@ -229,3 +229,27 @@ class BulkTests(unittest.TestCase):
         result = group_rows(self.task, rows, 0)
         self.assertEqual(len(result), 2)
         self.assertEqual(len(result[0]['media']), 2)
+
+    def test_wi_filter_excludes_unselected_species(self):
+        from lynx_bulk import wi_species
+        self.test_wi_species_and_events()
+        names = wi_species(self.task, self.root / 'images.csv', self.root / 'deployments.csv')
+        self.assertEqual(set(names), {'Lynx pardinus', 'Vulpes vulpes'})
+        rows, _ = wi_rows(self.task, self.root / 'images.csv', self.root / 'deployments.csv', species={'Vulpes vulpes'})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['species'], 'Vulpes vulpes')
+
+    def test_folder_adapter_missing_dates_and_explicit_identity(self):
+        from lynx_folder_bulk import folder_rows
+        from PIL import Image
+        Image.new('RGB', (8, 8)).save(self.root / 'Animal1 left.jpg')
+        rows, missing = folder_rows(self.task, self.root, 'Lynx pardinus')
+        self.assertFalse(rows)
+        self.assertEqual(len(missing), 1)
+        rows, missing = folder_rows(self.task, self.root, 'Lynx pardinus', fallback_year=2020)
+        self.assertFalse(missing)
+        self.assertEqual(rows[0]['year'], 2020)
+        self.assertEqual(rows[0]['month'], '')
+        self.assertEqual(rows[0]['individualID'], '')
+        rows, _ = folder_rows(self.task, self.root, 'Lynx pardinus', fallback_year=2020, identity='filename')
+        self.assertEqual(rows[0]['individualID'], 'Animal1')
