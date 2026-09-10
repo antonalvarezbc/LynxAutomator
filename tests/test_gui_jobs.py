@@ -44,8 +44,8 @@ class GuiJobsTests(unittest.TestCase):
         flow = BulkWorkflow(self.root, 'es')
         self.assertEqual(flow.choice.get(), 'Wildlife Insights')
         self.assertIn('Crear desde carpeta', flow.sources)
-        self.assertIn('Agouti API', flow.sources)
-        self.assertIn('Trapper API', flow.sources)
+        self.assertIn('Agouti API (alpha)', flow.sources)
+        self.assertIn('Trapper API (alpha)', flow.sources)
         for source in flow.sources:
             flow.choice.set(source)
             flow.select(source)
@@ -59,6 +59,45 @@ class GuiJobsTests(unittest.TestCase):
         self.assertIsNone(flow.editor)
         self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
 
+    def test_api_filter_dialog_applies_without_download(self):
+        from lynx_api_ui import APIImportTab
+        page = APIImportTab(self.root, 'Agouti API', 'es')
+        self.assertEqual(page.auth_button.cget('text'), 'Autorización')
+        self.assertIs(page.auth_button.master, page.source_controls)
+        page.filter_dialog()
+        window = page._filters_window
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        entries = [w for w in descendants(window) if isinstance(w, self.ctk.CTkEntry)]
+        entries[0].insert(0, '2025')
+        entries[1].insert(0, 'Doñana')
+        button = next(w for w in descendants(window) if isinstance(w, self.ctk.CTkButton) and w.cget('text') == 'Aplicar filtros')
+        with patch('lynx_api_ui.fetch_api_package') as request:
+            button.invoke()
+            request.assert_not_called()
+        self.assertEqual(page.filters['year'], '2025')
+        self.assertEqual(page.filters['site'], 'Doñana')
+        self.assertFalse(window.winfo_exists())
+        self.assertIn('Año de inicio: 2025', page.filter_summary.cget('text'))
+
+    def test_metadata_sources_open_before_valid_preview(self):
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        row = {'metadata': {'cameras.camera_model': ['Model X'], 'unmatched.name': []}}
+        editor = BulkEditor(SimpleNamespace(root=self.root, lang='es'), lambda task, options: ([row], []))
+        self.assertFalse(next(f for f in editor.collect() if f['name'] == 'MarkedIndividual.individualID')['enabled'])
+        source = editor.rows[0][2]
+        source._open_dropdown_menu()
+        self.wait_until(lambda: not self.root.jobs.busy)
+        self.assertIn('cameras.camera_model', source.cget('values'))
+        self.assertNotIn('unmatched.name', source.cget('values'))
+        self.assertIsNone(editor.snapshot)
+        self.assertTrue(source._choice_popup.winfo_exists())
+        source._choice_popup.destroy()
+        editor.destroy()
+
     def test_api_source_loads_without_forcing_authorization(self):
         from lynx_bulk_workflow import BulkWorkflow
         from lynx_camtrap import read_package
@@ -69,8 +108,8 @@ class GuiJobsTests(unittest.TestCase):
             package = read_package(TaskContext(), make_package(folder) / 'datapackage.json')
             flow = BulkWorkflow(self.root, 'es')
             for provider in ('Agouti API', 'Trapper API'):
-                flow.select(provider)
-                page = flow.pages[provider]
+                flow.select(provider + ' (alpha)')
+                page = flow.pages[provider + ' (alpha)']
                 if provider == 'Trapper API':
                     page.server.insert(0, 'https://trapper.example')
                 page.project.insert(0, '123')
@@ -144,10 +183,12 @@ class GuiJobsTests(unittest.TestCase):
         self.assertEqual(len(tab.records), 3)
         self.assertEqual(tab.download.cget('state'), 'normal')
         tab.local.set(1)
-        with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', side_effect=[str(fixture.parent), folder]):
+        with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', side_effect=[str(fixture.parent), folder]), patch('lynx_ui_jobs.messagebox.showwarning') as warning:
             tab.obtain()
             self.wait_until(lambda: not self.root.jobs.busy)
             self.assertEqual(len(list(Path(folder).rglob('*.jpg'))), 2)
+            warning.assert_called_once()
+            self.assertEqual(len(tab.failed), 1)
         tab.select_all(False)
         self.assertIsNone(tab.records)
         self.assertEqual(tab.download.cget('state'), 'disabled')
@@ -188,12 +229,14 @@ class GuiJobsTests(unittest.TestCase):
                 self.wait_until(lambda: not self.root.jobs.busy)
                 self.assertIsNotNone(editor.snapshot)
                 self.assertEqual(len(editor.tree.get_children()), 1)
+                self.assertTrue(editor.preview_window.winfo_exists())
                 profile.assert_not_called()
                 destination = Path(folder) / 'bulk.xlsx'
-                with patch('lynx_bulk_ui.dialogs.asksaveasfilename', return_value=str(destination)), patch('lynx_bulk_ui.messagebox.showinfo'):
+                with patch('lynx_bulk_ui.dialogs.asksaveasfilename', return_value=str(destination)) as save_dialog, patch('lynx_bulk_ui.messagebox.showinfo'):
                     editor.save()
                     self.wait_until(lambda: not self.root.jobs.busy)
                 self.assertTrue(destination.is_file())
+                self.assertRegex(save_dialog.call_args.kwargs['initialfile'], r'wildbook_bulk_import_.*_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.xlsx')
                 editor.interval.delete(0, 'end')
                 editor.interval.insert(0, '10')
                 with patch('lynx_ui_jobs.messagebox.showerror') as error:
@@ -267,7 +310,9 @@ class GuiJobsTests(unittest.TestCase):
             self.assertIn('Sighting.comments', editor.rows[0][1].cget('values'))
             self.assertIn('Encounter.project0.researchProjectName', FIELDS)
             editor.render([f for f in editor.collect() if f['name'] != 'Encounter.sightingID'])
-            editor.metadata_comments()
+            editor.add()
+            chooser = next(w for w in editor.winfo_children() if isinstance(w, self.ctk.CTkToplevel))
+            next(w for w in chooser.winfo_children() if isinstance(w, self.ctk.CTkButton) and w.cget('text') == 'Comentarios con metadatos').invoke()
             self.wait_until(lambda: not self.root.jobs.busy)
             picker = next(w for w in editor.winfo_children() if isinstance(w, self.ctk.CTkToplevel))
             apply = next(w for w in picker.winfo_children() if isinstance(w, self.ctk.CTkButton))
@@ -298,6 +343,7 @@ class GuiJobsTests(unittest.TestCase):
         field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
         self.assertEqual(field['value'], 'Exact-á')
         self.assertEqual(field['catalog_name'], 'Lynx')
+        self.assertEqual(field['location_hierarchy']['Exact-á'], ['parent', 'Exact-á'])
         picker.scope_mode.set('Deployment')
         picker.populate_scopes()
         picker.scope.selection_set(next(iid for iid, keys in picker.scope_items.items() if deployment_key(row) in keys))
@@ -314,7 +360,9 @@ class GuiJobsTests(unittest.TestCase):
         field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
         self.assertEqual(field['locations'][encounter_key(row)], 'Exact-á')
         self.assertEqual(field['locations'][encounter_key(other)], 'Exact-á')
-        picker.destroy()
+        footer = next(w for w in picker.winfo_children() if isinstance(w, self.ctk.CTkFrame) and any(isinstance(child, self.ctk.CTkButton) and child.cget('text') == 'Cerrar' for child in w.winfo_children()))
+        next(child for child in footer.winfo_children() if isinstance(child, self.ctk.CTkButton) and child.cget('text') == 'Cerrar').invoke()
+        self.assertFalse(picker.winfo_exists())
         editor.destroy()
 
     def test_choices_stay_open_and_accept_selection(self):

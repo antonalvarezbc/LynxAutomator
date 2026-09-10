@@ -322,7 +322,7 @@ Marca Lynx pardinus: 366 observaciones, 247 fotos por asociación directa o 300
 incluyendo eventos. **Sólo copiar imágenes locales** obtiene 10 JPEG. Son datos
 sintéticos: las fotografías originales no muestran linces.
 
-Esta pestaña aún no genera Excel Wildbook ni conecta con la API de Agouti.
+Después de preparar las fotografías, **Configurar Excel** abre el editor común. La carga directa de proyectos está disponible en los orígenes API (alpha).
 
 ## Bulk Import común: Wildlife Insights y Camtrap DP
 
@@ -334,7 +334,7 @@ En Camtrap DP selecciona especies, revisa y obtén las fotos; después abre **Bu
 
 Edita columnas y valores: `fixed` usa un valor constante; los demás orígenes toman datos de cada registro. Puedes añadir, renombrar, desactivar, eliminar y ordenar columnas con ↑. Los nombres deben ser compatibles con tu Wildbook. Las columnas de fotos se generan automáticamente. Opcionalmente agrupa por evento/especie/individuo en Camtrap o por intervalo/proyecto/despliegue/especie en WI. Las fotos con varios animales se mantienen separadas.
 
-Pulsa **Validar y previsualizar** y después **Guardar Excel**. La vista muestra hasta 100 filas. Cambiar campos requiere validar otra vez. No se sube nada automáticamente.
+Pulsa **Previsualizar** y después **Guardar Excel**. La vista muestra hasta 100 filas. Cambiar campos requiere validar otra vez. No se sube nada automáticamente.
 
 ### Perfiles opcionales por localidad
 
@@ -351,7 +351,7 @@ El lector ZIP de Wildlife Insights admite `images.csv` e `images_<proyecto>.csv`
 
 El nombre de cada columna tiene un desplegable con los campos de la [documentación oficial de Wildbook](https://wildbook.docs.wildme.org/data/bulk-import-beta.html). Puedes escribir nombres personalizados y cambiar índices en familias como `Encounter.project0.*`. Las columnas `Encounter.mediaAsset0`, `1`, etc. se crean automáticamente; sus subcampos, como `.keywords`, sí pueden configurarse. El catálogo no garantiza que cada campo esté habilitado en tu servidor.
 
-**Comentarios con metadatos** lee los campos disponibles en tus datos y abre un buscador con selección múltiple. Elige destino (`Sighting.comments`, `Encounter.sightingRemarks` o `Encounter.researcherComments`), marca los metadatos y pulsa **Añadir a comentarios**. Se conserva el texto que ya habías configurado en ese campo.
+**Añadir campo → Comentarios con metadatos** lee los campos disponibles en tus datos y abre un buscador con selección múltiple. Elige destino (`Sighting.comments`, `Encounter.sightingRemarks` o `Encounter.researcherComments`), marca los metadatos y pulsa **Añadir a comentarios**. Se conserva el texto que ya habías configurado en ese campo.
 
 Por ejemplo, para Camtrap DP puedes elegir `deployment.setupBy`, `deployment.cameraID` y `deployment.cameraModel`, si existen. El editor crea una plantilla de texto y puedes ajustarla:
 
@@ -359,7 +359,7 @@ Por ejemplo, para Camtrap DP puedes elegir `deployment.setupBy`, `deployment.cam
 Cámara: {deployment.cameraID}; Modelo: {deployment.cameraModel}; Instalación: {deployment.setupBy}
 ```
 
-El origen `template` sustituye los marcadores por datos de cada registro, sin ejecutar código. Los prefijos `deployment.`, `media.` y `observation.` identifican la tabla de origen; también aparecen en el desplegable de origen tras cargar metadatos o previsualizar. Los valores distintos se conservan al agrupar y se separan con ` | `. Un campo inexistente genera un error que señala su nombre; los valores vacíos permanecen vacíos. Las plantillas se guardan dentro de los perfiles locales. Esto conserva los valores seleccionados como notas, no sustituye un archivo de los CSV originales ni conserva sus relaciones como una base de datos.
+El origen `template` sustituye los marcadores por datos de cada registro, sin ejecutar código. Los prefijos `deployment.`, `media.` y `observation.` identifican la tabla de origen; también aparecen en el desplegable de origen al abrir **Obtener valor de**, sin tener que previsualizar primero. Los valores distintos se conservan al agrupar y se separan con ` | `. Un campo inexistente genera un error que señala su nombre; los valores vacíos permanecen vacíos. Las plantillas se guardan dentro de los perfiles locales. Esto conserva los valores seleccionados como notas, no sustituye un archivo de los CSV originales ni conserva sus relaciones como una base de datos.
 
 Los perfiles nuevos enlazan el avistamiento con `Encounter.sightingID`; así `Sighting.comments` corresponde a ese avistamiento. `Encounter.sightingRemarks` es la alternativa para comentarios que persistan en encuentros clonados.
 
@@ -373,7 +373,7 @@ Activa **Agrupar fotografías** y escribe el intervalo máximo entre fotos, en s
 
 Los CSV adicionales del ZIP, como `projects.csv` y los datos de cámaras, se leen automáticamente. Se relacionan por identificadores compartidos (`project_id`, `camera_id`, `deployment_id`, `image_id` y equivalentes Camtrap). Una tabla global de una sola fila sin identificadores se puede usar como información común; no se asignan arbitrariamente tablas sin relación. La vista previa avisa si alguna tabla no encuentra correspondencia. Los documentos PDF del ZIP no se convierten automáticamente en campos.
 
-En Camtrap también están disponibles el descriptor `package.*` y los recursos CSV adicionales declarados en el paquete. Selecciona estos campos en **Comentarios con metadatos**, por ejemplo `{projects.project_name}` o `{cameras.camera_model}` si existen, o añádelos como columnas. Se conservan los valores distintos al agrupar.
+En Camtrap también están disponibles el descriptor `package.*` y los recursos CSV adicionales declarados en el paquete. Selecciona estos campos en **Añadir campo → Comentarios con metadatos**, por ejemplo `{projects.project_name}` o `{cameras.camera_model}` si existen, o añádelos como columnas. Se conservan los valores distintos al agrupar.
 
 ### Wildbook y ubicación para varias filas
 
@@ -417,10 +417,29 @@ El intervalo en segundos está junto a **Agrupar fotografías**. **Elegir locati
 
 El origen inicial es **Wildlife Insights**. **Crear desde carpeta** sustituye al nombre Carpeta. WI, DP y las fuentes API comparten selección de especies, revisión, preparación de fotos y configuración del Excel. **Fotos locales** es la opción inicial; también puedes elegir descargar. **Autorización (opcional)** sólo se configura si el servidor requiere credenciales.
 
-En **Agouti API**, introduce el ID del proyecto y el servidor (por defecto `https://api.agouti.eu`). **Cargar proyecto** obtiene `datapackage.json` y sus tablas, los guarda en la carpeta que elijas y muestra las especies. Las rutas relativas de fotos del servidor se convierten a URL para que puedan descargarse o asociarse a originales locales.
+En **Agouti API (alpha)**, introduce el ID del proyecto y el servidor (por defecto `https://api.agouti.eu`). **Cargar proyecto** obtiene `datapackage.json` y sus tablas, los guarda en la carpeta que elijas y muestra las especies. Las rutas relativas de fotos del servidor se convierten a URL para que puedan descargarse o asociarse a originales locales.
 
-En **Trapper API**, introduce la dirección de tu instancia y el ID del proyecto de clasificación. Puedes limitarlo a identificaciones aprobadas. **Cargar proyecto** solicita una exportación Camtrap DP en CSV.gz y descarga el ZIP. Se admiten la ruta actual de exportación y la ruta anterior cuando el servidor responde 404. La aplicación no publica ni marca como definitiva la exportación.
+En **Trapper API (alpha)**, introduce la dirección de tu instancia y el ID del proyecto de clasificación. Puedes limitarlo a identificaciones aprobadas. **Cargar proyecto** solicita una exportación Camtrap DP en CSV.gz y descarga el ZIP. Se admiten la ruta actual de exportación y la ruta anterior cuando el servidor responde 404. La aplicación no publica ni marca como definitiva la exportación.
 
 Ambos orígenes pueden intentar la carga sin credenciales. Si el servidor devuelve 401/403, configura la API key/Bearer de Agouti o el token Trapper y vuelve a cargar. Las credenciales sólo se envían al servidor configurado; los permisos dependen del servidor. Los datos se guardan en carpetas nuevas, y una carga fallida o cancelada limpia su carpeta incompleta. Después sigue el mismo recorrido de DP para obtener fotos y exportar Excel.
 
 [Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)
+
+
+### Exportación y selección de datos
+
+**Previsualizar** comprueba los campos y abre una ventana con hasta 100 filas; el Excel incluye todas las filas válidas. Cierra la vista para seguir editando. Cambiar campos o agrupación invalida la vista: previsualiza de nuevo antes de guardar. `MarkedIndividual.individualID` comienza desmarcado; actívalo sólo si quieres exportar identificadores individuales. Los perfiles existentes conservan su selección.
+
+**Obtener valor de** carga los metadatos disponibles al abrir el desplegable. Se siguen relaciones por IDs explícitos entre tablas, por ejemplo despliegue → cámara → modelo, cuando esos IDs existen. No se unen por parecido de nombres ni basta compartir proyecto para asignar una cámara. Los campos sin correspondencias permanecen vacíos y no se ofrecen como valores disponibles. **Añadir campo** permite añadir una columna o comentarios con metadatos; éstos incluyen seleccionar visibles y deseleccionar todos.
+
+En **Elegir locationID**, puedes agrupar por cualquiera de los metadatos disponibles y seleccionar varias filas con Ctrl/Shift o **Todas las filas**. **Asignar locationID** mantiene abierta la ventana para más asignaciones; **Cerrar** vuelve al editor. La jerarquía queda en el perfil. Al guardar, se propone `wildbook_bulk_import_<locationID-común>_AAAA-MM-DD_HH-MM-SS.xlsx`, con hora local y el ancestro común más específico de las ubicaciones realmente exportadas. Las ubicaciones de las filas no cambian. Sin una jerarquía conocida o sin ancestro común se usa `varias-ubicaciones`; si faltan IDs, `sin-ubicacion` o `ubicaciones-incompletas`. Puedes editar el nombre en el diálogo.
+
+**Agouti API (alpha)** y **Trapper API (alpha)** comparten **Autorización** en la parte superior y **Filtrar datos…** antes de **Cargar proyecto**. Alpha indica que faltan pruebas con cuentas reales. La autorización no se fuerza: el servidor comprueba los permisos. Sin filtros de despliegue se pide el proyecto completo, respetando en Trapper la casilla de identificaciones aprobadas.
+
+En el diálogo, combina año de inicio del despliegue, texto del sitio, texto del ID (distingue mayúsculas) y últimos N por inicio. Todos los criterios se intersectan; los últimos se eligen después de los demás. Año se refiere al inicio del despliegue, no al año de cada fotografía; no recorta las imágenes de un despliegue entre dos años. Fechas ausentes no cumplen año/últimos. El resumen queda visible; cambiar filtros obliga a cargar de nuevo.
+
+- Agouti: se consulta primero la tabla de despliegues y después se piden media/observaciones por cada ID elegido. Una selección vacía se detiene antes de pedir esas tablas. La API documenta filtros por deploymentID. Si el servidor ignora el filtro, se informa y no se usa una selección incorrecta. [Referencia Agouti](https://docs.agouti.eu/api/endpoints.html).
+- Trapper: ID y excluir observaciones vacías se envían al servidor. Año, sitio y últimos se aplican localmente después de recibir el ZIP; no reducen esa descarga inicial. El ZIP original se conserva completo, mientras que la selección activa limita las fotos y el Excel. Los filtros remotos requieren la ruta actual; ante 404 no se reinterpretan en la ruta antigua. [Referencia Trapper](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/).
+- Wildlife Insights: filtra en Catalogued/Identify y marca incluir esos filtros al solicitar la descarga. Carga aquí ese ZIP, elige especies, prepara las fotos y configura el Excel. Así puedes repetir el trabajo por subconjuntos disponibles en WI, sin descargar primero todo el proyecto. [Guía oficial WI](https://www.wildlifeinsights.org/get-started/download/private).
+
+Para exportaciones grandes de Trapper que excedan el tiempo de espera, genera el paquete desde su web y carga el ZIP en **Camtrap DP**. Revisa siempre despliegues y especies antes de preparar fotos. Conserva el ZIP/descriptor de origen junto con el Excel para poder reproducir la importación.

@@ -80,3 +80,20 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(location_value(row, field), 'encounter')
         field['locations'].pop(encounter_key(row))
         self.assertEqual(location_value(row, field), 'deployment')
+
+    def test_export_filename_uses_deepest_common_ancestor_and_save_time(self):
+        from datetime import datetime
+        from lynx_locations import hierarchy_paths, export_filename
+        catalog = {'locationID': [{'id': 'country', 'locationID': [{'id': 'park', 'locationID': [{'id': 'north'}, {'id': 'south'}]}]}]}
+        field = dict(name='Encounter.locationID', location_hierarchy=hierarchy_paths(catalog))
+        table = [{'Encounter.locationID': value} for value in ('north', 'south')]
+        stamp = datetime(2026, 9, 10, 14, 5, 9)
+        self.assertEqual(export_filename(table, [field], stamp), 'wildbook_bulk_import_park_2026-09-10_14-05-09.xlsx')
+        self.assertEqual([row['Encounter.locationID'] for row in table], ['north', 'south'])
+        self.assertIn('_north_', export_filename(table[:1], [field], stamp))
+        self.assertIn('_varias-ubicaciones_', export_filename(table, [], stamp))
+        self.assertIn('_sin-ubicacion_', export_filename([{}], [field], stamp))
+        self.assertIn('_ubicaciones-incompletas_', export_filename(table + [{}], [field], stamp))
+        self.assertNotIn('/', export_filename([{'Encounter.locationID': '../a/b:*'}], [], stamp))
+        duplicate = {'locationID': [{'id': 'same'}, {'id': 'same'}]}
+        self.assertEqual(hierarchy_paths(duplicate), {})

@@ -213,6 +213,28 @@ class BulkTests(unittest.TestCase):
         rows, _ = wi_rows(self.task, self.root / 'images.csv', self.root / 'deployments.csv', extra_paths=[self.root / 'projects.csv', self.root / 'cameras.csv'])
         self.assertEqual(build_table(rows, fields), table)
 
+    def test_multihop_camera_metadata_is_independent_of_table_order(self):
+        from lynx_bulk import attach_extra_tables
+        tables = {
+            'models': [{'model_id': 'model', 'camera_type': 'infrared'}],
+            'cameras': [{'camera_id': 'camera', 'model_id': 'model', 'project_id': 'p'},
+                        {'camera_id': 'other', 'model_id': 'wrong', 'project_id': 'p'},
+                        {'camera_id': 'camera', 'model_id': 'leak', 'project_id': 'other'}],
+            'links': [{'deploymentID': 'd', 'cameraID': 'camera', 'projectID': 'p'}]}
+        for ordered in (tables, dict(reversed(list(tables.items())))):
+            row = {}
+            attach_extra_tables(row, ordered, {'deployment_id': 'd', 'project_id': 'p'})
+            self.assertEqual(row['metadata']['models.camera_type'], ['infrared'])
+            self.assertEqual(row['metadata']['cameras.camera_id'], ['camera'])
+            self.assertEqual(row['metadata']['cameras.model_id'], ['model'])
+        row = {}
+        attach_extra_tables(row, {'cameras': tables['cameras']}, {'project_id': 'p'})
+        self.assertEqual(row['metadata']['cameras.camera_id'], [])
+        for cameras in (tables['cameras'], list(reversed(tables['cameras']))):
+            row = {}
+            attach_extra_tables(row, {'cameras': cameras}, {'camera_id': 'camera'})
+            self.assertEqual(row['metadata']['cameras.camera_id'], [])
+
     def test_shared_grouping_interval_and_explicit_events(self):
         from lynx_bulk import group_rows, attach_metadata
         rows = []

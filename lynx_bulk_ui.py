@@ -10,15 +10,20 @@ from lynx_wildbook_fields import FIELDS
 from lynx_windows import foreground, WorkflowPanel
 
 TEXT = {
-'es': ['Añadir campo', 'Restablecer campos', 'Validar y previsualizar', 'Guardar Excel',
+'es': ['Añadir campo', 'Restablecer campos', 'Previsualizar', 'Guardar Excel',
        'Nombre de columna', 'Obtener valor de', 'Valor o formato', 'Tipo de dato', 'Agrupar fotografías',
        'Filas: {}. Fotos omitidas: {}.', 'Selecciona la carpeta con las fotografías de Wildlife Insights'],
-'pt': ['Adicionar campo', 'Repor campos', 'Validar e pré-visualizar', 'Guardar Excel',
+'pt': ['Adicionar campo', 'Repor campos', 'Pré-visualizar', 'Guardar Excel',
        'Nome da coluna', 'Obter valor de', 'Valor ou formato', 'Tipo de dado', 'Agrupar fotografias',
        'Linhas: {}. Fotos omitidas: {}.', 'Selecione a pasta com as fotografias do Wildlife Insights'],
-'en': ['Add field', 'Reset fields', 'Validate and preview', 'Save Excel',
+'en': ['Add field', 'Reset fields', 'Preview', 'Save Excel',
        'Column name', 'Value source', 'Value or format', 'Data type', 'Group photographs',
        'Rows: {}. Omitted photos: {}.', 'Select the Wildlife Insights photographs folder']}
+
+
+class MetadataSourceBox(StableComboBox):
+    def _open_dropdown_menu(self):
+        self.editor.ensure_sources(lambda: super(MetadataSourceBox, self)._open_dropdown_menu())
 
 
 class BulkEditor(WorkflowPanel):
@@ -85,15 +90,31 @@ class BulkEditor(WorkflowPanel):
         buttons = ctk.CTkFrame(self)
         buttons.pack(fill='x', padx=10, pady=8)
         for text, command in [(self.words[0], self.add), (self.words[1], lambda: self.render(default_fields())),
-                              (self.words[2], self.preview), (self.words[3], self.save),
-                              ({'es': 'Comentarios con metadatos', 'pt': 'Comentários com metadados', 'en': 'Metadata comments'}[self.lang], self.metadata_comments)]:
+                              (self.words[2], self.preview), (self.words[3], self.save)]:
             ctk.CTkButton(buttons, text=text, command=command).pack(side='left', padx=4)
         self.status = ctk.CTkLabel(self, text='', wraplength=1050)
         self.status.pack(fill='x', padx=10)
         ctk.CTkLabel(self, text={'es': 'Obligatorios: ubicación · año (opcional en catálogo) · foto (automática) · nombre científico (género y epíteto específico).', 'pt': 'Obrigatórios: localização · ano (opcional no catálogo) · foto (automática) · nome científico (género e epíteto específico).', 'en': 'Required: location · year (optional for catalog) · photo (automatic) · scientific name (genus and specific epithet).'}[self.lang], wraplength=1050).pack(fill='x')
-        frame = ctk.CTkFrame(self)
+        self.preview_window = None
+        self.sources_group = None
+        foreground(self, self.root)
+
+    def preview_popup(self):
+        window = self.preview_window
+        if window is not None and window.winfo_exists():
+            window.destroy()
+        window = self.preview_window = ctk.CTkToplevel(self)
+        window.title(self.words[2] + ' · Bulk Import')
+        window.geometry('1100x480')
+        window.transient(self.winfo_toplevel())
+        def close_preview():
+            if not self.root.winfo_toplevel().jobs.busy:
+                window.destroy()
+        window.protocol('WM_DELETE_WINDOW', close_preview)
+        ctk.CTkLabel(window, text={'es': 'Se muestran hasta 100 filas. El Excel incluye todas las filas.', 'pt': 'Mostram-se até 100 linhas. O Excel inclui todas as linhas.', 'en': 'Showing up to 100 rows. Excel includes all rows.'}[self.lang]).pack()
+        frame = ctk.CTkFrame(window)
         frame.pack(fill='both', expand=True, padx=10, pady=8)
-        self.tree = ttk.Treeview(frame, show='headings', height=7)
+        self.tree = ttk.Treeview(frame, show='headings', height=12)
         self.tree.grid(row=0, column=0, sticky='nsew')
         x = ttk.Scrollbar(frame, orient='horizontal', command=self.tree.xview)
         y = ttk.Scrollbar(frame, orient='vertical', command=self.tree.yview)
@@ -102,7 +123,25 @@ class BulkEditor(WorkflowPanel):
         self.tree.configure(xscrollcommand=x.set, yscrollcommand=y.set)
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
-        foreground(self, self.root)
+        ctk.CTkButton(window, text={'es': 'Cerrar', 'pt': 'Fechar', 'en': 'Close'}[self.lang], command=close_preview).pack(pady=6)
+        foreground(window, self.winfo_toplevel())
+
+    def refresh_sources(self, rows, group):
+        self.source_names = sorted(set(SOURCES) | {key for row in rows for key, values in row.get('metadata', {}).items() if values})
+        self.sources_group = group
+        for _, _, source, _, _ in self.rows:
+            source.configure(values=self.source_choices())
+
+    @action
+    def ensure_sources(self, callback):
+        group = self.group_options()
+        if self.sources_group == group:
+            callback()
+            return
+        def receive(result):
+            self.refresh_sources(result[0], group)
+            callback()
+        start(self, 'Metadatos / Metadata', lambda task: self.loader(task, group), receive)
 
     def group_options(self):
         threshold = float(self.interval.get())
@@ -115,8 +154,10 @@ class BulkEditor(WorkflowPanel):
     def choose_location(self):
         from lynx_locations_ui import LocationPicker
         group = self.group_options()
-        start(self, {'es': 'Ubicaciones', 'pt': 'Localizações', 'en': 'Locations'}[self.lang], lambda task: self.loader(task, group),
-              lambda result: LocationPicker(self, result[0]))
+        def receive(result):
+            self.refresh_sources(result[0], group)
+            LocationPicker(self, result[0])
+        start(self, {'es': 'Ubicaciones', 'pt': 'Localizações', 'en': 'Locations'}[self.lang], lambda task: self.loader(task, group), receive)
 
     @action
     def use_profile(self):
@@ -141,6 +182,9 @@ class BulkEditor(WorkflowPanel):
 
     def invalidate(self, *_):
         self.snapshot = None
+        window = getattr(self, 'preview_window', None)
+        if window is not None and window.winfo_exists():
+            window.destroy()
 
     def collect(self):
         return [dict(original, name=n.get(), source=self.internal_label(s.get(), self.source_labels), value=v.get(), type=self.internal_label(t.get(), self.type_labels), enabled=bool(e.get()))
@@ -176,7 +220,8 @@ class BulkEditor(WorkflowPanel):
             name = StableComboBox(line, width=235, values=FIELDS)
             name.set(field['name'])
             name.grid(row=0, column=1, sticky='ew', padx=3)
-            source = StableComboBox(line, values=self.source_choices(), width=155, command=self.invalidate)
+            source = MetadataSourceBox(line, values=self.source_choices(), width=155, command=self.invalidate)
+            source.editor = self
             source.set(self.source_labels.get(field['source'], field['source']))
             source.grid(row=0, column=2, sticky='ew', padx=3)
             value_frame = ctk.CTkFrame(line, fg_color='transparent')
@@ -224,15 +269,28 @@ class BulkEditor(WorkflowPanel):
         del fields[index]
         self.render(fields)
 
-    def add(self):
+    def add_standard(self):
         self.render(self.collect() + [dict(name='', source='fixed', value='', type='text', enabled=True)])
+
+    def add(self):
+        window = ctk.CTkToplevel(self)
+        window.title(self.words[0])
+        window.geometry('440x170')
+        window.transient(self.winfo_toplevel())
+        def choose(command):
+            window.destroy()
+            command()
+        for label, command in [({'es': 'Campo del Excel', 'pt': 'Campo do Excel', 'en': 'Excel field'}[self.lang], self.add_standard),
+                               ({'es': 'Comentarios con metadatos', 'pt': 'Comentários com metadados', 'en': 'Metadata comments'}[self.lang], self.metadata_comments)]:
+            ctk.CTkButton(window, text=label, width=300, command=lambda cmd=command: choose(cmd)).pack(pady=14)
+        foreground(window, self.winfo_toplevel())
 
     @action
     def metadata_comments(self):
         group = self.group_options()
         def receive(result):
             rows, _ = result
-            self.source_names = sorted(set(SOURCES) | {key for row in rows for key in row.get('metadata', {})})
+            self.refresh_sources(rows, group)
             window = ctk.CTkToplevel(self)
             window.title({'es': 'Seleccionar metadatos para comentarios', 'pt': 'Selecionar metadados para comentários', 'en': 'Select metadata for comments'}[self.lang])
             window.geometry('620x540')
@@ -260,6 +318,18 @@ class BulkEditor(WorkflowPanel):
                     if search.get().casefold() in key.casefold():
                         check.pack(anchor='w', pady=3)
             search.bind('<KeyRelease>', filter_keys)
+            selection = ctk.CTkFrame(window)
+            selection.pack(fill='x', padx=10)
+            def select_visible(selected):
+                for key, check in checks.items():
+                    if not selected:
+                        check.deselect()
+                    elif search.get().casefold() in key.casefold():
+                        check.select()
+            for label, value in [({'es': 'Seleccionar visibles', 'pt': 'Selecionar visíveis', 'en': 'Select visible'}[self.lang], True),
+                                 ({'es': 'Deseleccionar todos', 'pt': 'Desmarcar todos', 'en': 'Clear selection'}[self.lang], False)]:
+                ctk.CTkButton(selection, text=label, command=lambda v=value: select_visible(v)).pack(side='left', padx=4)
+
             def apply():
                 keys = [key for key, check in checks.items() if check.get()]
                 if not keys:
@@ -291,9 +361,9 @@ class BulkEditor(WorkflowPanel):
             return table, missing, rows
         def receive(result):
             table, missing, source_rows = result
-            self.source_names = sorted(set(SOURCES) | {key for row in source_rows for key in row.get('metadata', {})})
-            for _, _, source, _, _ in self.rows:
-                source.configure(values=self.source_choices())
+            self.refresh_sources(source_rows, group)
+            self.preview_table = table
+            self.preview_popup()
             self.snapshot = (fields, group, source_rows)
             headers = list(dict.fromkeys(k for row in table for k in row))
             self.tree.delete(*self.tree.get_children())
@@ -312,7 +382,8 @@ class BulkEditor(WorkflowPanel):
     def save(self):
         if not self.snapshot or self.snapshot[:2] != (self.collect(), self.group_options()):
             raise ValueError(self.words[2])
-        path = dialogs.asksaveasfilename(parent=self, initialfile='wildbook_bulk_import.xlsx', defaultextension='.xlsx', filetypes=[('Excel', '*.xlsx')])
+        from lynx_locations import export_filename
+        path = dialogs.asksaveasfilename(parent=self, initialfile=export_filename(self.preview_table, self.snapshot[0]), defaultextension='.xlsx', filetypes=[('Excel', '*.xlsx')])
         if path:
             fields, _, rows = self.snapshot
             start(self, 'Bulk Import', lambda task: write_excel(task, build_table(rows, fields, task), path),

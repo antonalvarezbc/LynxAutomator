@@ -264,7 +264,7 @@ In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images
 
 The previous Excel template workflow remains under Advanced for compatibility. Excel is the output format. For Camtrap DP, select species and obtain photographs before opening Bulk Import; successful batches and retries are combined during the session.
 
-Edit, add, disable, delete and reorder fields with ↑. `fixed` uses a constant; other sources use record metadata. Use field names supported by your Wildbook. Optional grouping uses event/species/individual in Camtrap, or interval/project/deployment/species in WI. Multi-animal photographs remain separate. Click **Validate and preview**, then **Save Excel**. Nothing is uploaded automatically.
+Edit, add, disable, delete and reorder fields with ↑. `fixed` uses a constant; other sources use record metadata. Use field names supported by your Wildbook. Optional grouping uses event/species/individual in Camtrap, or interval/project/deployment/species in WI. Multi-animal photographs remain separate. Click **Preview**, then **Save Excel**. Nothing is uploaded automatically.
 
 ### Optional locality profiles
 
@@ -280,7 +280,7 @@ Wildlife Insights ZIP input accepts `images.csv` and `images_<project>.csv`, com
 
 Column names have an editable dropdown based on the [Wildbook documentation](https://wildbook.docs.wildme.org/data/bulk-import-beta.html), covering encounters, sightings, projects and other documented categories. Custom names and indexed families remain editable. Photo columns are automatic; subfields such as `.keywords` can be configured. Server support may vary.
 
-Use **Metadata comments** to search and select several source fields, then choose `Sighting.comments`, `Encounter.sightingRemarks` or `Encounter.researcherComments`. Existing configured text is preserved. Example using the `template` source:
+Use **Add field → Metadata comments** to search and select several source fields, then choose `Sighting.comments`, `Encounter.sightingRemarks` or `Encounter.researcherComments`. Existing configured text is preserved. Example using the `template` source:
 
 ```text
 Camera: {deployment.cameraID}; Model: {deployment.cameraModel}; Setup: {deployment.setupBy}
@@ -334,10 +334,27 @@ The interval in seconds is beside **Group photographs**. **Choose locationID** a
 
 **Wildlife Insights** is the initial source. **Create from folder** replaces Folder. WI, DP and API sources share species selection, review, photo preparation and Excel configuration. **Local photos** is selected initially; downloads are also available. Configure **Authorization (optional)** only when the server requires credentials.
 
-For **Agouti API**, enter the project ID and server (default `https://api.agouti.eu`). **Load project** downloads `datapackage.json` and its tables into a folder you choose, then displays species. Relative server photo paths become URLs for downloads or matching local originals.
+For **Agouti API (alpha)**, enter the project ID and server (default `https://api.agouti.eu`). **Load project** downloads `datapackage.json` and its tables into a folder you choose, then displays species. Relative server photo paths become URLs for downloads or matching local originals.
 
-For **Trapper API**, enter your instance URL and classification project ID. You can request approved classifications only. **Load project** requests a Camtrap DP CSV.gz export and downloads its ZIP. The current export route is used first, falling back to the legacy route on 404. The application does not publish or release the export.
+For **Trapper API (alpha)**, enter your instance URL and classification project ID. You can request approved classifications only. **Load project** requests a Camtrap DP CSV.gz export and downloads its ZIP. The current export route is used first, falling back to the legacy route on 404. The application does not publish or release the export.
 
 Both sources can attempt loading without credentials. If the server returns 401/403, configure an Agouti API key/Bearer token or Trapper token and load again. Credentials are sent only to the configured origin; the server decides permissions. Each load uses a new folder, with incomplete files removed on failure or cancellation. Continue through the shared DP photo and Excel workflow afterward.
 
 [Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)
+
+
+### Export and data filters
+
+**Preview** validates fields and opens a separate window showing up to 100 rows; Excel contains all valid rows. Changing fields or grouping requires a new preview. `MarkedIndividual.individualID` starts unchecked; existing profiles retain their selection. **Value source** loads metadata when opened, following explicit ID relationships such as deployment → camera → model. Sharing a project alone does not identify a camera. **Add field** offers a column or metadata comments, with select-visible and clear-selection controls.
+
+**Choose locationID** supports grouping by any available metadata, multiple rows with Ctrl/Shift, or all rows. Apply multiple assignments, then **Close**. Profiles retain the hierarchy. The suggested filename includes the deepest common ancestor ID and local date/time (`YYYY-MM-DD_HH-MM-SS`); individual row locations stay unchanged. Unknown hierarchy/no common ancestor uses `varias-ubicaciones`; absent IDs use `sin-ubicacion`/`ubicaciones-incompletas`. The filename remains editable.
+
+**Agouti API (alpha)** and **Trapper API (alpha)** have **Authorization** at the top and **Filter data…** before loading. Alpha means real-account testing remains outstanding. Credentials are not forced; servers enforce permissions. Without deployment filters, loading requests the whole project, respecting Trapper's approved-classifications setting.
+
+Combine deployment start year, site substring, case-sensitive deployment ID substring and latest N by start date. Criteria intersect; latest is applied last. Year refers to deployment start, not each photograph, and does not trim photos from deployments spanning years. Missing dates do not satisfy year/latest. Changing filters requires reloading.
+
+- Agouti reads deployments first, then requests media/observations for each selected deploymentID. Empty selections stop before those requests. [Agouti API](https://docs.agouti.eu/api/endpoints.html).
+- Trapper sends deployment ID and exclude-blank filters to the server; year/site/latest apply after downloading the ZIP and do not reduce that initial transfer. The original ZIP stays complete; the active subset limits photographs and Excel. Remote filters are not silently reinterpreted on the legacy route. [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/).
+- WI: filter in Catalogued/Identify and include those filters when requesting a download. Load that ZIP, select species, prepare photographs and configure Excel. [WI guide](https://www.wildlifeinsights.org/get-started/download/private).
+
+If Trapper export exceeds the timeout, generate its package on the website and load the ZIP through **Camtrap DP**. Keep the original data alongside Excel to reproduce the import.

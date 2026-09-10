@@ -175,3 +175,5 @@ Photo acquisition is integrated into the first **Bulk Import** tab for Wildlife 
 
 
 Bulk Import starts with **Wildlife Insights** and also offers **Create from folder**, **Catalog**, **Camtrap DP**, **Agouti API** and **Trapper API**. The API sources load project exports into the same species → photographs → Excel workflow. Authorization is optional in the interface; private projects may require server-issued credentials. See the manuals for server and project ID inputs.
+
+El editor Bulk Import propone nombres Excel con ubicación común y fecha/hora, ofrece **Previsualizar** en ventana y carga metadatos relacionados al elegir **Obtener valor de**. `MarkedIndividual.individualID` comienza desmarcado. **Agouti API (alpha)** y **Trapper API (alpha)** incluyen autorización y filtros antes de cargar; el diálogo distingue filtros remotos y locales. Consulte las limitaciones y el flujo con ZIP filtrado en los [manuales](docs/manual.md#exportación-y-selección-de-datos).

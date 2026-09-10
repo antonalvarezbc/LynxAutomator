@@ -4,7 +4,7 @@ import customtkinter as ctk
 from tkinter import ttk
 import lynx_dialogs as dialogs
 from lynx_ui_jobs import action, start
-from lynx_locations import CATALOGS, read_catalog, flatten, deployment_key, encounter_key, github_branches, branch_url
+from lynx_locations import CATALOGS, read_catalog, flatten, deployment_key, encounter_key, github_branches, branch_url, hierarchy_paths
 from lynx_bulk import settings
 from lynx_windows import foreground
 
@@ -23,7 +23,7 @@ class LocationPicker(ctk.CTkToplevel):
         self.source_rows = rows
         scopes_frame = ctk.CTkFrame(self)
         scopes_frame.pack(fill='x', padx=10)
-        location_fields = sorted({key for row in rows for key in row.get('metadata', {}) if any(word in key.lower() for word in ['location', 'locality', 'placename', 'country', 'site'])})
+        location_fields = sorted({key for row in rows for key, values in row.get('metadata', {}).items() if values})
         self.scope_labels = dict(zip(['Location / verbatimLocality', 'Coordinates', 'Deployment', 'Encounter'], {'es': ['Localidad de origen', 'Coordenadas', 'Despliegue de cámara', 'Encuentro'], 'pt': ['Localidade de origem', 'Coordenadas', 'Instalação da câmara', 'Encontro'], 'en': ['Source locality', 'Coordinates', 'Camera deployment', 'Encounter']}[self.lang]))
         self.scope_mode = StableOptionMenu(scopes_frame, values=list(self.scope_labels.values())[:2] + location_fields + list(self.scope_labels.values())[2:], command=lambda _: self.populate_scopes())
         self.scope_mode.pack(anchor='w', pady=4)
@@ -76,7 +76,10 @@ class LocationPicker(ctk.CTkToplevel):
         self.tree.pack(fill='both', expand=True)
         self.info = ctk.CTkLabel(self, text='', wraplength=850)
         self.info.pack(padx=10, pady=5)
-        ctk.CTkButton(self, text=labels[4], command=self.apply).pack(pady=8)
+        footer = ctk.CTkFrame(self)
+        footer.pack(pady=8)
+        ctk.CTkButton(footer, text=labels[4], command=self.apply).pack(side='left', padx=5)
+        ctk.CTkButton(footer, text={'es': 'Cerrar', 'pt': 'Fechar', 'en': 'Close'}[self.lang], command=self.close).pack(side='left', padx=5)
         current = next((f for f in editor.collect() if f['name'] == 'Encounter.locationID'), {})
         toggle.pack(anchor='w', padx=10, pady=4)
         self.book.set(current.get('catalog_name', 'Lynx'))
@@ -187,7 +190,7 @@ class LocationPicker(ctk.CTkToplevel):
         if previous and previous != self.data['source']:
             field['locations'] = {}
             field['value'] = ''
-        field.update(enabled=True, type='text', catalog_name=self.book.get(), catalog_source=self.data['source'])
+        field.update(enabled=True, type='text', catalog_name=self.book.get(), catalog_source=self.data['source'], location_hierarchy=hierarchy_paths(self.data['catalog']))
         scopes = list(dict.fromkeys(key for iid in self.scope.selection() for key in self.scope_items[iid]))
         if not scopes:
             raise ValueError({'es': 'Selecciona las filas a las que quieres asignar el locationID.', 'pt': 'Selecione as linhas às quais pretende atribuir o locationID.', 'en': 'Select the rows to assign this locationID to.'}[self.lang])

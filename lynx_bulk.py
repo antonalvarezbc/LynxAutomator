@@ -31,7 +31,7 @@ def default_fields():
     pairs += [('Encounter.sightingID', 'eventID'), ('MarkedIndividual.individualID', 'individualID')]
     integers = {'year', 'month', 'day', 'hour', 'minutes'}
     fields = [dict(name=n, source=s, value='', type='integer' if s in integers else
-                   'decimal' if s in {'latitude', 'longitude'} else 'text', enabled=True) for n, s in pairs]
+                   'decimal' if s in {'latitude', 'longitude'} else 'text', enabled=n != 'MarkedIndividual.individualID') for n, s in pairs]
     fields += [dict(name=n, source='fixed', value='', type='text', enabled=True) for n in
                ['Encounter.locationID', 'Encounter.country', 'Encounter.submitterID']]
     return fields
@@ -273,20 +273,47 @@ def read_extra_tables(images_path, extra_paths=()):
 
 
 def attach_extra_tables(row, tables, context):
-    # Join only on explicit identifiers. Never copy unrelated rows into an encounter.
-    keys = ['image_id', 'mediaID', 'deployment_id', 'deploymentID', 'camera_id', 'cameraID', 'project_id', 'projectID']
+    # Follow explicit foreign keys in either naming convention. Never join on names.
+    def ids(record):
+        return {re.sub(r'[^a-z0-9]', '', key.lower()): str(value)
+                for key, value in record.items()
+                if value not in ('', None) and (key.endswith('_id') or key.endswith('ID'))}
+    known = {key: {value} for key, value in ids(context).items()}
+    matched = {name: [] for name in tables}
+    seen = set()
+    for _ in range(len(tables) + 1):
+        candidates = []
+        for name, records in tables.items():
+            for index, record in enumerate(records):
+                if (name, index) in seen:
+                    continue
+                identifiers = ids(record)
+                common = identifiers.keys() & known.keys()
+                # Project is a scope, not proof that a camera/deployment belongs to this row.
+                useful = common - {'projectid', 'organizationid'}
+                scoped = common and not (identifiers.keys() - {'projectid', 'organizationid'})
+                global_row = not identifiers and len(records) == 1
+                if not global_row and not ((useful or scoped) and all(identifiers[k] in known[k] for k in common)):
+                    continue
+                candidates.append((name, index, record, identifiers))
+        # Resolve each hop together: table/row order must not pick an arbitrary project.
+        ambiguous = set()
+        for scope in ('projectid', 'organizationid'):
+            values = {identifiers[scope] for _, _, _, identifiers in candidates if scope in identifiers}
+            if scope not in known and len(values) > 1:
+                ambiguous.add(scope)
+        accepted = [candidate for candidate in candidates if not ambiguous.intersection(candidate[3])]
+        if not accepted:
+            break
+        for name, index, record, identifiers in accepted:
+            seen.add((name, index))
+            matched[name].append(record)
+            for key, value in identifiers.items():
+                known.setdefault(key, set()).add(value)
     for name, records in tables.items():
-        matched = []
-        for record in records:
-            common = [k for k in keys if record.get(k) and context.get(k)]
-            if common and all(record[k] == context[k] for k in common):
-                matched.append(record)
-            elif not any(record.get(k) for k in keys) and len(records) == 1:
-                matched.append(record)
-        if records and not matched:
+        if records and not matched[name]:
             row.setdefault('_unmatched_tables', []).append(name)
-        attach_metadata(row, **{name: matched})
-        # Expose headers even when this encounter has no matching record.
+        attach_metadata(row, **{name: matched[name]})
         for record in records[:1]:
             for key in record:
                 row.setdefault('metadata', {}).setdefault(name + '.' + key, [])

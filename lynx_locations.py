@@ -119,3 +119,45 @@ def github_branches(task, cache_dir, refresh=False):
 def encounter_key(row):
     value = [row.get('eventID'), row.get('species'), row.get('individualID'), sorted(row.get('media', []))]
     return 'encounter:' + hashlib.sha256(json.dumps(value).encode()).hexdigest()
+
+
+def hierarchy_paths(catalog):
+    """Exact ID paths for offline common-ancestor lookup; ambiguous IDs are omitted."""
+    flatten(catalog)
+    paths, duplicate = {}, set()
+    def visit(nodes, parents):
+        for node in nodes:
+            route = parents + [node['id']]
+            if node['id'] in paths:
+                duplicate.add(node['id'])
+            paths[node['id']] = route
+            visit(node.get('locationID', []), route)
+    visit(catalog['locationID'], [])
+    return {key: value for key, value in paths.items() if not duplicate.intersection(value)}
+
+
+def export_filename(table, fields, now=None):
+    """Suggest a portable name without changing any exported locationID."""
+    import re
+    field = next((f for f in fields if f['name'] == 'Encounter.locationID' and f.get('enabled', True)), {})
+    values = {str(row.get('Encounter.locationID', '') or '').strip() for row in table}
+    paths = field.get('location_hierarchy', {})
+    location = 'sin-ubicacion'
+    if values and '' not in values:
+        if len(values) == 1:
+            location = next(iter(values))
+        else:
+            routes = [paths.get(value, []) for value in values]
+            common = []
+            for level in zip(*routes):
+                if len(set(level)) != 1:
+                    break
+                common.append(level[0])
+            location = common[-1] if common else 'varias-ubicaciones'
+    elif any(values):
+        location = 'ubicaciones-incompletas'
+    location = re.sub(r'[^\w.-]+', '_', location, flags=re.UNICODE).strip('._')[:100] or 'ubicacion'
+    while len(location.encode('utf-8')) > 150:
+        location = location[:-1]
+    stamp = (now or datetime.now()).strftime('%Y-%m-%d_%H-%M-%S')
+    return f'wildbook_bulk_import_{location}_{stamp}.xlsx'

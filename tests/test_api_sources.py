@@ -116,3 +116,109 @@ class APISourceTests(unittest.TestCase):
         with self.assertRaises(TaskCancelled):
             fetch_api_package(self.task, 'Agouti API', 'https://api.agouti.eu', 'project-1', self.output)
         self.assertEqual(list(self.output.iterdir()), [])
+
+    def two_deployments(self):
+        import csv
+        from copy import deepcopy
+        for name in ('deployments', 'media', 'observations'):
+            path = self.source / (name + '.csv')
+            with path.open() as stream:
+                rows = list(csv.DictReader(stream))
+            if name == 'deployments':
+                rows[0].update(deploymentStart='2024-01-01T00:00:00Z', locationName='North')
+                rows.append(dict(deploymentID='d2', deploymentStart='2025-05-01T00:00:00Z', locationName='South'))
+            else:
+                for row in deepcopy(rows):
+                    row['deploymentID'] = 'd2'
+                    for key in ('mediaID', 'observationID', 'eventID'):
+                        if row.get(key):
+                            row[key] += '-d2'
+                    rows.append(row)
+            with path.open('w') as stream:
+                writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
+
+    def filtered_agouti(self, url, auth=None, timeout=20):
+        import csv
+        self.calls.append((url, auth))
+        path = self.source / urlsplit(url).path.rsplit('/', 1)[-1]
+        ids = parse_qs(urlsplit(url).query).get('deploymentID')
+        if not ids:
+            return io.BytesIO(path.read_bytes())
+        with path.open() as stream:
+            reader = csv.DictReader(stream)
+            fields = reader.fieldnames
+            rows = [row for row in reader if row['deploymentID'] in ids]
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+        return io.BytesIO(output.getvalue().encode())
+
+    def test_agouti_selects_deployments_before_requesting_other_tables(self):
+        self.two_deployments()
+        with patch('lynx_api_sources.open_download', side_effect=self.filtered_agouti):
+            package = fetch_api_package(self.task, 'Agouti API', 'https://api.agouti.eu', 'p', self.output,
+                                        filters={'year': '2025', 'site': 'south', 'latest': '1'})
+        self.assertEqual([row['deploymentID'] for row in package.deployments], ['d2'])
+        self.assertTrue(all(row['deploymentID'] == 'd2' for row in package.media + package.observations))
+        self.assertEqual(len(self.calls), 4)
+        self.assertTrue(self.calls[1][0].endswith('/deployments.csv'))
+        for url, _ in self.calls[2:]:
+            self.assertEqual(parse_qs(urlsplit(url).query)['deploymentID'], ['d2'])
+        reopened = read_package(self.task, package.path)
+        self.assertEqual(reopened.media, package.media)
+        self.assertEqual(reopened.deployments, package.deployments)
+
+    def test_empty_agouti_selection_stops_before_media_and_cleans_output(self):
+        self.two_deployments()
+        with patch('lynx_api_sources.open_download', side_effect=self.filtered_agouti):
+            with self.assertRaisesRegex(ValueError, 'Ningún despliegue'):
+                fetch_api_package(self.task, 'Agouti API', 'https://api.agouti.eu', 'p', self.output, filters={'year': '2020'})
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_agouti_rejects_server_ignoring_deployment_filter(self):
+        self.two_deployments()
+        with patch('lynx_api_sources.open_download', side_effect=self.agouti):
+            with self.assertRaisesRegex(ValueError, 'no respetó'):
+                fetch_api_package(self.task, 'Agouti API', 'https://api.agouti.eu', 'p', self.output, filters={'year': '2025'})
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_trapper_remote_filters_and_explicit_local_refinement(self):
+        self.two_deployments()
+        archive = self.archive()
+        def response(url, auth=None, timeout=20):
+            self.calls.append(url)
+            if 'api/package' in url:
+                return io.BytesIO(b'{"data":{"package":"/package.zip"}}')
+            return io.BytesIO(archive)
+        with patch('lynx_api_sources.open_download', side_effect=response):
+            package = fetch_api_package(self.task, 'Trapper API', 'https://trapper.example', 'p', self.output,
+                                        filters={'deployment': 'd', 'year': '2025', 'exclude_blank': True})
+        query = parse_qs(urlsplit(self.calls[0]).query)
+        self.assertEqual(query['filter_deployments'], ['d'])
+        self.assertEqual(query['exclude_blank'], ['true'])
+        self.assertNotIn('year', query)
+        self.assertEqual([row['deploymentID'] for row in package.deployments], ['d2'])
+        self.assertTrue(all(row['deploymentID'] == 'd2' for row in package.media + package.observations))
+        self.assertEqual(len(read_package(self.task, package.path).deployments), 2)
+
+    def test_trapper_does_not_silently_change_legacy_filter_semantics(self):
+        with patch('lynx_api_sources.open_download', side_effect=HTTPError('https://example', 404, 'missing', {}, None)) as request:
+            with self.assertRaisesRegex(ValueError, 'ruta antigua'):
+                fetch_api_package(self.task, 'Trapper API', 'https://trapper.example', 'p', self.output, filters={'deployment': 'cam'})
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_filter_validation_missing_dates_and_latest_order(self):
+        from lynx_api_filters import selected_deployments, normalize_filters
+        rows = [dict(deploymentID='old', deploymentStart='2023-01-01'),
+                dict(deploymentID='unknown'), dict(deploymentID='new', deploymentStart='2025-01-01T12:00:00Z')]
+        self.assertEqual(selected_deployments(rows, {'latest': '1'}), [rows[-1]])
+        with self.assertRaisesRegex(ValueError, 'Ningún despliegue'):
+            selected_deployments([rows[1]], {'year': '2025'})
+        for filters in ({'year': 'yesterday'}, {'latest': '0'}, {'year': '10000'}):
+            with self.assertRaises(ValueError):
+                normalize_filters(filters)

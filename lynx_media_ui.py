@@ -65,8 +65,11 @@ class MediaImportTab(ctk.CTkFrame):
         for text, value in zip(modes[:2], (1, 0)):
             ctk.CTkRadioButton(acquisition, text=text, variable=self.local, value=value,
                                command=self.acquisition_changed).pack(side='left', padx=8)
-        ctk.CTkButton(acquisition, text=modes[2], command=self.access).pack(side='left', padx=8)
-        ctk.CTkLabel(self, text={'es': 'Puedes continuar sin configurar autorización. Añádela sólo si el servidor la solicita.', 'pt': 'Pode continuar sem configurar autorização. Adicione-a apenas se o servidor a solicitar.', 'en': 'You can continue without configuring authorization. Add it only if the server requires it.'}[lang], wraplength=950).pack(fill='x', padx=10)
+        api = bool(getattr(self, 'provider', ''))
+        self.auth_button = ctk.CTkButton(self.source_controls if api else acquisition, text=modes[2].split(' (')[0] if api else modes[2], command=self.access)
+        self.auth_button.pack(side='left', padx=8, **({'before': self.load_button} if api else {}))
+        if not api:
+            ctk.CTkLabel(self, text={'es': 'Puedes continuar sin configurar autorización. Añádela sólo si el servidor la solicita.', 'pt': 'Pode continuar sem configurar autorização. Adicione-a apenas se o servidor a solicitar.', 'en': 'You can continue without configuring authorization. Add it only if the server requires it.'}[lang], wraplength=950).pack(fill='x', padx=10)
         self.preview = ctk.CTkTextbox(self, height=120)
         self.preview.pack(fill='x', padx=10)
         self.preview.configure(state='disabled')

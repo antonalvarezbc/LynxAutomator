@@ -16,7 +16,9 @@ class DownloadAccess(ctk.CTkToplevel):
     def __init__(self, owner, google=False):
         super().__init__(owner.root)
         self.root, self.lang, self.owner = owner.root, owner.lang, owner
-        self.words = WORDS[self.lang]
+        self.words = list(WORDS[self.lang])
+        if getattr(owner, 'provider', ''):
+            self.words[0] = self.words[0].split(' (')[0]
         self.title(self.words[0])
         self.geometry('680x480')
         self.protocol('WM_DELETE_WINDOW', self.close)
