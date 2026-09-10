@@ -310,7 +310,7 @@ transferidos sem credenciais adicionais. Repetir falhadas cria um novo lote.
 Cancelar preserva os ficheiros completos e limpa os parciais; uma leitura HTTP em
 curso pode esperar até ao seu limite de 20 segundos.
 
-O exemplo sintético tem 366 observações de lince, 247 imagens diretamente
+O exemplo sintético local opcional (excluído do Git) tem 366 observações de lince, 247 imagens diretamente
 associadas, 300 incluindo eventos e 10 JPEG locais. As fotos não mostram linces.
 A validação é estrutural básica, não completa. Esta aba ainda não exporta Excel
 Wildbook nem se liga diretamente à API de Agouti.

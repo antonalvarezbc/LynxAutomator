@@ -276,7 +276,7 @@ HTTP URLs are downloaded without additional credentials. Retry failed downloads
 creates a new batch. Cancellation preserves completed files and cleans partials;
 a pending HTTP read may take up to its 20-second timeout.
 
-The synthetic lynx fixture has 366 observations, 247 directly associated images,
+The optional local synthetic lynx fixture (excluded from Git) has 366 observations, 247 directly associated images,
 300 including events, and 10 local JPEGs. Its images are not actual lynxes.
 The reader performs basic structural checks, not full schema validation. Wildbook
 Excel export and direct Agouti API access are not yet available in this tab.

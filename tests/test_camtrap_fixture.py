@@ -6,6 +6,7 @@ import unittest
 FIXTURE = Path(__file__).parent / 'fixtures' / 'camtrap_dp_lynx_synthetic'
 
 
+@unittest.skipUnless(FIXTURE.is_dir(), 'Optional local paper example, excluded from Git')
 class CamtrapFixtureTests(unittest.TestCase):
     def test_synthetic_taxa_preserve_negative_cases_and_references(self):
         def read(name):

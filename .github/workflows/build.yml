@@ -1,9 +1,18 @@
 name: Build desktop apps
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Sistema que se desea compilar
+        type: choice
+        default: ubuntu-22.04
+        options:
+          - ubuntu-22.04
+          - windows-2022
+          - macos-15
+          - macos-15-intel
+          - all
 
 permissions:
   contents: read
@@ -13,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-15, macos-15-intel]
+        os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-22.04","windows-2022","macos-15","macos-15-intel"]' || format('["{0}"]', inputs.platform)) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -54,60 +63,3 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
-
-  prerelease:
-    name: Publish pre-release
-    needs: build
-    if: >-
-      needs.build.result == 'success' &&
-      github.ref_type == 'branch' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: LynxAutomator-*
-          path: release-downloads
-      - name: Validate and prepare release assets
-        run: python scripts/prepare_release.py release-downloads release-assets
-      - name: Publish tested distributions
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          BUILD_SHA: ${{ github.sha }}
-          BUILD_BRANCH: ${{ github.ref_name }}
-          RELEASE_TAG: prerelease-${{ github.run_id }}-${{ github.run_attempt }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > release-notes.md <<EOF
-          Versión de prueba de LynxAutomator.
-
-          Commit: ${BUILD_SHA}
-          Rama: ${BUILD_BRANCH}
-          Compilaciones y pruebas: ${RUN_URL}
-
-          Descarga el paquete correspondiente a tu sistema:
-          - Windows: LynxAutomator-Windows-AMD64.zip
-          - Ubuntu/Linux: LynxAutomator-Linux-x86_64.tar.gz
-          - macOS Apple Silicon: LynxAutomator-Darwin-arm64.zip
-          - macOS Intel: LynxAutomator-Darwin-x86_64.zip
-
-          Extrae el paquete completo; conserva las carpetas internas junto al ejecutable.
-          Se adjuntan manuales en español, inglés y portugués, dependencias y SHA256.
-          Los ejecutables no están firmados ni notarizados.
-          La lectura automática de fechas de vídeo requiere ffprobe (FFmpeg) en PATH;
-          sin él se pueden confirmar las fechas manualmente.
-          EOF
-          gh release create "$RELEASE_TAG" release-assets/* \
-            --target "$BUILD_SHA" --title "LynxAutomator ${RELEASE_TAG}" \
-            --notes-file release-notes.md --prerelease --draft --latest=false
-          gh release edit "$RELEASE_TAG" --draft=false --latest=false

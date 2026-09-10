@@ -353,7 +353,8 @@ El progreso y Cancelar están en el panel común. Cancelar conserva los archivos
 completos y elimina la descarga parcial; no interrumpe una lectura HTTP en curso
 hasta que responda o alcance su tiempo de espera (20 segundos).
 
-Ejemplo incluido: `tests/fixtures/camtrap_dp_lynx_synthetic/datapackage.json`.
+Ejemplo local opcional (ignorado por Git):
+`tests/fixtures/camtrap_dp_lynx_synthetic/datapackage.json`.
 Marca Lynx pardinus: 366 observaciones, 247 fotos por asociación directa o 300
 incluyendo eventos. **Sólo copiar imágenes locales** obtiene 10 JPEG. Son datos
 sintéticos: las fotografías originales no muestran linces.

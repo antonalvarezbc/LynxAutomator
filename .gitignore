@@ -5,3 +5,15 @@ build/
 dist/
 artifacts/
 *.spec
+
+# Datos locales de fototrampeo y registro de trabajo
+WORKLOG.local.md
+media/
+fotos/
+photos/
+lynx_synthetics/
+lynx_synthetics*/
+tests/fixtures/camtrap_dp_lynx_synthetic/
+
+.venv-ubuntu/
+.local-python/

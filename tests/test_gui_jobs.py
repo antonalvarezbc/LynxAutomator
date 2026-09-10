@@ -44,18 +44,21 @@ class GuiJobsTests(unittest.TestCase):
         from lynx_tasks import TaskContext
         import tempfile
         tab = CamtrapTab(self.root, lang='es')
-        fixture = Path(__file__).parent / 'fixtures' / 'camtrap_dp_lynx_synthetic' / 'datapackage.json'
+        from camtrap_factory import make_package
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        fixture = make_package(temporary.name) / 'datapackage.json'
         tab.receive(read_package(TaskContext(), fixture))
         tab.checks['Lynx pardinus'].select()
         tab.review()
         self.wait_until(lambda: not self.root.jobs.busy)
-        self.assertEqual(len(tab.records), 247)
+        self.assertEqual(len(tab.records), 2)
         self.assertEqual(tab.download.cget('state'), 'normal')
         tab.local.select()
         with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', return_value=folder):
             tab.obtain()
             self.wait_until(lambda: not self.root.jobs.busy)
-            self.assertEqual(len(list(Path(folder).rglob('*.jpg'))), 10)
+            self.assertEqual(len(list(Path(folder).rglob('*.jpg'))), 1)
         tab.select_all(False)
         self.assertIsNone(tab.records)
         self.assertEqual(tab.download.cget('state'), 'disabled')
