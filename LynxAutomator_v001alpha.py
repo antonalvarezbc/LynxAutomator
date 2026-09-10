@@ -148,7 +148,6 @@ class BaseApp:
         # Crear marcos para cada pestaña principal
         self.about_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
-        self.wildlife_insights_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.iberian_lynx_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.camtrap_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)
         self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # Nueva pestaña
@@ -158,7 +157,6 @@ class BaseApp:
         self.bulk_frame = ctk.CTkFrame(self.main_tabs)
         self.main_tabs.add(self.bulk_frame, text="Bulk Import")
         self.bulk_app = BulkWorkflow(self.bulk_frame, lang)
-        self.main_tabs.add(self.wildlife_insights_frame, text=tr["wildlife_insights"])
         self.main_tabs.add(self.camtrap_frame, text=tr["functionalities"])
         self.main_tabs.add(self.about_frame, text=tr["about"])
 
@@ -202,12 +200,6 @@ class BaseApp:
         self.wiwbe_folder_tab = self.wildbook_tabs.add(tr["wiwbe_folder"])
         self.wbcatalog_tab = self.wildbook_tabs.add(tr["wiwbe_catalog"])
 
-        # Wildlife Insights TabView
-        self.wildlife_insights_tabs = ctk.CTkTabview(self.wildlife_insights_frame, width=600, height=400)
-        self.wildlife_insights_tabs.pack(pady=20, padx=20, fill='both', expand=True)
-        
-        self.wi_downloader_tab = self.wildlife_insights_tabs.add(tr["wi_downloader"])
-
         self.iberian_lynx_frame = self.camtrap_tabs.add(tr["iberian_lynx"])
 
         # Iberian Lynx TabView
@@ -224,7 +216,6 @@ class BaseApp:
 
         # Integrar las clases en la BaseApp
         self.photo_date_app = WBFolderApp(self.wiwbe_folder_tab, lang=lang)
-        self.gcs_downloader_app = GCSDownloaderAndRenamer(self.wi_downloader_tab, lang=lang)
         self.excel_combiner_app = ExcelCombinerApp(self.excel_combiner_tab, lang=lang)
         self.data_changer_app = DateChangerApp(self.date_changer_tab, lang=lang)
         self.frame_extractor_app = FrameExtractorApp(self.video_frame_extractor_tab, lang=lang)

@@ -101,37 +101,13 @@ Se o identificador existir apenas no nome da pasta, pode preparar cópias com o
 renomeador. Conserve o espaço que separa o indivíduo do resto do nome; substituí-lo
 por um sublinhado altera a interpretação feita pelo catálogo.
 
-## 5. Wildlife Insights → Descarga WI
+## 5. Bulk Import → Wildlife Insights: fotos locais ou descargas
 
-### Preparar os dados e o acesso
+As descargas estão integradas em **Bulk Import**, a primeira aba. Carregue o ZIP WI, selecione espécies e reveja a seleção. Escolha **Fotos locais** para pesquisar imagens numa pasta e subpastas, ou **Descarregar fotografias** para obter referências `gs://` com gsutil. Clique em **Preparar fotografias** e depois em **Configurar Excel**, quando houver fotos verificadas.
 
-Peça no Wildlife Insights uma exportação com os filtros pretendidos, extraia o
-pacote recebido e localize `images.csv`. Siga o guia de utilização e citação que
-acompanha essa exportação para obter acesso às imagens. Consulte a
-[documentação oficial de descargas privadas](https://www.wildlifeinsights.org/get-started/download/private).
+Instale Google Cloud CLI com gsutil. Use **Autorização (opcional) → Iniciar sessão com Google** e conclua o acesso no navegador com uma conta autorizada. Google Cloud CLI gere e conserva as credenciais; LynxAutomator não pede a sua palavra-passe Google. Iniciar sessão não concede novas permissões no bucket. Para gsutil independente ou configurações personalizadas, siga as instruções fornecidas na exportação WI.
 
-Instale o Google Cloud CLI com `gsutil` disponível no PATH e configure uma conta
-autorizada de acordo com o guia. `gsutil version` permite verificar se a ferramenta
-está disponível; instalá-la não concede, por si só, acesso ao bucket.
-
-### Descarregar imagens
-
-1. Selecione um CSV com as colunas `location` e `deployment_id`, sem valores vazios.
-2. Escolha se pretende separar as imagens em pastas por instalação (`deployment`).
-3. Clique em descarregar e escolha o destino.
-4. No fim, reveja as quantidades concluídas, ignoradas e falhadas.
-
-As localizações têm de começar por `gs://` e apontar para JPEG (`.jpg` ou `.jpeg`).
-A aplicação verifica o conteúdo JPEG, substitui caracteres não suportados nos nomes
-e grava com extensão `.JPG`. Não converte outros formatos de imagem para JPEG.
-
-Os ficheiros existentes são ignorados, sem nova validação do conteúdo. As novas
-transferências usam pastas temporárias para não confundir descargas incompletas
-com imagens terminadas. Se duas localizações diferentes produzirem o mesmo nome
-de saída numa execução, o conflito é indicado.
-
-Use **Cancelar**, na barra inferior, para parar depois da transferência em curso.
-Espere pelo fim antes de iniciar outra descarga.
+O conteúdo é verificado e as extensões preservadas. Cada descarga cria um novo lote com `manifest.csv`, sem sobrescrever fotos existentes. Pode repetir as falhas. Cancelar espera pela transferência atual (máximo cinco minutos) e conserva os ficheiros concluídos.
 
 ## 6. Wildlife Insights–Wildbook → CSVs WI para BIWbE
 
@@ -289,7 +265,7 @@ do conjunto de dados. Consulte a [revisão de lógica](logic-review.md).
 
 ## Fotografias Camtrap DP
 
-Abra **Camtrap DP**, carregue `datapackage.json` ou ZIP local (1.x, CSV/CSV.gz) e
+Abra **Bulk Import → Camtrap DP**, carregue `datapackage.json` ou ZIP local (1.x, CSV/CSV.gz) e
 marque as espécies usando a pesquisa e as caixas de seleção. Não é necessário
 registar um Wildbook. Reveja o número de imagens únicas antes de escolher o destino.
 As imagens associadas por evento são incluídas por predefinição, usando a instalação
@@ -297,8 +273,8 @@ e o intervalo temporal, mesmo vazias, para deteção no Wildbook. Isso não sign
 que todos os animais sejam o mesmo indivíduo. O modo local não acede à Internet.
 
 A pasta `camtrap-…` contém as imagens verificadas e `manifest.csv` com IDs, espécies,
-nomes e estados. Imagens privadas e vídeos são omitidos. URLs HTTP acessíveis são
-transferidos sem credenciais adicionais. Repetir falhadas cria um novo lote.
+nomes e estados. Vídeos são omitidos. Fotos privadas podem exigir credenciais
+configuradas em **Autorização (opcional)**. Repetir falhadas cria um novo lote.
 Cancelar preserva os ficheiros completos e limpa os parciais; uma leitura HTTP em
 curso pode esperar até ao seu limite de 20 segundos.
 
@@ -309,11 +285,11 @@ Wildbook nem se liga diretamente à API de Agouti.
 
 ## Bulk Import comum: Wildlife Insights e Camtrap DP
 
-Em **Bulk Import → Wildlife Insights**, carregue apenas o ZIP exportado, com `images.csv` ou `images_<projeto>.csv` e um único `deployments.csv` na mesma pasta do ZIP. As espécies são lidas automaticamente. Selecione as espécies e clique em **Rever seleção**, depois em **Obter fotografias selecionadas**. Pode descarregar referências `gs://` com gsutil instalado ou ativar **Usar fotografias de uma pasta local**, que também pesquisa subpastas. Sem gsutil, a opção local está inicialmente selecionada. Os nomes devem corresponder a `location`; nomes ambíguos e imagens inválidas são indicados como falhas. As descargas usam uma nova pasta com `manifest.csv`, preservando os ficheiros existentes. Pode repetir as falhas. **Configurar Excel** fica disponível quando existem fotos verificadas; a pré-visualização informa as pendentes e exporta apenas as disponíveis. Não é necessário um modelo Excel.
+Em **Bulk Import → Wildlife Insights**, carregue apenas o ZIP exportado, com `images.csv` ou `images_<projeto>.csv` e um único `deployments.csv` na mesma pasta do ZIP. As espécies são lidas automaticamente. Selecione as espécies e clique em **Rever seleção**, depois em **Preparar fotografias**. Pode descarregar referências `gs://` com gsutil instalado ou ativar **Fotos locais**, que também pesquisa subpastas. Sem gsutil, a opção local está inicialmente selecionada. Os nomes devem corresponder a `location`; nomes ambíguos e imagens inválidas são indicados como falhas. As descargas usam uma nova pasta com `manifest.csv`, preservando os ficheiros existentes. Pode repetir as falhas. **Configurar Excel** fica disponível quando existem fotos verificadas; a pré-visualização informa as pendentes e exporta apenas as disponíveis. Não é necessário um modelo Excel.
 
 O modelo Excel antigo continua nas opções avançadas, por compatibilidade. Excel é o formato de saída. No Camtrap DP, selecione espécies e obtenha as fotos antes de abrir Bulk Import; os lotes e novas tentativas são reunidos durante a sessão.
 
-Edite, adicione, desative, remova e ordene campos com ↑. `fixed` usa um valor constante; os outros campos usam dados do registo. Use nomes aceites pelo Wildbook. Pode agrupar por evento/espécie/indivíduo em Camtrap ou por intervalo/projeto/instalação/espécie em WI. Fotos com vários animais ficam separadas. Clique em **Pré-visualizar / validar** e **Guardar Excel**. Não há envio automático.
+Edite, adicione, desative, remova e ordene campos com ↑. `fixed` usa um valor constante; os outros campos usam dados do registo. Use nomes aceites pelo Wildbook. Pode agrupar por evento/espécie/indivíduo em Camtrap ou por intervalo/projeto/instalação/espécie em WI. Fotos com vários animais ficam separadas. Clique em **Validar e pré-visualizar** e **Guardar Excel**. Não há envio automático.
 
 ### Perfis opcionais por localidade
 
@@ -362,4 +338,31 @@ O seletor locationID começa por localidades de origem; também permite coordena
 Pasta e catálogo usam o editor comum. Indique espécie, subpastas e método de identidade explícito (nenhum, primeira palavra do ficheiro ou nome da pasta). Datas vêm do EXIF; pode indicar apenas um ano quando falta a data, sem inventar mês/dia nem agrupar essas fotos por tempo. Sem EXIF nem ano, as fotos omitidas são indicadas. Complete a localização no editor. O modelo anterior continua nas opções de compatibilidade.
 
 
-Bulk Import reúne Pasta, Catálogo, Wildlife Insights e Camtrap DP numa única janela. Selecione a origem, prepare os dados e configure os campos, a pré-visualização e o Excel. Voltar à origem permite rever os dados; mudar de origem descarta o editor atual. Catálogo aceita fotos sem data, com campos temporais vazios e sem agrupamento temporal. Lince Ibérico está em Funcionalidades.
+Bulk Import reúne Wildlife Insights, Camtrap DP, Criar a partir de pasta, Catálogo, Agouti API e Trapper API numa única janela. Selecione a origem, prepare os dados e configure os campos, a pré-visualização e o Excel. O seletor de origem permite rever a fonte atual ou escolher outra; selecionar uma origem descarta o editor atual. Catálogo aceita fotos sem data, com campos temporais vazios e sem agrupamento temporal. Lince Ibérico está em Funcionalidades.
+
+
+### Acesso Camtrap DP a fotografias privadas
+
+Em **Bulk Import → Camtrap DP**, **Fotos locais** pede primeiro a pasta de originais e depois o destino das cópias preparadas. Referências remotas podem ser associadas por nome; correspondências ambíguas são rejeitadas. **Descarregar fotografias** obtém as URL do pacote e copia imagens locais incluídas. Os vídeos continuam excluídos.
+
+**Autorização (opcional)** aceita **Agouti API key**, **Agouti Bearer** ou **Trapper token**. Obtenha a chave ou token Agouti da sua conta. Para Trapper, abra o servidor, inicie sessão e gere um token API no perfil. Indique o servidor HTTPS que exige a credencial. As credenciais ficam apenas na memória, nunca nos perfis, Excel ou manifestos; **Remover acesso da memória** elimina-as da aplicação. As credenciais não são reenviadas para outro servidor nem para HTTP.
+
+Fotos privadas podem ser solicitadas no modo de descarga; o servidor verifica as permissões da conta ou ligação. Erros 401/403 indicam que deve configurar acesso ou rever permissões, podendo depois repetir as falhas. Configurar um token não valida permissões até à descarga. Para carregar diretamente os dados de um projeto, use as origens Agouti API ou Trapper API.
+
+
+Referencias / References: [Agouti](https://docs.agouti.eu/api/endpoints.html), [Trapper](https://trapper-project.readthedocs.io/en/latest/tutorial.html#authentication), [Google Cloud CLI](https://cloud.google.com/sdk/docs/authorizing).
+
+O intervalo em segundos fica junto a **Agrupar fotografias**. **Escolher locationID** aparece apenas na linha `Encounter.locationID`. Os nomes oficiais das colunas são preservados; origens dos valores e tipos de dados usam o idioma selecionado, sem alterar os perfis guardados.
+
+
+### Origens Agouti API e Trapper API
+
+**Wildlife Insights** é a origem inicial. **Criar a partir de pasta** substitui Pasta. WI, DP e fontes API partilham seleção de espécies, revisão, preparação de fotos e configuração do Excel. **Fotos locais** é a opção inicial; também pode escolher descarregar. Configure **Autorização (opcional)** apenas se o servidor exigir credenciais.
+
+Em **Agouti API**, indique o ID do projeto e o servidor (por predefinição `https://api.agouti.eu`). **Carregar projeto** obtém `datapackage.json` e as tabelas, guarda-os na pasta escolhida e apresenta as espécies. Caminhos relativos das fotos no servidor são convertidos em URL para descarga ou associação a originais locais.
+
+Em **Trapper API**, indique a URL da instância e o ID do projeto de classificação. Pode limitar a identificações aprovadas. **Carregar projeto** solicita uma exportação Camtrap DP CSV.gz e descarrega o ZIP. Usa a rota atual, com alternativa à rota anterior em caso de 404. A aplicação não publica a exportação.
+
+Pode tentar carregar sem credenciais. Se o servidor devolver 401/403, configure uma API key/Bearer Agouti ou token Trapper e repita. As credenciais só são enviadas à origem configurada; as permissões dependem do servidor. Cada carga usa uma nova pasta, eliminada se falhar ou for cancelada. Depois siga o fluxo DP comum para fotos e Excel.
+
+[Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)

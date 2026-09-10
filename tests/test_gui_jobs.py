@@ -42,6 +42,10 @@ class GuiJobsTests(unittest.TestCase):
         from lynx_bulk_workflow import BulkWorkflow
         from lynx_bulk_ui import BulkEditor
         flow = BulkWorkflow(self.root, 'es')
+        self.assertEqual(flow.choice.get(), 'Wildlife Insights')
+        self.assertIn('Crear desde carpeta', flow.sources)
+        self.assertIn('Agouti API', flow.sources)
+        self.assertIn('Trapper API', flow.sources)
         for source in flow.sources:
             flow.choice.set(source)
             flow.select(source)
@@ -51,9 +55,77 @@ class GuiJobsTests(unittest.TestCase):
         flow.edit(lambda task, options: ([], []))
         self.assertIsInstance(flow.editor, BulkEditor)
         self.assertIs(flow.editor.winfo_toplevel(), self.root)
-        flow.back()
+        flow.select(flow.choice.get())
         self.assertIsNone(flow.editor)
         self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
+
+    def test_api_source_loads_without_forcing_authorization(self):
+        from lynx_bulk_workflow import BulkWorkflow
+        from lynx_camtrap import read_package
+        from lynx_tasks import TaskContext
+        from camtrap_factory import make_package
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            package = read_package(TaskContext(), make_package(folder) / 'datapackage.json')
+            flow = BulkWorkflow(self.root, 'es')
+            for provider in ('Agouti API', 'Trapper API'):
+                flow.select(provider)
+                page = flow.pages[provider]
+                if provider == 'Trapper API':
+                    page.server.insert(0, 'https://trapper.example')
+                page.project.insert(0, '123')
+                self.assertIsNone(page.download_auth)
+                with patch('lynx_api_ui.dialogs.askdirectory', return_value=folder), patch('lynx_api_ui.fetch_api_package', return_value=package) as fetch:
+                    page.load()
+                    self.wait_until(lambda: not self.root.jobs.busy)
+                self.assertIsNone(fetch.call_args.args[5])
+                self.assertIn('Lynx pardinus', page.checks)
+                page.checks['Lynx pardinus'].select()
+                page.review()
+                self.wait_until(lambda: not self.root.jobs.busy)
+                self.assertTrue(page.records)
+                self.assertEqual(page.download.cget('state'), 'normal')
+                page.access()
+                self.assertEqual(page._access_dialog.method.get(), 'Agouti API key' if provider == 'Agouti API' else 'Trapper token')
+                page._access_dialog.close()
+
+    def test_download_access_and_mode_selection_share_controls(self):
+        from lynx_bulk_workflow import BulkWorkflow
+        from lynx_download_auth_ui import DownloadAccess
+        flow = BulkWorkflow(self.root, 'es')
+        flow.select('Camtrap DP')
+        page = flow.pages['Camtrap DP']
+        page.records = [{'prepared': True}]
+        page.batches = ['previous']
+        page.local.set(1)
+        page.acquisition_changed()
+        self.assertEqual(page.records, [{'prepared': True}])
+        self.assertEqual(page.batches, [])
+        page.access()
+        dialog = page._access_dialog
+        self.assertIsInstance(dialog, DownloadAccess)
+        dialog.method.set('Trapper token')
+        dialog.server.delete(0, 'end')
+        dialog.server.insert(0, 'https://trapper.example.org')
+        dialog.secret.insert(0, 'test-token')
+        self.assertTrue(dialog.secret.cget('show'))
+        dialog.apply()
+        self.assertEqual(page.download_auth.headers('https://trapper.example.org/image'),
+                         {'Authorization': 'Token test-token'})
+        self.assertEqual(dialog.secret.get(), '')
+        dialog.clear()
+        self.assertIsNone(page.download_auth)
+        dialog.close()
+        flow.select('Wildlife Insights')
+        wi = flow.pages['Wildlife Insights']
+        wi.access()
+        google = wi._access_dialog
+        self.assertTrue(google.google)
+        with patch('lynx_download_auth_ui.google_login', return_value=True) as login:
+            google.login_google()
+            self.wait_until(lambda: not self.root.jobs.busy)
+        login.assert_called_once()
+        google.close()
 
     def test_camtrap_multiselect_preview_and_local_download(self):
         from lynx_camtrap_ui import CamtrapTab
@@ -71,14 +143,35 @@ class GuiJobsTests(unittest.TestCase):
         self.wait_until(lambda: not self.root.jobs.busy)
         self.assertEqual(len(tab.records), 3)
         self.assertEqual(tab.download.cget('state'), 'normal')
-        tab.local.select()
-        with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', return_value=folder):
+        tab.local.set(1)
+        with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', side_effect=[str(fixture.parent), folder]):
             tab.obtain()
             self.wait_until(lambda: not self.root.jobs.busy)
             self.assertEqual(len(list(Path(folder).rglob('*.jpg'))), 2)
         tab.select_all(False)
         self.assertIsNone(tab.records)
         self.assertEqual(tab.download.cget('state'), 'disabled')
+
+    def test_editor_layout_and_localized_profile_roundtrip(self):
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        from lynx_bulk import default_fields
+        for lang in ('es', 'pt', 'en'):
+            editor = BulkEditor(SimpleNamespace(root=self.root, lang=lang), lambda task, options: ([], []))
+            self.root.update()
+            self.assertEqual(editor.collect(), default_fields())
+            self.assertIs(editor.group.master, editor.interval.master)
+            self.assertEqual(editor.group.pack_info()['side'], 'left')
+            self.assertEqual(editor.interval.pack_info()['side'], 'left')
+            index = next(i for i, field in enumerate(editor.collect()) if field['name'] == 'Encounter.locationID')
+            button = editor.location_buttons[index]
+            self.assertIs(button.master, editor.rows[index][3].master)
+            self.assertEqual(button.winfo_manager(), 'grid')
+            self.assertEqual(sum(bool(button.winfo_manager()) for button in editor.location_buttons), 1)
+            editor.rows[index][1]._dropdown_callback('Encounter.country')
+            self.root.update()
+            self.assertFalse(button.winfo_manager())
+            editor.destroy()
 
     def test_bulk_editor_preview_save_and_invalidation(self):
         import tempfile
@@ -132,7 +225,7 @@ class GuiJobsTests(unittest.TestCase):
             page.checks['Lynx pardinus'].select()
             page.review()
             self.wait_until(lambda: not self.root.jobs.busy)
-            page.local.deselect()
+            page.local.set(0)
             with patch('lynx_wi_ui.shutil.which', return_value=None), patch('lynx_ui_jobs.messagebox.showerror') as error, patch('lynx_wi_ui.filedialog.askdirectory') as folder:
                 page.obtain()
                 error.assert_called_once()
@@ -256,7 +349,7 @@ class GuiJobsTests(unittest.TestCase):
             flow.choice.set('Wildlife Insights')
             flow.select('Wildlife Insights')
             page = flow.pages['Wildlife Insights']
-            page.local.select()
+            page.local.set(1)
             with patch('lynx_wi_ui.filedialog.askopenfilename', return_value=str(archive)):
                 page.load()
                 self.wait_until(lambda: not self.root.jobs.busy)
@@ -274,7 +367,7 @@ class GuiJobsTests(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertFalse(missing)
             self.assertTrue(rows[0]['media_local'])
-            flow.back()
+            flow.select(flow.choice.get())
             page.select_all(False)
             self.assertEqual(page.available, {})
             self.assertEqual(page.export.cget('state'), 'disabled')
@@ -363,6 +456,8 @@ class GuiJobsTests(unittest.TestCase):
         desktop = self.root
         app = module.BaseApp(desktop)
         desktop.update()
+        self.assertEqual(len(app.main_tabs.tabs()), 3)
+        self.assertEqual(app.main_tabs.tab(0, 'text'), 'Bulk Import')
         try:
             combiner = app.excel_combiner_app
             combiner.initial_excel_path = 'template.xlsx'

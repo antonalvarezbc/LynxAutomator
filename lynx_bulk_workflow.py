@@ -1,4 +1,4 @@
-"""Single entry point for all four Bulk Import sources."""
+"""Single entry point for all Bulk Import sources."""
 import customtkinter as ctk
 from lynx_choices import StableOptionMenu
 from lynx_ui_jobs import action
@@ -9,21 +9,21 @@ class BulkWorkflow(ctk.CTkFrame):
         super().__init__(root)
         self.root, self.lang, self.workflow = root, lang, self
         self.pack(fill='both', expand=True)
-        labels = {'es': ['Carpeta', 'Catálogo', 'Wildlife Insights', 'Camtrap DP'],
-                  'pt': ['Pasta', 'Catálogo', 'Wildlife Insights', 'Camtrap DP'],
-                  'en': ['Folder', 'Catalog', 'Wildlife Insights', 'Camtrap DP']}[lang]
+        labels = {'es': ['Crear desde carpeta', 'Catálogo', 'Wildlife Insights', 'Camtrap DP', 'Agouti API', 'Trapper API'],
+                  'pt': ['Criar a partir de pasta', 'Catálogo', 'Wildlife Insights', 'Camtrap DP', 'Agouti API', 'Trapper API'],
+                  'en': ['Create from folder', 'Catalog', 'Wildlife Insights', 'Camtrap DP', 'Agouti API', 'Trapper API']}[lang]
         self.sources = labels
         bar = ctk.CTkFrame(self)
         bar.pack(fill='x', padx=10, pady=8)
         ctk.CTkLabel(bar, text={'es': 'Origen de los datos', 'pt': 'Origem dos dados', 'en': 'Data source'}[lang]).pack(side='left', padx=8)
         self.choice = StableOptionMenu(bar, values=labels, command=self.select)
         self.choice.pack(side='left', padx=8)
-        ctk.CTkButton(bar, text={'es': 'Volver al origen', 'pt': 'Voltar à origem', 'en': 'Back to source'}[lang], command=self.back).pack(side='left', padx=8)
         self.body = ctk.CTkFrame(self)
         self.body.pack(fill='both', expand=True)
         self.pages = {}
         self.editor = None
-        self.select(labels[0])
+        self.choice.set('Wildlife Insights')
+        self.select('Wildlife Insights')
 
     def hide_pages(self):
         for child in self.body.winfo_children():
@@ -44,16 +44,16 @@ class BulkWorkflow(ctk.CTkFrame):
                 from lynx_wi_ui import WITab
                 page = WITab(self.body, self.lang)
                 page.workflow = self
-            else:
+            elif index == 3:
                 from lynx_camtrap_ui import CamtrapTab
                 page = CamtrapTab(self.body, self.lang)
                 page.workflow = self
+            else:
+                from lynx_api_ui import APIImportTab
+                page = APIImportTab(self.body, value, self.lang)
+                page.workflow = self
             self.pages[value] = page
         self.pages[value].pack(fill='both', expand=True)
-
-    @action
-    def back(self):
-        self.select(self.choice.get())
 
     def edit(self, loader):
         from lynx_bulk_ui import BulkEditor

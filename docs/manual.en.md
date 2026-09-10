@@ -93,29 +93,13 @@ If IDs exist only in folder names, use the renamer on copies first. Keep the spa
 separating the ID from the rest of the name; replacing it with an underscore
 changes how this catalog module interprets it.
 
-## 5. Wildlife Insights → WI Downloader
+## 5. Bulk Import → Wildlife Insights: local photos or downloads
 
-Request the desired filtered data export in Wildlife Insights, extract the package
-and find `images.csv`. Follow the image-access instructions in the export's Data
-Use and Citation Guide. See the official
-[private download guide](https://www.wildlifeinsights.org/get-started/download/private).
-Install Google Cloud CLI with `gsutil` on PATH and configure an authorized account.
-`gsutil version` checks availability; installation alone does not grant bucket access.
+Downloads are integrated into **Bulk Import**, the first tab. Load the WI ZIP, select species and review the selection. Choose **Local photos** to find images recursively in a folder, or **Download photographs** to retrieve `gs://` references with gsutil. Click **Prepare photographs**, then **Configure Excel** once verified photos are available.
 
-1. Select a CSV with nonempty `location` and `deployment_id` columns.
-2. Choose whether to use separate deployment folders.
-3. Click Download and select the destination.
-4. Review the downloaded, skipped and failed counts.
+Install Google Cloud CLI with gsutil for downloads. Use **Authorization (optional) → Sign in with Google** and complete the browser flow with an account authorized for those photos. Google Cloud CLI manages and stores its credentials; LynxAutomator does not request your Google password. Signing in does not grant new bucket permissions. Standalone gsutil or customized configurations may require the access instructions supplied with the WI export.
 
-Locations must be `gs://` JPEG images (`.jpg`/`.jpeg`). Content is checked, unsupported
-filename characters are replaced, and the extension becomes `.JPG`. Other formats
-are not converted to JPEG. Existing files are skipped without revalidation.
-Transfers use a temporary directory so incomplete downloads do not occupy the final
-filename. Distinct locations mapping to the same output name during a run are
-reported as conflicts.
-
-Cancel in the bottom task panel takes effect after the current transfer, which has a five-minute timeout.
-Wait for completion before starting again.
+Image contents are verified and extensions preserved. Each download creates a new batch with `manifest.csv`, without overwriting existing photos. Failed transfers can be retried. Cancellation waits for the current transfer (up to five minutes) and retains completed files.
 
 ## 6. Wildlife Insights–Wildbook → WI CSVs to BIWbE
 
@@ -256,7 +240,7 @@ See the [logic review](logic-review.md) for remaining improvements.
 
 ## Camtrap DP photographs
 
-Open **Camtrap DP**, load a local `datapackage.json` or ZIP (1.x, CSV/CSV.gz), then
+Open **Bulk Import → Camtrap DP**, load a local `datapackage.json` or ZIP (1.x, CSV/CSV.gz), then
 select species using the search box and checkboxes. No Wildbook registration is
 required. Review the unique image counts before choosing the output directory.
 Event-associated images are included by default from the same deployment/time
@@ -264,23 +248,23 @@ interval, including empty frames for detection in Wildbook. This does not imply
 that all animals are the same individual. Local-only mode avoids network access.
 
 A new `camtrap-…` directory holds validated images and `manifest.csv` linking IDs,
-species, filenames and status. Private media and videos are skipped. Accessible
-HTTP URLs are downloaded without additional credentials. Retry failed downloads
+species, filenames and status. Videos are skipped. Private photos may require
+credentials configured under **Authorization (optional)**. Retry failed downloads
 creates a new batch. Cancellation preserves completed files and cleans partials;
 a pending HTTP read may take up to its 20-second timeout.
 
 The optional local synthetic lynx fixture (excluded from Git) has 366 observations, 247 directly associated images,
 300 including events, and 10 local JPEGs. Its images are not actual lynxes.
 The reader performs basic structural checks, not full schema validation. Wildbook
-Excel export and direct Agouti API access are not yet available in this tab.
+Excel export follows photo acquisition in the shared editor. Direct project loading is available through the Agouti API source.
 
 ## Shared Bulk Import: Wildlife Insights and Camtrap DP
 
-In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images.csv` or `images_<project>.csv` and exactly one `deployments.csv` in the same ZIP folder. Species load automatically. Select species and click **Review selection**, then **Get selected photographs**. Download `gs://` references with installed gsutil, or enable **Use photographs from a local folder** to find existing photos recursively. Local mode is selected initially when gsutil is unavailable. Filenames must match `location`; ambiguous names and invalid images are reported as failures. Downloads use a fresh batch directory with `manifest.csv`, preserving existing files. Failed photos can be retried. **Configure Excel** becomes available once photos have been verified; preview reports missing photos and exports only available ones. No Excel template is required.
+In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images.csv` or `images_<project>.csv` and exactly one `deployments.csv` in the same ZIP folder. Species load automatically. Select species and click **Review selection**, then **Prepare photographs**. Download `gs://` references with installed gsutil, or enable **Local photos** to find existing photos recursively. Local mode is selected initially when gsutil is unavailable. Filenames must match `location`; ambiguous names and invalid images are reported as failures. Downloads use a fresh batch directory with `manifest.csv`, preserving existing files. Failed photos can be retried. **Configure Excel** becomes available once photos have been verified; preview reports missing photos and exports only available ones. No Excel template is required.
 
 The previous Excel template workflow remains under Advanced for compatibility. Excel is the output format. For Camtrap DP, select species and obtain photographs before opening Bulk Import; successful batches and retries are combined during the session.
 
-Edit, add, disable, delete and reorder fields with ↑. `fixed` uses a constant; other sources use record metadata. Use field names supported by your Wildbook. Optional grouping uses event/species/individual in Camtrap, or interval/project/deployment/species in WI. Multi-animal photographs remain separate. Click **Preview / validate**, then **Save Excel**. Nothing is uploaded automatically.
+Edit, add, disable, delete and reorder fields with ↑. `fixed` uses a constant; other sources use record metadata. Use field names supported by your Wildbook. Optional grouping uses event/species/individual in Camtrap, or interval/project/deployment/species in WI. Multi-animal photographs remain separate. Click **Validate and preview**, then **Save Excel**. Nothing is uploaded automatically.
 
 ### Optional locality profiles
 
@@ -329,4 +313,31 @@ locationID starts with source localities; coordinates and available country/site
 Folder and catalog inputs use the common editor. Choose species, recursion and an explicit identity convention (none, filename first word, or folder name). Dates come from EXIF; an optional fallback year leaves month/day blank and prevents temporal grouping of undated photos. Photos lacking both EXIF dates and a supplied year are reported as omitted. Complete location in the editor. The previous template workflow remains under compatibility options.
 
 
-Bulk Import brings Folder, Catalog, Wildlife Insights and Camtrap DP together in one window. Select a source, prepare the data, then configure fields, preview and export Excel. Back to source lets you revise inputs; changing source discards the current editor. Catalog accepts undated photos, leaving date and time fields empty and keeping them out of temporal groups. Iberian Lynx is under Functionalities.
+Bulk Import brings Wildlife Insights, Camtrap DP, Create from folder, Catalog, Agouti API and Trapper API together in one window. Select a source, prepare the data, then configure fields, preview and export Excel. The source selector lets you revisit the current source or choose another; selecting a source discards the current editor. Catalog accepts undated photos, leaving date and time fields empty and keeping them out of temporal groups. Iberian Lynx is under Functionalities.
+
+
+### Camtrap DP access to private photographs
+
+In **Bulk Import → Camtrap DP**, **Local photos** asks for the original photo folder, then a destination for prepared copies. Remote references can be matched by filename; ambiguous matches are rejected. **Download photographs** retrieves package URLs and copies any bundled local images. Videos remain excluded.
+
+**Authorization (optional)** accepts **Agouti API key**, **Agouti Bearer**, or **Trapper token**. Obtain an Agouti API key or token for your account. For Trapper, open your server, sign in and generate an API token in your profile. Enter the HTTPS server requiring the credential. Credentials stay in memory, never in profiles, Excel files or manifests; **Clear access from memory** removes them from the app. Authentication headers are never forwarded to a different origin or HTTP.
+
+Private photos can be requested in download mode; the server checks account or link permissions. A 401/403 response points you to access configuration and permissions, followed by **Retry failed**. Configuring a token does not validate permissions until a download is attempted. To load project data directly, use the Agouti API or Trapper API sources.
+
+
+Referencias / References: [Agouti](https://docs.agouti.eu/api/endpoints.html), [Trapper](https://trapper-project.readthedocs.io/en/latest/tutorial.html#authentication), [Google Cloud CLI](https://cloud.google.com/sdk/docs/authorizing).
+
+The interval in seconds is beside **Group photographs**. **Choose locationID** appears only on the `Encounter.locationID` row. Official column names are retained; value sources and data types use the selected UI language without changing saved profiles.
+
+
+### Agouti API and Trapper API sources
+
+**Wildlife Insights** is the initial source. **Create from folder** replaces Folder. WI, DP and API sources share species selection, review, photo preparation and Excel configuration. **Local photos** is selected initially; downloads are also available. Configure **Authorization (optional)** only when the server requires credentials.
+
+For **Agouti API**, enter the project ID and server (default `https://api.agouti.eu`). **Load project** downloads `datapackage.json` and its tables into a folder you choose, then displays species. Relative server photo paths become URLs for downloads or matching local originals.
+
+For **Trapper API**, enter your instance URL and classification project ID. You can request approved classifications only. **Load project** requests a Camtrap DP CSV.gz export and downloads its ZIP. The current export route is used first, falling back to the legacy route on 404. The application does not publish or release the export.
+
+Both sources can attempt loading without credentials. If the server returns 401/403, configure an Agouti API key/Bearer token or Trapper token and load again. Credentials are sent only to the configured origin; the server decides permissions. Each load uses a new folder, with incomplete files removed on failure or cancellation. Continue through the shared DP photo and Excel workflow afterward.
+
+[Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)

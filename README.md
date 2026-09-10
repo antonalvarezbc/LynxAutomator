@@ -166,6 +166,12 @@ pull request y no publica pre-releases. Para trabajar localmente, véase
 
 ### Fotografías desde Camtrap DP
 
-La pestaña **Camtrap DP** abre paquetes locales JSON/ZIP, muestra especies mediante
+**Bulk Import → Camtrap DP** abre paquetes locales JSON/ZIP, muestra especies mediante
 casillas y obtiene sus imágenes locales o remotas con progreso y cancelación.
 No requiere elegir un Wildbook. Véase el [recorrido y ejemplo sintético](docs/manual.md#camtrap-dp-seleccionar-especies-y-obtener-fotografías).
+
+
+Photo acquisition is integrated into the first **Bulk Import** tab for Wildlife Insights and Camtrap DP. Choose **Local photos** or **Download photographs**. **Download access** supports Google browser sign-in through Google Cloud CLI for WI, and in-memory Agouti API keys/Bearer tokens or Trapper API tokens for protected DP photo URLs. See the manuals for account permissions, scoped credentials and retry behavior.
+
+
+Bulk Import starts with **Wildlife Insights** and also offers **Create from folder**, **Catalog**, **Camtrap DP**, **Agouti API** and **Trapper API**. The API sources load project exports into the same species → photographs → Excel workflow. Authorization is optional in the interface; private projects may require server-issued credentials. See the manuals for server and project ID inputs.

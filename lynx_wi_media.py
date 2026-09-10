@@ -1,5 +1,4 @@
 """Acquire selected WI media, preserving source references and actual local names."""
-from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +11,7 @@ import tempfile
 from PIL import Image
 from lynx_bulk import group_rows
 from lynx_tasks import TaskCancelled
+from lynx_local_media import photo_index, find_photo
 
 
 @dataclass
@@ -54,13 +54,10 @@ def acquire_wi(task, sources, directory, executable=None):
     if not root.is_dir():
         raise ValueError('La carpeta no existe.')
     result = Acquisition()
-    names = defaultdict(list)
+    names = {}
     if executable is None:
         task.report('Buscando fotografías locales…')
-        for path in root.rglob('*'):
-            task.checkpoint()
-            if path.is_file():
-                names[path.name.casefold()].append(path)
+        names = photo_index(task, root)
     else:
         root = Path(tempfile.mkdtemp(prefix='wi-photos-', dir=root))
         result.manifest = str(root / 'manifest.csv')
@@ -73,10 +70,7 @@ def acquire_wi(task, sources, directory, executable=None):
             try:
                 name = media_name(source)
                 if executable is None:
-                    candidates = names[name.casefold()]
-                    if len(candidates) != 1:
-                        raise ValueError('Fotografía ausente' if not candidates else 'Nombre ambiguo: varias fotografías locales')
-                    target = candidates[0]
+                    target = find_photo(names, name)
                     verify_photo(target)
                 else:
                     if not source.startswith('gs://') or any(char in source for char in '\r\n\0*?[]'):

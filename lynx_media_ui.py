@@ -1,22 +1,23 @@
 """Shared species selection and acquisition controls for WI and Camtrap DP."""
 import customtkinter as ctk
+from lynx_ui_jobs import action
 
 LABELS = {
     'es': ['Cargar datapackage.json o ZIP', 'Buscar especie', 'Seleccionar visibles', 'Deseleccionar todas',
            'Incluir todas las fotografías de los eventos', 'Sólo copiar imágenes locales',
-           'Revisar selección', 'Obtener fotografías seleccionadas', 'Selecciona al menos una especie.',
+           'Revisar selección', 'Preparar fotografías', 'Selecciona al menos una especie.',
            'Paquete', 'observaciones', 'fotografías únicas', 'locales', 'remotas', 'privadas',
            'SINTÉTICO: etiquetas de prueba; las fotos no son de lince.',
            'Se incluyen las fotos del evento, aunque estén vacías. La detección se realizará en Wildbook.'],
     'pt': ['Carregar datapackage.json ou ZIP', 'Pesquisar espécie', 'Selecionar visíveis', 'Desmarcar todas',
            'Incluir todas as fotografias dos eventos', 'Copiar apenas imagens locais',
-           'Rever seleção', 'Obter fotografias selecionadas', 'Selecione pelo menos uma espécie.',
+           'Rever seleção', 'Preparar fotografias', 'Selecione pelo menos uma espécie.',
            'Pacote', 'observações', 'fotografias únicas', 'locais', 'remotas', 'privadas',
            'SINTÉTICO: etiquetas de teste; as fotos não são de lince.',
            'Incluem-se as fotos do evento, mesmo vazias. A deteção será realizada no Wildbook.'],
     'en': ['Load datapackage.json or ZIP', 'Search species', 'Select visible', 'Clear selection',
            'Include all event photographs', 'Copy local images only',
-           'Review selection', 'Get selected photographs', 'Select at least one species.',
+           'Review selection', 'Prepare photographs', 'Select at least one species.',
            'Package', 'observations', 'unique photographs', 'local', 'remote', 'private',
            'SYNTHETIC: test labels; the photos are not lynxes.',
            'Event photos are included even when empty. Detection will take place in Wildbook.']}
@@ -27,13 +28,19 @@ class MediaImportTab(ctk.CTkFrame):
         super().__init__(root)
         self.root, self.lang = root, lang
         self.text = list(labels or LABELS[lang])
+        self.download_auth = None
         self.package = None
         self.batches = []
         self.checks = {}
         self.records = None
         self.failed = []
         self.pack(fill='both', expand=True)
-        ctk.CTkButton(self, text=self.text[0], command=self.load).pack(padx=10, pady=8, anchor='w')
+        self.source_controls = ctk.CTkFrame(self)
+        self.source_controls.pack(fill='x', padx=10, pady=8)
+        self.load_button = ctk.CTkButton(self.source_controls, text=self.text[0], command=self.load)
+        self.load_button.pack(side='left', padx=8, pady=6)
+        self.instructions = ctk.CTkLabel(self, text={'es': '1. Cargar datos   →   2. Seleccionar especies y revisar   →   3. Preparar fotografías   →   4. Configurar Excel', 'pt': '1. Carregar dados   →   2. Selecionar espécies e rever   →   3. Preparar fotografias   →   4. Configurar Excel', 'en': '1. Load data   →   2. Select species and review   →   3. Prepare photographs   →   4. Configure Excel'}[lang], wraplength=1000)
+        self.instructions.pack(fill='x', padx=10)
         self.heading = ctk.CTkLabel(self, text='', wraplength=850, justify='left')
         self.heading.pack(fill='x', padx=10)
         self.search = ctk.CTkEntry(self, placeholder_text=self.text[1])
@@ -49,8 +56,17 @@ class MediaImportTab(ctk.CTkFrame):
         if events:
             self.events.pack(anchor='w', padx=15, pady=4)
         self.events.select()
-        self.local = ctk.CTkCheckBox(self, text=self.text[5], command=self.invalidate)
-        self.local.pack(anchor='w', padx=15, pady=4)
+        acquisition = ctk.CTkFrame(self)
+        acquisition.pack(fill='x', padx=10, pady=6)
+        self.local = ctk.IntVar(value=1)
+        modes = {'es': ['Fotos locales', 'Descargar fotografías', 'Autorización (opcional)'],
+                 'pt': ['Fotos locais', 'Descarregar fotografias', 'Autorização (opcional)'],
+                 'en': ['Local photos', 'Download photographs', 'Authorization (optional)']}[lang]
+        for text, value in zip(modes[:2], (1, 0)):
+            ctk.CTkRadioButton(acquisition, text=text, variable=self.local, value=value,
+                               command=self.acquisition_changed).pack(side='left', padx=8)
+        ctk.CTkButton(acquisition, text=modes[2], command=self.access).pack(side='left', padx=8)
+        ctk.CTkLabel(self, text={'es': 'Puedes continuar sin configurar autorización. Añádela sólo si el servidor la solicita.', 'pt': 'Pode continuar sem configurar autorização. Adicione-a apenas se o servidor a solicitar.', 'en': 'You can continue without configuring authorization. Add it only if the server requires it.'}[lang], wraplength=950).pack(fill='x', padx=10)
         self.preview = ctk.CTkTextbox(self, height=120)
         self.preview.pack(fill='x', padx=10)
         self.preview.configure(state='disabled')
@@ -64,6 +80,24 @@ class MediaImportTab(ctk.CTkFrame):
         self.retry.pack(side='left', padx=5)
         self.export = ctk.CTkButton(buttons, text='Configurar Excel' if lang == 'es' else 'Configurar Excel' if lang == 'pt' else 'Configure Excel', command=self.open_bulk_import, state='disabled')
         self.export.pack(side='left', padx=5)
+
+    @action
+    def access(self):
+        from lynx_download_auth_ui import DownloadAccess
+        dialog = getattr(self, '_access_dialog', None)
+        if dialog is not None and dialog.winfo_exists():
+            dialog.lift()
+        else:
+            self._access_dialog = DownloadAccess(self, google=getattr(self, 'google_access', False))
+
+    def acquisition_changed(self):
+        self.batches = []
+        self.failed = []
+        if hasattr(self, 'available'):
+            self.available = {}
+        self.export.configure(state='disabled')
+        self.retry.configure(state='disabled')
+        self.show('')
 
     def invalidate(self):
         self.failed = []
@@ -79,6 +113,11 @@ class MediaImportTab(ctk.CTkFrame):
         self.preview.delete('1.0', 'end')
         self.preview.insert('1.0', text)
         self.preview.configure(state='disabled')
+
+    def selection_summary(self, total, names, issues=(), detail=''):
+        parts = [f'{total} {self.text[11]}', detail, *issues[:8], *names[:30]]
+        self.show('\n'.join(part for part in parts if part))
+        self.download.configure(state='normal' if total else 'disabled')
 
     def filter_species(self):
         query = self.search.get().casefold()

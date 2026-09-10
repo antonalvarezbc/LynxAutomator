@@ -24,7 +24,8 @@ class LocationPicker(ctk.CTkToplevel):
         scopes_frame = ctk.CTkFrame(self)
         scopes_frame.pack(fill='x', padx=10)
         location_fields = sorted({key for row in rows for key in row.get('metadata', {}) if any(word in key.lower() for word in ['location', 'locality', 'placename', 'country', 'site'])})
-        self.scope_mode = StableOptionMenu(scopes_frame, values=['Location / verbatimLocality', 'Coordinates'] + location_fields + ['Deployment', 'Encounter'], command=lambda _: self.populate_scopes())
+        self.scope_labels = dict(zip(['Location / verbatimLocality', 'Coordinates', 'Deployment', 'Encounter'], {'es': ['Localidad de origen', 'Coordenadas', 'Despliegue de cámara', 'Encuentro'], 'pt': ['Localidade de origem', 'Coordenadas', 'Instalação da câmara', 'Encontro'], 'en': ['Source locality', 'Coordinates', 'Camera deployment', 'Encounter']}[self.lang]))
+        self.scope_mode = StableOptionMenu(scopes_frame, values=list(self.scope_labels.values())[:2] + location_fields + list(self.scope_labels.values())[2:], command=lambda _: self.populate_scopes())
         self.scope_mode.pack(anchor='w', pady=4)
         self.scope = ttk.Treeview(scopes_frame, columns=('label',), show='headings', selectmode='extended', height=5)
         self.scope.heading('label', text={'es': 'Localidades de origen (Ctrl / Shift para seleccionar varias)', 'pt': 'Localizações de origem (Ctrl / Shift para selecionar várias)', 'en': 'Source locations (Ctrl / Shift for multiple selection)'}[editor.lang])
@@ -54,9 +55,9 @@ class LocationPicker(ctk.CTkToplevel):
         self.branch.pack(side='left', padx=4)
         ctk.CTkButton(advanced, text={'es': 'Consultar ramas GitHub', 'pt': 'Consultar ramos GitHub', 'en': 'Fetch GitHub branches'}[editor.lang], command=self.branches).pack(side='left', padx=4)
         ctk.CTkButton(advanced, text={'es': 'JSON local', 'pt': 'JSON local', 'en': 'Local JSON'}[editor.lang], command=self.local).pack(side='left', padx=4)
-        labels = {'es': ['Cargar / usar caché', 'Actualizar catálogo', 'Abrir JSON local', 'Buscar ubicación', 'Aplicar ubicación'],
-                  'pt': ['Carregar / usar cache', 'Atualizar catálogo', 'Abrir JSON local', 'Pesquisar localização', 'Aplicar localização'],
-                  'en': ['Load / use cache', 'Refresh catalog', 'Open local JSON', 'Search location', 'Apply location']}[editor.lang]
+        labels = {'es': ['Cargar catálogo', 'Actualizar catálogo', 'Abrir JSON local', 'Buscar ubicación', 'Asignar locationID'],
+                  'pt': ['Carregar catálogo', 'Atualizar catálogo', 'Abrir JSON local', 'Pesquisar localização', 'Atribuir locationID'],
+                  'en': ['Load catalog', 'Refresh catalog', 'Open local JSON', 'Search location', 'Assign locationID']}[editor.lang]
         for text, command in [(labels[0], lambda: self.load(False)), (labels[1], lambda: self.load(True))]:
             ctk.CTkButton(bar, text=text, command=command).pack(side='left', padx=3)
         self.search = ctk.CTkEntry(self, placeholder_text=labels[3], width=850)
@@ -65,7 +66,7 @@ class LocationPicker(ctk.CTkToplevel):
         frame = ctk.CTkFrame(self)
         frame.pack(fill='both', expand=True, padx=10)
         self.tree = ttk.Treeview(frame, columns=('route', 'id'), show='headings')
-        self.tree.heading('route', text='Location')
+        self.tree.heading('route', text={'es': 'Ubicación en Wildbook', 'pt': 'Localização no Wildbook', 'en': 'Wildbook location'}[self.lang])
         self.tree.heading('id', text='ID')
         self.tree.column('route', width=570)
         self.tree.column('id', width=220)
@@ -83,34 +84,39 @@ class LocationPicker(ctk.CTkToplevel):
 
     def populate_scopes(self):
         self.scope.delete(*self.scope.get_children())
+        self.scope.heading('label', text=self.scope_mode.get() + {'es': ' (Ctrl / Shift para seleccionar varias filas)', 'pt': ' (Ctrl / Shift para selecionar várias linhas)', 'en': ' (Ctrl / Shift to select multiple rows)'}[self.lang])
         self.scope_items = {'all': [None]}
-        self.scope.insert('', 'end', iid='all', values=('* — Todas / All',))
+        self.scope.insert('', 'end', iid='all', values=({'es': 'Todas las filas', 'pt': 'Todas as linhas', 'en': 'All rows'}[self.lang],))
         grouped = {}
-        mode = self.scope_mode.get()
+        value = self.scope_mode.get()
+        mode = next((key for key, label in self.scope_labels.items() if value == label), value)
         for index, row in enumerate(self.source_rows):
             metadata = row.get('metadata', {})
             deployment = deployment_key(row)
             if mode == 'Encounter':
-                label = f"Encounter {index+1}: {row.get('species', '')}"
+                label = f"{self.scope_labels['Encounter']} {index+1}: {row.get('species', '')}"
                 key = encounter_key(row)
             elif mode == 'Coordinates':
                 label = f"{row.get('latitude', '')}, {row.get('longitude', '')}"
                 key = deployment
             elif mode not in ('Location / verbatimLocality', 'Deployment'):
-                label = ' | '.join(metadata.get(mode, [])) or '(Sin valor / No value)'
+                label = ' | '.join(metadata.get(mode, [])) or {'es': '(Sin valor)', 'pt': '(Sem valor)', 'en': '(No value)'}[self.lang]
                 key = encounter_key(row)
             elif mode == 'Deployment':
-                label = deployment
+                identifier = (metadata.get('deployment.deploymentID') or metadata.get('deployment.deployment_id') or ['—'])[0]
+                project = (metadata.get('deployment.project_id') or [''])[0]
+                locality = row.get('locality') or (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0]
+                label = ' · '.join(str(value) for value in (project, identifier, locality) if value)
                 key = deployment
             else:
-                label = str(row.get('locality') or (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0] or '(Sin localidad / No locality)')
+                label = str(row.get('locality') or (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0] or {'es': '(Sin localidad)', 'pt': '(Sem localidade)', 'en': '(No locality)'}[self.lang])
                 key = deployment
             grouped.setdefault(label, set()).add(key)
         for index, (label, keys) in enumerate(sorted(grouped.items())):
             iid = 's' + str(index)
             self.scope_items[iid] = sorted(keys)
             count = sum(1 for row in self.source_rows if deployment_key(row) in keys or encounter_key(row) in keys)
-            self.scope.insert('', 'end', iid=iid, values=(f'{label} · {count} filas / rows',))
+            self.scope.insert('', 'end', iid=iid, values=(f"{label} · {count} " + {'es': 'filas', 'pt': 'linhas', 'en': 'rows'}[self.lang],))
         self.scope.selection_set('all')
 
     @action
@@ -184,7 +190,7 @@ class LocationPicker(ctk.CTkToplevel):
         field.update(enabled=True, type='text', catalog_name=self.book.get(), catalog_source=self.data['source'])
         scopes = list(dict.fromkeys(key for iid in self.scope.selection() for key in self.scope_items[iid]))
         if not scopes:
-            raise ValueError('Selecciona al menos un despliegue o encuentro.')
+            raise ValueError({'es': 'Selecciona las filas a las que quieres asignar el locationID.', 'pt': 'Selecione as linhas às quais pretende atribuir o locationID.', 'en': 'Select the rows to assign this locationID to.'}[self.lang])
         if None in scopes:
             field.update(source='fixed', value=entry['id'], locations={})
         else:

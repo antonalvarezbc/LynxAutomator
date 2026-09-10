@@ -16,6 +16,8 @@ from collections import Counter
 from PIL import Image
 from lynx_file_jobs import BatchResult
 from lynx_tasks import TaskCancelled
+from lynx_download_auth import open_download, download_error
+from lynx_local_media import photo_index, dp_local_photo
 
 LIMIT = 100 * 1024 * 1024
 
@@ -175,8 +177,21 @@ def select_media(task, package, species, include_events=True):
     return list(selected.values()), issues
 
 
-def acquire_media(task, package, records, destination, local_only=False):
+def acquire_media(task, package, records, destination, local_only=False, local_folder=None, auth=None, allow_private=False):
     destination = Path(destination)
+    local_index = photo_index(task, local_folder) if local_folder else None
+    if local_folder:
+        local_sources = {}
+        for record in records:
+            task.checkpoint()
+            try:
+                path = dp_local_photo(local_folder, local_index, record['media']).resolve()
+            except (ValueError, OSError):
+                continue  # Report missing/ambiguous files individually below.
+            reference = record['media']['filePath']
+            if path in local_sources and local_sources[path] != reference:
+                raise ValueError('Referencias distintas coinciden con una misma foto local. Revisa los nombres y las subcarpetas.')
+            local_sources[path] = reference
     result = BatchResult()
     result.failed_records = []
     # New batch directory prevents collisions or reuse of a previous selection.
@@ -191,19 +206,24 @@ def acquire_media(task, package, records, destination, local_only=False):
             status, filename = 'error', ''
             remote = urlsplit(media['filePath']).scheme in ('http', 'https')
             try:
-                if media.get('filePublic', 'true') in ('false', False):
+                if media.get('filePublic', 'true') in ('false', False) and not (allow_private or local_folder):
                     status = 'private'
                     result.skipped += 1
                 elif not media.get('fileMediatype', '').startswith('image/'):
                     status = 'not_image'
                     result.skipped += 1
-                elif remote and local_only:
+                elif remote and local_only and not local_folder:
                     status = 'remote_skipped'
                     result.skipped += 1
                 else:
                     with tempfile.TemporaryDirectory(dir=batch, prefix='.partial-') as staging:
                         temporary = Path(staging) / 'image'
-                        source = urlopen(media['filePath'], timeout=20) if remote else package.open_local(media['filePath'])
+                        if local_folder:
+                            source = dp_local_photo(local_folder, local_index, media).open('rb')
+                        elif remote:
+                            source = open_download(media['filePath'], auth) if auth else urlopen(media['filePath'], timeout=20)
+                        else:
+                            source = package.open_local(media['filePath'])
                         with source, temporary.open('wb') as out:
                             size = 0
                             while True:
@@ -234,7 +254,7 @@ def acquire_media(task, package, records, destination, local_only=False):
                 raise
             except Exception as exc:
                 # URLs can carry credentials: never include them in messages/logs.
-                result.errors.append(f"{media['mediaID']}: {type(exc).__name__}")
+                result.errors.append(f"{media['mediaID']}: {download_error(exc)}")
                 result.failed_records.append(record)
             writer.writerow(dict(mediaID=media['mediaID'], species=';'.join(sorted(record['species'])),
                                  file=filename if status == 'completed' else '', status=status, association='event' if record['event'] else 'media',

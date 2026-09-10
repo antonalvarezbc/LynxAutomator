@@ -6,6 +6,10 @@ from lynx_media_ui import MediaImportTab
 
 
 class CamtrapTab(MediaImportTab):
+    def __init__(self, root, lang='es'):
+        super().__init__(root, lang)
+        self.heading.configure(text='Camtrap DP · JSON / ZIP')
+
     @action
     def open_bulk_import(self):
         from lynx_bulk_ui import open_camtrap
@@ -39,19 +43,28 @@ class CamtrapTab(MediaImportTab):
         self.records, issues = result
         remote = sum(r['media']['filePath'].startswith(('https://', 'http://')) for r in self.records)
         private = sum(r['media'].get('filePublic') in ('false', False) for r in self.records)
-        summary = f'{len(self.records)} {self.text[11]} | {len(self.records)-remote} {self.text[12]} | {remote} {self.text[13]} | {private} {self.text[14]}'
-        self.show(summary + '\n' + self.text[16] + '\n' + '\n'.join(issues[:8]) + '\n' +
-                  '\n'.join(r['media'].get('fileName', r['media']['mediaID']) for r in self.records[:30]))
-        self.download.configure(state='normal' if self.records else 'disabled')
+        detail = f'{len(self.records)-remote} {self.text[12]} | {remote} {self.text[13]} | {private} {self.text[14]}'
+        if self.events.get():
+            detail += '\n' + self.text[16]
+        self.selection_summary(len(self.records),
+            [r['media'].get('fileName', r['media']['mediaID']) for r in self.records], issues, detail)
 
     @action
     def obtain(self):
         if not self.records:
             return
-        destination = filedialog.askdirectory(parent=self)
+        local = bool(self.local.get())
+        local_folder = None
+        if local:
+            local_folder = filedialog.askdirectory(parent=self, title={'es': 'Carpeta con las fotografías originales', 'pt': 'Pasta com fotografias originais', 'en': 'Folder containing original photographs'}[self.lang])
+            if not local_folder:
+                return
+        destination = filedialog.askdirectory(parent=self, title={'es': 'Destino de las fotografías preparadas', 'pt': 'Destino das fotografias preparadas', 'en': 'Destination for prepared photographs'}[self.lang])
         if destination:
-            package, records, local = self.package, self.records, bool(self.local.get())
-            start(self, 'Camtrap DP', lambda task: acquire_media(task, package, records, destination, local), self.receive_download)
+            self.local_folder = local_folder
+            package, records, auth = self.package, self.records, self.download_auth
+            start(self, 'Camtrap DP', lambda task: acquire_media(task, package, records, destination,
+                  local_only=local, local_folder=local_folder, auth=auth, allow_private=not local), self.receive_download)
 
     def receive_download(self, result):
         self.batches.append(result.output_directory)
@@ -60,7 +73,7 @@ class CamtrapTab(MediaImportTab):
         self.failed = result.failed_records
         self.retry.configure(state='normal' if self.failed else 'disabled')
         self.show(result.output_directory + '\nmanifest.csv\n' +
-                  f'{result.completed} OK; {result.skipped} skipped; {len(result.errors)} errors')
+                  ({'es': '{} preparadas; {} omitidas; {} fallidas', 'pt': '{} preparadas; {} omitidas; {} falhadas', 'en': '{} prepared; {} skipped; {} failed'}[self.lang].format(result.completed, result.skipped, len(result.errors))) + '\n' + '\n'.join(result.errors[:12]))
 
     @action
     def retry_failed(self):
@@ -68,4 +81,6 @@ class CamtrapTab(MediaImportTab):
             destination = filedialog.askdirectory(parent=self)
             if destination:
                 package, records = self.package, list(self.failed)
-                start(self, 'Camtrap DP', lambda task: acquire_media(task, package, records, destination), self.receive_download)
+                local_folder, auth = getattr(self, 'local_folder', None), self.download_auth
+                start(self, 'Camtrap DP', lambda task: acquire_media(task, package, records, destination,
+                      local_only=bool(local_folder), local_folder=local_folder, auth=auth, allow_private=not local_folder), self.receive_download)

@@ -14,18 +14,18 @@ class FolderInput(WorkflowPanel):
         self.root, self.lang = owner.root, owner.lang
         self.catalog = catalog
         self.folder = getattr(owner, 'folder_path', '') or ''
-        self.title('Wildbook Bulk Import · ' + ('Catalog' if catalog else 'Folder'))
+        self.title('Wildbook Bulk Import · ' + {'es': ['Crear desde carpeta', 'Catálogo'], 'pt': ['Criar a partir de pasta', 'Catálogo'], 'en': ['Create from folder', 'Catalog']}[self.lang][int(catalog)])
         self.geometry('760x490')
         labels = {
             'es': ['Seleccionar carpeta', 'Nombre científico (ejemplo: Lynx pardinus)', 'Incluir subcarpetas',
-                   'Identidad (sólo si los nombres identifican animales)', 'Año para fotos sin fecha EXIF (opcional)',
-                   'Configurar Bulk Import', 'Las fechas salen del EXIF. No se usa la fecha de copia del archivo. Sin EXIF ni año, la foto se informa como omitida.'],
+                   'Identificación del individuo (si consta en los nombres)', 'Año para fotos sin fecha EXIF (opcional)',
+                   'Configurar Excel', 'Las fechas salen del EXIF. No se usa la fecha de copia del archivo. Sin EXIF ni año, la foto se informa como omitida.'],
             'pt': ['Selecionar pasta', 'Nome científico (exemplo: Lynx pardinus)', 'Incluir subpastas',
-                   'Identidade (apenas se os nomes identificam animais)', 'Ano para fotos sem data EXIF (opcional)',
-                   'Configurar Bulk Import', 'Datas obtidas do EXIF. A data de cópia não é utilizada. Sem EXIF nem ano, a foto é indicada como omitida.'],
+                   'Identificação do indivíduo (se constar nos nomes)', 'Ano para fotos sem data EXIF (opcional)',
+                   'Configurar Excel', 'Datas obtidas do EXIF. A data de cópia não é utilizada. Sem EXIF nem ano, a foto é indicada como omitida.'],
             'en': ['Choose folder', 'Scientific name (example: Lynx pardinus)', 'Include subfolders',
-                   'Identity (only if names identify animals)', 'Year for photos without EXIF date (optional)',
-                   'Configure Bulk Import', 'Dates come from EXIF, never file copy time. Photos with neither EXIF nor a supplied year are reported as omitted.']}[self.lang]
+                   'Individual identification (if recorded in names)', 'Year for photos without EXIF date (optional)',
+                   'Configure Excel', 'Dates come from EXIF, never file copy time. Photos with neither EXIF nor a supplied year are reported as omitted.']}[self.lang]
         ctk.CTkButton(self, text=labels[0], command=self.choose).pack(pady=10)
         self.path_label = ctk.CTkLabel(self, text=self.folder, wraplength=720)
         self.path_label.pack()
@@ -37,7 +37,8 @@ class FolderInput(WorkflowPanel):
         if catalog:
             self.recursive.select()
         ctk.CTkLabel(self, text=labels[3]).pack()
-        self.identity = StableOptionMenu(self, values=['none', 'filename: first word', 'folder name'], width=270)
+        self.identity_labels = dict(zip({'es': ['No asignar individuo', 'Primera palabra del archivo', 'Nombre de la subcarpeta'], 'pt': ['Não atribuir indivíduo', 'Primeira palavra do ficheiro', 'Nome da subpasta'], 'en': ['Do not assign an individual', 'First word of filename', 'Subfolder name']}[self.lang], ['none', 'filename', 'folder']))
+        self.identity = StableOptionMenu(self, values=list(self.identity_labels), width=300)
         self.identity.pack()
         ctk.CTkLabel(self, text=labels[4]).pack()
         self.year = ctk.CTkEntry(self)
@@ -64,5 +65,5 @@ class FolderInput(WorkflowPanel):
         if year is not None and not 1 <= year <= 9999:
             raise ValueError('Año inválido.')
         folder, recursive = self.folder, bool(self.recursive.get())
-        identity = {'none': 'none', 'filename: first word': 'filename', 'folder name': 'folder'}[self.identity.get()]
+        identity = self.identity_labels[self.identity.get()]
         self.open_editor(lambda task, options: folder_rows(task, folder, species, recursive, identity, year, options[0], options[1], allow_undated=self.catalog))
