@@ -25,3 +25,6 @@ tests/fixtures/camtrap_dp_lynx_synthetic/
 
 # User-supplied Wildlife Insights examples (local only)
 tests/fixtures/Wildlife Insights/
+
+# Archivos ZIP de prueba locales
+/tests/fixtures/**/*.zip
