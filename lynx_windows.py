@@ -9,8 +9,8 @@ import customtkinter as ctk
 
 class WorkflowPanel(ctk.CTkFrame):
     """A workflow page, embedded when a host is supplied, otherwise in a dialog."""
-    def __init__(self, owner):
-        self.workflow = getattr(owner, 'workflow', None)
+    def __init__(self, owner, force_window=False):
+        self.workflow = None if force_window else getattr(owner, 'workflow', None)
         self.window = None if self.workflow else ctk.CTkToplevel(owner.root)
         super().__init__(self.workflow.body if self.workflow else self.window)
         self.pack(fill='both', expand=True)
@@ -44,4 +44,3 @@ class WorkflowPanel(ctk.CTkFrame):
             self.workflow.edit(loader)
         else:
             BulkEditor(self, loader)
-            self.destroy()

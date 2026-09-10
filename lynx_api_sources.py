@@ -57,11 +57,12 @@ def remote_json(task, url, auth, timeout=30):
     return value
 
 
-def fetch_agouti(task, server, project, folder, auth, filters=None):
+def fetch_agouti(task, server, project, folder, auth, filters=None, index=None):
     prefix = server + '/v1/projects/' + project + '/'
     descriptor_url = prefix + 'datapackage.json'
     task.report('Agouti: leyendo descriptor y tablas del proyecto…')
-    descriptor = remote_json(task, descriptor_url, auth)
+    import copy
+    descriptor = copy.deepcopy(index['descriptor']) if index is not None else remote_json(task, descriptor_url, auth)
     if 'resources' not in descriptor and isinstance(descriptor.get('data'), dict):
         descriptor = descriptor['data']
     resources = descriptor.get('resources')
@@ -99,7 +100,7 @@ def fetch_agouti(task, server, project, folder, auth, filters=None):
             task.checkpoint()
             rows.append(row)
         return rows
-    if filters and any(filters.get(key) for key in ('year', 'site', 'deployment', 'latest')):
+    if filters and ('deployment_ids' in filters or any(filters.get(key) for key in ('year', 'site', 'deployment', 'latest'))):
         by_name = {resource.get('name'): resource for resource in resources}
         if not all(name in by_name for name in ('deployments', 'media', 'observations')):
             raise ValueError('Faltan las tablas Camtrap DP para filtrar.')
@@ -187,10 +188,10 @@ def fetch_trapper(task, server, project, folder, auth, approved_only=True, filte
     path = folder / 'camtrap.zip'
     path.write_bytes(archive)
     package = read_package(task, path)
-    return filter_package(package, filters) if filters and any(filters.get(key) for key in ('year', 'site', 'deployment', 'latest')) else package
+    return filter_package(package, filters) if filters and ('deployment_ids' in filters or any(filters.get(key) for key in ('year', 'site', 'deployment', 'latest'))) else package
 
 
-def fetch_api_package(task, provider, server, project, destination, auth=None, approved_only=True, filters=None):
+def fetch_api_package(task, provider, server, project, destination, auth=None, approved_only=True, filters=None, index=None):
     filters = normalize_filters(filters)
     server, project = api_base(server), project_key(project)
     if provider not in ('Agouti API', 'Trapper API'):
@@ -200,7 +201,7 @@ def fetch_api_package(task, provider, server, project, destination, auth=None, a
     folder = Path(tempfile.mkdtemp(prefix=provider.split()[0].lower() + '-', dir=destination))
     try:
         if provider == 'Agouti API':
-            return fetch_agouti(task, server, project, folder, auth, filters)
+            return fetch_agouti(task, server, project, folder, auth, filters, index)
         return fetch_trapper(task, server, project, folder, auth, approved_only, filters)
     except BaseException as exc:
         shutil.rmtree(folder)
@@ -211,3 +212,44 @@ def fetch_api_package(task, provider, server, project, destination, auth=None, a
         if isinstance(exc, (URLError, TimeoutError)):
             raise ValueError('No se pudo obtener el paquete: revisa la conexión o vuelve a intentarlo si la exportación tarda demasiado.') from None
         raise
+
+
+def discover_agouti(task, server, project, auth=None):
+    """Read only descriptor and deployments to populate choices before large tables."""
+    server, project = api_base(server), project_key(project)
+    prefix = server + '/v1/projects/' + project + '/'
+    try:
+        descriptor = remote_json(task, prefix + 'datapackage.json', auth)
+        if 'resources' not in descriptor and isinstance(descriptor.get('data'), dict):
+            descriptor = descriptor['data']
+        resources = [r for r in descriptor.get('resources', []) if r.get('name') == 'deployments']
+        if len(resources) != 1:
+            raise ValueError('Falta una tabla única de despliegues.')
+        resource = resources[0]
+        if 'data' in resource:
+            rows = resource['data']
+        else:
+            path = resource.get('path')
+            if not isinstance(path, str) or not path:
+                raise ValueError('Tabla de despliegues sin ruta.')
+            raw = read_remote(task, urljoin(prefix, path), auth)
+            if urlsplit(path).path.endswith('.gz'):
+                with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
+                    raw = stream.read(LIMIT + 1)
+            if len(raw) > LIMIT:
+                raise ValueError('Tabla de despliegues demasiado grande.')
+            rows = []
+            for row in csv.DictReader(io.StringIO(raw.decode('utf-8-sig'))):
+                task.checkpoint()
+                rows.append(row)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) or not row.get('deploymentID') for row in rows):
+            raise ValueError('Tabla de despliegues inválida.')
+        if len({row['deploymentID'] for row in rows}) != len(rows):
+            raise ValueError('Hay deploymentID duplicados.')
+        resource.pop('path', None)
+        resource['data'] = rows
+        return {'descriptor': descriptor, 'deployments': rows}
+    except HTTPError as exc:
+        raise ValueError(f'HTTP {exc.code}: no se pudieron consultar los despliegues; revisa autorización, servidor y proyecto.') from None
+    except (URLError, TimeoutError):
+        raise ValueError('No se pudieron consultar los despliegues; revisa la conexión.') from None

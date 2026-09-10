@@ -8,7 +8,7 @@ from lynx_media_ui import MediaImportTab
 class CamtrapTab(MediaImportTab):
     def __init__(self, root, lang='es'):
         super().__init__(root, lang)
-        self.heading.configure(text='Camtrap DP · JSON / ZIP')
+
 
     @action
     def open_bulk_import(self):
@@ -17,8 +17,10 @@ class CamtrapTab(MediaImportTab):
 
     @action
     def load(self):
-        path = filedialog.askopenfilename(parent=self, filetypes=[('Camtrap DP', ('*.json', '*.zip'))])
+        path = filedialog.askopenfilename(parent=self, filetypes=[('Camtrap DP ZIP', '*.zip')])
         if path:
+            if not path.lower().endswith('.zip'):
+                raise ValueError('Selecciona el ZIP completo de Camtrap DP.')
             self.reset_source()
             start(self, 'Camtrap DP', lambda task: read_package(task, path), self.receive)
 

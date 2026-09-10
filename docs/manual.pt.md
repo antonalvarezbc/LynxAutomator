@@ -103,7 +103,7 @@ por um sublinhado altera a interpretação feita pelo catálogo.
 
 ## 5. Bulk Import → Wildlife Insights: fotos locais ou descargas
 
-As descargas estão integradas em **Bulk Import**, a primeira aba. Carregue o ZIP WI, selecione espécies e reveja a seleção. Escolha **Fotos locais** para pesquisar imagens numa pasta e subpastas, ou **Descarregar fotografias** para obter referências `gs://` com gsutil. Clique em **Preparar fotografias** e depois em **Configurar Excel**, quando houver fotos verificadas.
+As descargas estão integradas em **Bulk Import**, a primeira aba. Carregue o ZIP WI, selecione espécies e reveja a seleção. Escolha **Fotos locais** para pesquisar imagens numa pasta e subpastas, ou **Descarregar fotografias** para obter referências `gs://` com gsutil. Clique em **Usar fotos locais** ou **Descarregar fotos selecionadas**, conforme o modo escolhido e depois em **Configurar Excel**, quando houver fotos verificadas.
 
 Instale Google Cloud CLI com gsutil. Use **Autorização (opcional) → Iniciar sessão com Google** e conclua o acesso no navegador com uma conta autorizada. Google Cloud CLI gere e conserva as credenciais; LynxAutomator não pede a sua palavra-passe Google. Iniciar sessão não concede novas permissões no bucket. Para gsutil independente ou configurações personalizadas, siga as instruções fornecidas na exportação WI.
 
@@ -265,7 +265,7 @@ do conjunto de dados. Consulte a [revisão de lógica](logic-review.md).
 
 ## Fotografias Camtrap DP
 
-Abra **Bulk Import → Camtrap DP**, carregue `datapackage.json` ou ZIP local (1.x, CSV/CSV.gz) e
+Abra **Bulk Import → Camtrap DP**, carregue o ZIP completo (1.x, CSV/CSV.gz) e
 marque as espécies usando a pesquisa e as caixas de seleção. Não é necessário
 registar um Wildbook. Reveja o número de imagens únicas antes de escolher o destino.
 As imagens associadas por evento são incluídas por predefinição, usando a instalação
@@ -284,7 +284,7 @@ A validação é estrutural básica, não completa. Depois de preparar as fotogr
 
 ## Bulk Import comum: Wildlife Insights e Camtrap DP
 
-Em **Bulk Import → Wildlife Insights**, carregue apenas o ZIP exportado, com `images.csv` ou `images_<projeto>.csv` e um único `deployments.csv` na mesma pasta do ZIP. As espécies são lidas automaticamente. Selecione as espécies e clique em **Rever seleção**, depois em **Preparar fotografias**. Pode descarregar referências `gs://` com gsutil instalado ou ativar **Fotos locais**, que também pesquisa subpastas. Sem gsutil, a opção local está inicialmente selecionada. Os nomes devem corresponder a `location`; nomes ambíguos e imagens inválidas são indicados como falhas. As descargas usam uma nova pasta com `manifest.csv`, preservando os ficheiros existentes. Pode repetir as falhas. **Configurar Excel** fica disponível quando existem fotos verificadas; a pré-visualização informa as pendentes e exporta apenas as disponíveis. Não é necessário um modelo Excel.
+Em **Bulk Import → Wildlife Insights**, carregue apenas o ZIP exportado, com `images.csv` ou `images_<projeto>.csv` e um único `deployments.csv` na mesma pasta do ZIP. As espécies são lidas automaticamente. Selecione as espécies e clique em **Rever seleção**, depois em **Usar fotos locais** ou **Descarregar fotos selecionadas**, conforme o modo escolhido. Pode descarregar referências `gs://` com gsutil instalado ou ativar **Fotos locais**, que também pesquisa subpastas. Sem gsutil, a opção local está inicialmente selecionada. Os nomes devem corresponder a `location`; nomes ambíguos e imagens inválidas são indicados como falhas. As descargas usam uma nova pasta com `manifest.csv`, preservando os ficheiros existentes. Pode repetir as falhas. **Configurar Excel** fica disponível quando existem fotos verificadas; a pré-visualização informa as pendentes e exporta apenas as disponíveis. Não é necessário um modelo Excel.
 
 O modelo Excel antigo continua nas opções avançadas, por compatibilidade. Excel é o formato de saída. No Camtrap DP, selecione espécies e obtenha as fotos antes de abrir Bulk Import; os lotes e novas tentativas são reunidos durante a sessão.
 
@@ -337,7 +337,7 @@ O seletor locationID começa por localidades de origem; também permite coordena
 Pasta e catálogo usam o editor comum. Indique espécie, subpastas e método de identidade explícito (nenhum, primeira palavra do ficheiro ou nome da pasta). Datas vêm do EXIF; pode indicar apenas um ano quando falta a data, sem inventar mês/dia nem agrupar essas fotos por tempo. Sem EXIF nem ano, as fotos omitidas são indicadas. Complete a localização no editor. O modelo anterior continua nas opções de compatibilidade.
 
 
-Bulk Import reúne Wildlife Insights, Camtrap DP, Criar a partir de pasta, Catálogo, Agouti API e Trapper API numa única janela. Selecione a origem, prepare os dados e configure os campos, a pré-visualização e o Excel. O seletor de origem permite rever a fonte atual ou escolher outra; selecionar uma origem descarta o editor atual. Catálogo aceita fotos sem data, com campos temporais vazios e sem agrupamento temporal. Lince Ibérico está em Funcionalidades.
+Bulk Import reúne Wildlife Insights, Camtrap DP, Criar a partir de pasta, Catálogo, Agouti API e Trapper API na primeira aba; **Configurar Excel** abre uma janela comum. Selecione a origem, prepare os dados e configure os campos, a pré-visualização e o Excel. O seletor de origem permite rever a fonte atual ou escolher outra; selecionar uma origem descarta o editor atual. Catálogo aceita fotos sem data, com campos temporais vazios e sem agrupamento temporal. Lince Ibérico está em Funcionalidades.
 
 
 ### Acesso Camtrap DP a fotografias privadas
@@ -351,21 +351,14 @@ Fotos privadas podem ser solicitadas no modo de descarga; o servidor verifica as
 
 Referencias / References: [Agouti](https://docs.agouti.eu/api/endpoints.html), [Trapper](https://trapper-project.readthedocs.io/en/latest/tutorial.html#authentication), [Google Cloud CLI](https://cloud.google.com/sdk/docs/authorizing).
 
-O intervalo em segundos fica junto a **Agrupar fotografias**. **Escolher locationID** aparece apenas na linha `Encounter.locationID`. Os nomes oficiais das colunas são preservados; origens dos valores e tipos de dados usam o idioma selecionado, sem alterar os perfis guardados.
+O intervalo em segundos fica junto a **Agrupar fotografias**. **Escolher locationID** aparece apenas na linha `Encounter.locationID`. Os nomes oficiais das colunas são preservados; os nomes das variáveis de origem não são traduzidos e os tipos de dados usam o idioma selecionado, sem alterar os perfis guardados.
 
 
 ### Origens Agouti API e Trapper API
 
 **Wildlife Insights** é a origem inicial. **Criar a partir de pasta** substitui Pasta. WI, DP e fontes API partilham seleção de espécies, revisão, preparação de fotos e configuração do Excel. **Fotos locais** é a opção inicial; também pode escolher descarregar. Configure **Autorização (opcional)** apenas se o servidor exigir credenciais.
 
-Em **Agouti API (alpha)**, indique o ID do projeto e o servidor (por predefinição `https://api.agouti.eu`). **Carregar projeto** obtém `datapackage.json` e as tabelas, guarda-os na pasta escolhida e apresenta as espécies. Caminhos relativos das fotos no servidor são convertidos em URL para descarga ou associação a originais locais.
-
-Em **Trapper API (alpha)**, indique a URL da instância e o ID do projeto de classificação. Pode limitar a identificações aprovadas. **Carregar projeto** solicita uma exportação Camtrap DP CSV.gz e descarrega o ZIP. Usa a rota atual, com alternativa à rota anterior em caso de 404. A aplicação não publica a exportação.
-
-Pode tentar carregar sem credenciais. Se o servidor devolver 401/403, configure uma API key/Bearer Agouti ou token Trapper e repita. As credenciais só são enviadas à origem configurada; as permissões dependem do servidor. Cada carga usa uma nova pasta, eliminada se falhar ou for cancelada. Depois siga o fluxo DP comum para fotos e Excel.
-
-[Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)
-
+Use **Consultar valores do projeto** e depois **Selecionar dados…** para escolher valores antes de **Carregar seleção de dados**. Agouti lê descritor/instalações antes de pedir media/observações; Trapper lê o ZIP completo de metadados e reutiliza-o ao alterar filtros. Nenhum destes passos pede fotografias. A autorização permanece em memória e restrita ao servidor configurado.
 
 ### Exportação e filtros
 
@@ -373,12 +366,16 @@ Pode tentar carregar sem credenciais. Se o servidor devolver 401/403, configure 
 
 Em **Escolher locationID**, pode agrupar por qualquer metadado disponível, selecionar várias linhas com Ctrl/Shift ou todas e aplicar várias atribuições. **Fechar** regressa ao editor. O perfil guarda a hierarquia. O nome sugerido ao guardar inclui o ID do ancestral comum mais específico e data/hora local (`AAAA-MM-DD_HH-MM-SS`), sem alterar os IDs nas linhas. Sem hierarquia conhecida usa `varias-ubicaciones`; IDs ausentes usam `sin-ubicacion`/`ubicaciones-incompletas`. O nome é editável.
 
-As origens **Agouti API (alpha)** e **Trapper API (alpha)** têm **Autorização** no topo e **Filtrar dados…** antes de carregar. Alpha: faltam testes com contas reais. Pode tentar sem credenciais; o servidor verifica permissões. Sem filtros pede-se todo o projeto, respeitando a seleção de identificações aprovadas no Trapper.
+**Selecionar dados…** oferece multiseleção com pesquisa, valores existentes, contagens e número de instalações correspondentes. Conforme as colunas presentes: `deploymentStart.year`, `locationName`, `locationID`, `deploymentID`, `cameraID`, `cameraModel`, `habitat`, `setupBy`, `deploymentTags`, `captureMethod` e `baitUse`. Colunas ausentes não aparecem. Valores da mesma variável são alternativas; variáveis diferentes intersectam-se. Sem marcas aceita qualquer valor. Resultados vazios impedem continuar. Ano significa início da instalação, não recorte temporal de fotografias. As espécies selecionam-se depois.
 
-Combine ano de início, texto do local, texto do ID (sensível a maiúsculas) e últimas N instalações. Os critérios intersectam-se; últimas aplica-se depois dos restantes. O ano é o do início da instalação, não recorta fotografias por ano. Datas ausentes não cumprem ano/últimas. Alterar filtros exige nova carga.
+Agouti pede media/observações por IDs escolhidos, reutilizando o índice de instalações. No Trapper a seleção é local depois de descarregar o ZIP de metadados e não reduz essa transferência. Ambas as origens permanecem **alpha**, sem testes com contas reais. No WI, inclua filtros de Catalogued/Identify ao pedir o ZIP e carregue-o aqui. As fotos só se obtêm com **Usar fotos locais** ou **Descarregar fotos selecionadas**.
 
-- Agouti consulta instalações antes de pedir media/observações por cada deploymentID escolhido; seleção vazia interrompe a carga. [API Agouti](https://docs.agouti.eu/api/endpoints.html).
-- Trapper envia ID e excluir observações vazias ao servidor; ano/local/últimas aplicam-se após receber o ZIP, sem reduzir essa transferência. O ZIP original mantém-se completo; a seleção limita fotos e Excel. Filtros remotos não passam silenciosamente para a rota antiga. [API Trapper](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/).
-- WI: filtre em Catalogued/Identify e inclua esses filtros ao pedir a descarga; carregue o ZIP, selecione espécies, prepare fotos e configure Excel. [Guia WI](https://www.wildlifeinsights.org/get-started/download/private).
+### Níveis de pastas e estações
 
-Se Trapper exceder o tempo de espera, gere o pacote na web e carregue o ZIP em **Camtrap DP**. Conserve os dados originais com o Excel para reproduzir a importação.
+**Criar a partir de pasta** e **Catálogo** abrem a mesma janela **Configurar Excel**, com `Encounter.locationID`, `Encounter.submitterID`, perfis e comentários. Fechá-la preserva a página de origem.
+
+Ative **Interpretar os níveis das subpastas**. Nível 1 é a primeira pasta sob a raiz; `—` não atribui esse dado. Para `Fotos/Localidade/Estação/Indivíduo/foto.jpg`, selecione Fotos como raiz, localidade=1, estação=2, indivíduo=3. Pode atribuir um nível ao nome científico quando as pastas contêm nomes binomiais; caso contrário escreva um nome científico comum. O nível de indivíduo tem prioridade sobre o nome do ficheiro; ative `MarkedIndividual.individualID` no editor se o quiser exportar.
+
+**Rever subpastas e estações** enumera caminhos de estações. Edite a localidade e ambas as coordenadas WGS84 decimais, ou deixe ambas vazias; zero é válido. **Guardar estações** aplica os valores às fotos correspondentes. Estações homónimas sob localidades diferentes continuam distintas. Não é necessário criar instalações. Níveis ausentes são indicados; alterar níveis/raiz exige nova revisão. A tabela mantém-se durante a sessão. Pasta exige EXIF ou ano de recurso; Catálogo aceita fotos sem data.
+
+**Obter valor de** mostra nomes de variáveis sem tradução. WI oferece `images.*`, `deployments.*`, `projects.*`, `cameras.*` e os CSV relacionados, incluindo tabelas partidas por projeto. DP oferece os seus recursos; pastas usam `folder.*`, `station.*`, `file.*`. As relações seguem IDs explícitos sem misturar projetos. Os aliases antigos de perfis WI continuam legíveis, mas não aparecem como novas opções.

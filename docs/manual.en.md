@@ -95,7 +95,7 @@ changes how this catalog module interprets it.
 
 ## 5. Bulk Import → Wildlife Insights: local photos or downloads
 
-Downloads are integrated into **Bulk Import**, the first tab. Load the WI ZIP, select species and review the selection. Choose **Local photos** to find images recursively in a folder, or **Download photographs** to retrieve `gs://` references with gsutil. Click **Prepare photographs**, then **Configure Excel** once verified photos are available.
+Downloads are integrated into **Bulk Import**, the first tab. Load the WI ZIP, select species and review the selection. Choose **Local photos** to find images recursively in a folder, or **Download photographs** to retrieve `gs://` references with gsutil. Click **Use local photos** or **Download selected photos**, according to the selected mode, then **Configure Excel** once verified photos are available.
 
 Install Google Cloud CLI with gsutil for downloads. Use **Authorization (optional) → Sign in with Google** and complete the browser flow with an account authorized for those photos. Google Cloud CLI manages and stores its credentials; LynxAutomator does not request your Google password. Signing in does not grant new bucket permissions. Standalone gsutil or customized configurations may require the access instructions supplied with the WI export.
 
@@ -240,7 +240,7 @@ See the [logic review](logic-review.md) for remaining improvements.
 
 ## Camtrap DP photographs
 
-Open **Bulk Import → Camtrap DP**, load a local `datapackage.json` or ZIP (1.x, CSV/CSV.gz), then
+Open **Bulk Import → Camtrap DP**, load the complete ZIP (1.x, CSV/CSV.gz), then
 select species using the search box and checkboxes. No Wildbook registration is
 required. Review the unique image counts before choosing the output directory.
 Event-associated images are included by default from the same deployment/time
@@ -260,7 +260,7 @@ Excel export follows photo acquisition in the shared editor. Direct project load
 
 ## Shared Bulk Import: Wildlife Insights and Camtrap DP
 
-In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images.csv` or `images_<project>.csv` and exactly one `deployments.csv` in the same ZIP folder. Species load automatically. Select species and click **Review selection**, then **Prepare photographs**. Download `gs://` references with installed gsutil, or enable **Local photos** to find existing photos recursively. Local mode is selected initially when gsutil is unavailable. Filenames must match `location`; ambiguous names and invalid images are reported as failures. Downloads use a fresh batch directory with `manifest.csv`, preserving existing files. Failed photos can be retried. **Configure Excel** becomes available once photos have been verified; preview reports missing photos and exports only available ones. No Excel template is required.
+In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images.csv` or `images_<project>.csv` and exactly one `deployments.csv` in the same ZIP folder. Species load automatically. Select species and click **Review selection**, then **Use local photos** or **Download selected photos**, according to the selected mode. Download `gs://` references with installed gsutil, or enable **Local photos** to find existing photos recursively. Local mode is selected initially when gsutil is unavailable. Filenames must match `location`; ambiguous names and invalid images are reported as failures. Downloads use a fresh batch directory with `manifest.csv`, preserving existing files. Failed photos can be retried. **Configure Excel** becomes available once photos have been verified; preview reports missing photos and exports only available ones. No Excel template is required.
 
 The previous Excel template workflow remains under Advanced for compatibility. Excel is the output format. For Camtrap DP, select species and obtain photographs before opening Bulk Import; successful batches and retries are combined during the session.
 
@@ -313,7 +313,7 @@ locationID starts with source localities; coordinates and available country/site
 Folder and catalog inputs use the common editor. Choose species, recursion and an explicit identity convention (none, filename first word, or folder name). Dates come from EXIF; an optional fallback year leaves month/day blank and prevents temporal grouping of undated photos. Photos lacking both EXIF dates and a supplied year are reported as omitted. Complete location in the editor. The previous template workflow remains under compatibility options.
 
 
-Bulk Import brings Wildlife Insights, Camtrap DP, Create from folder, Catalog, Agouti API and Trapper API together in one window. Select a source, prepare the data, then configure fields, preview and export Excel. The source selector lets you revisit the current source or choose another; selecting a source discards the current editor. Catalog accepts undated photos, leaving date and time fields empty and keeping them out of temporal groups. Iberian Lynx is under Functionalities.
+Bulk Import brings Wildlife Insights, Camtrap DP, Create from folder, Catalog, Agouti API and Trapper API in the first tab; **Configure Excel** opens a shared popup window. Select a source, prepare the data, then configure fields, preview and export Excel. The source selector lets you revisit the current source or choose another; selecting a source discards the current editor. Catalog accepts undated photos, leaving date and time fields empty and keeping them out of temporal groups. Iberian Lynx is under Functionalities.
 
 
 ### Camtrap DP access to private photographs
@@ -327,21 +327,14 @@ Private photos can be requested in download mode; the server checks account or l
 
 Referencias / References: [Agouti](https://docs.agouti.eu/api/endpoints.html), [Trapper](https://trapper-project.readthedocs.io/en/latest/tutorial.html#authentication), [Google Cloud CLI](https://cloud.google.com/sdk/docs/authorizing).
 
-The interval in seconds is beside **Group photographs**. **Choose locationID** appears only on the `Encounter.locationID` row. Official column names are retained; value sources and data types use the selected UI language without changing saved profiles.
+The interval in seconds is beside **Group photographs**. **Choose locationID** appears only on the `Encounter.locationID` row. Official column names are retained; source variable names remain untranslated and data types use the selected UI language without changing saved profiles.
 
 
 ### Agouti API and Trapper API sources
 
 **Wildlife Insights** is the initial source. **Create from folder** replaces Folder. WI, DP and API sources share species selection, review, photo preparation and Excel configuration. **Local photos** is selected initially; downloads are also available. Configure **Authorization (optional)** only when the server requires credentials.
 
-For **Agouti API (alpha)**, enter the project ID and server (default `https://api.agouti.eu`). **Load project** downloads `datapackage.json` and its tables into a folder you choose, then displays species. Relative server photo paths become URLs for downloads or matching local originals.
-
-For **Trapper API (alpha)**, enter your instance URL and classification project ID. You can request approved classifications only. **Load project** requests a Camtrap DP CSV.gz export and downloads its ZIP. The current export route is used first, falling back to the legacy route on 404. The application does not publish or release the export.
-
-Both sources can attempt loading without credentials. If the server returns 401/403, configure an Agouti API key/Bearer token or Trapper token and load again. Credentials are sent only to the configured origin; the server decides permissions. Each load uses a new folder, with incomplete files removed on failure or cancellation. Continue through the shared DP photo and Excel workflow afterward.
-
-[Agouti API](https://docs.agouti.eu/api/endpoints.html) · [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/)
-
+Use **Read project values** to discover metadata, then **Select data…** to choose values before **Load selected data**. Agouti reads descriptor/deployments before requesting media/observations; Trapper reads its full metadata ZIP and reuses it when filters change. Neither step requests photographs. Authorization remains in memory and restricted to the configured server.
 
 ### Export and data filters
 
@@ -349,12 +342,16 @@ Both sources can attempt loading without credentials. If the server returns 401/
 
 **Choose locationID** supports grouping by any available metadata, multiple rows with Ctrl/Shift, or all rows. Apply multiple assignments, then **Close**. Profiles retain the hierarchy. The suggested filename includes the deepest common ancestor ID and local date/time (`YYYY-MM-DD_HH-MM-SS`); individual row locations stay unchanged. Unknown hierarchy/no common ancestor uses `varias-ubicaciones`; absent IDs use `sin-ubicacion`/`ubicaciones-incompletas`. The filename remains editable.
 
-**Agouti API (alpha)** and **Trapper API (alpha)** have **Authorization** at the top and **Filter data…** before loading. Alpha means real-account testing remains outstanding. Credentials are not forced; servers enforce permissions. Without deployment filters, loading requests the whole project, respecting Trapper's approved-classifications setting.
+**Select data…** offers searchable multi-selection from actual values, counts and the number of matching deployments. Available fields may include `deploymentStart.year`, `locationName`, `locationID`, `deploymentID`, `cameraID`, `cameraModel`, `habitat`, `setupBy`, `deploymentTags`, `captureMethod` and `baitUse`. Absent columns are hidden. Multiple values within a variable are alternatives; different variables intersect. No selection means any value. Empty results cannot continue. Year means deployment start, not a filter on individual photo dates. Species are selected next.
 
-Combine deployment start year, site substring, case-sensitive deployment ID substring and latest N by start date. Criteria intersect; latest is applied last. Year refers to deployment start, not each photograph, and does not trim photos from deployments spanning years. Missing dates do not satisfy year/latest. Changing filters requires reloading.
+Agouti requests media/observations for selected IDs, reusing the deployment index. Trapper's selection is local after its metadata ZIP is downloaded; it does not reduce that initial transfer. Both sources remain **alpha**, pending real-account testing. In WI, include Catalogued/Identify filters when requesting the ZIP, then load it here and select species. Photos are only obtained using **Use local photos** or **Download selected photos**.
 
-- Agouti reads deployments first, then requests media/observations for each selected deploymentID. Empty selections stop before those requests. [Agouti API](https://docs.agouti.eu/api/endpoints.html).
-- Trapper sends deployment ID and exclude-blank filters to the server; year/site/latest apply after downloading the ZIP and do not reduce that initial transfer. The original ZIP stays complete; the active subset limits photographs and Excel. Remote filters are not silently reinterpreted on the legacy route. [Trapper API](https://trapper-project.readthedocs.io/en/docs-docs-refactor/how-to/export/camtrap-dp-export/).
-- WI: filter in Catalogued/Identify and include those filters when requesting a download. Load that ZIP, select species, prepare photographs and configure Excel. [WI guide](https://www.wildlifeinsights.org/get-started/download/private).
+### Folder levels and stations
 
-If Trapper export exceeds the timeout, generate its package on the website and load the ZIP through **Camtrap DP**. Keep the original data alongside Excel to reproduce the import.
+**Create from folder** and **Catalog** open the same **Configure Excel** popup, with `Encounter.locationID`, `Encounter.submitterID`, profiles and comments. Closing it preserves the source page.
+
+Enable **Map subfolder levels**. Level 1 is the first folder below the chosen root; `—` means unused. For `Photos/Locality/Station/Individual/photo.jpg`, select Photos as root, locality=1, station=2, individual=3. A scientific-name level can be selected when folder names contain binomials; otherwise supply one shared scientific name. Individual levels take precedence over filename identification; enable `MarkedIndividual.individualID` in the editor if required.
+
+**Review subfolders and stations** lists station paths. Edit locality and both WGS84 decimal coordinates, or leave both blank; zero is valid. **Save stations** applies them to corresponding photos. Identical station names under different parents remain distinct. No deployments are required. Missing levels are reported; changing levels/root requires another review. Station settings last for the session. Folder requires EXIF or a fallback year; Catalog permits undated photographs.
+
+**Value source** shows untranslated variable names. WI offers its own `images.*`, `deployments.*`, `projects.*`, `cameras.*` and related CSV fields, including partitioned tables. DP offers its own resources; folder sources use `folder.*`, `station.*`, `file.*`. Joins follow explicit IDs without mixing projects. Old WI profile aliases remain readable but are not offered as new source choices.

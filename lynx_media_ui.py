@@ -3,19 +3,19 @@ import customtkinter as ctk
 from lynx_ui_jobs import action
 
 LABELS = {
-    'es': ['Cargar datapackage.json o ZIP', 'Buscar especie', 'Seleccionar visibles', 'Deseleccionar todas',
+    'es': ['Cargar ZIP de Camtrap DP', 'Buscar especie', 'Seleccionar visibles', 'Deseleccionar todas',
            'Incluir todas las fotografías de los eventos', 'Sólo copiar imágenes locales',
            'Revisar selección', 'Preparar fotografías', 'Selecciona al menos una especie.',
            'Paquete', 'observaciones', 'fotografías únicas', 'locales', 'remotas', 'privadas',
            'SINTÉTICO: etiquetas de prueba; las fotos no son de lince.',
            'Se incluyen las fotos del evento, aunque estén vacías. La detección se realizará en Wildbook.'],
-    'pt': ['Carregar datapackage.json ou ZIP', 'Pesquisar espécie', 'Selecionar visíveis', 'Desmarcar todas',
+    'pt': ['Carregar ZIP do Camtrap DP', 'Pesquisar espécie', 'Selecionar visíveis', 'Desmarcar todas',
            'Incluir todas as fotografias dos eventos', 'Copiar apenas imagens locais',
            'Rever seleção', 'Preparar fotografias', 'Selecione pelo menos uma espécie.',
            'Pacote', 'observações', 'fotografias únicas', 'locais', 'remotas', 'privadas',
            'SINTÉTICO: etiquetas de teste; as fotos não são de lince.',
            'Incluem-se as fotos do evento, mesmo vazias. A deteção será realizada no Wildbook.'],
-    'en': ['Load datapackage.json or ZIP', 'Search species', 'Select visible', 'Clear selection',
+    'en': ['Load Camtrap DP ZIP', 'Search species', 'Select visible', 'Clear selection',
            'Include all event photographs', 'Copy local images only',
            'Review selection', 'Prepare photographs', 'Select at least one species.',
            'Package', 'observations', 'unique photographs', 'local', 'remote', 'private',
@@ -83,6 +83,9 @@ class MediaImportTab(ctk.CTkFrame):
         self.retry.pack(side='left', padx=5)
         self.export = ctk.CTkButton(buttons, text='Configurar Excel' if lang == 'es' else 'Configurar Excel' if lang == 'pt' else 'Configure Excel', command=self.open_bulk_import, state='disabled')
         self.export.pack(side='left', padx=5)
+        self.acquisition_hint = ctk.CTkLabel(self, text='', wraplength=950)
+        self.acquisition_hint.pack(fill='x', padx=10, before=self.preview)
+        self.update_acquisition_text()
 
     @action
     def access(self):
@@ -93,7 +96,13 @@ class MediaImportTab(ctk.CTkFrame):
         else:
             self._access_dialog = DownloadAccess(self, google=getattr(self, 'google_access', False))
 
+    def update_acquisition_text(self):
+        local = bool(self.local.get())
+        self.download.configure(text=({'es': 'Usar fotos locales', 'pt': 'Usar fotos locais', 'en': 'Use local photos'} if local else {'es': 'Descargar fotos seleccionadas', 'pt': 'Descarregar fotos selecionadas', 'en': 'Download selected photos'})[self.lang])
+        self.acquisition_hint.configure(text=({'es': 'Se usarán las fotografías de la carpeta que elijas. No se descargarán fotos.', 'pt': 'Serão usadas as fotografias da pasta escolhida. Não se descarregam fotos.', 'en': 'Use photographs from the folder you choose. No photos will be downloaded.'} if local else {'es': 'Las fotos sólo se descargan al pulsar «Descargar fotos seleccionadas». Cargar datos y revisar selección no descarga fotos.', 'pt': 'As fotos só são descarregadas ao clicar em «Descarregar fotos selecionadas». Carregar dados e rever a seleção não descarrega fotos.', 'en': 'Photos download only when you click “Download selected photos”. Loading data and reviewing a selection do not download photos.'})[self.lang])
+
     def acquisition_changed(self):
+        self.update_acquisition_text()
         self.batches = []
         self.failed = []
         if hasattr(self, 'available'):

@@ -106,8 +106,8 @@ class LocationPicker(ctk.CTkToplevel):
                 label = ' | '.join(metadata.get(mode, [])) or {'es': '(Sin valor)', 'pt': '(Sem valor)', 'en': '(No value)'}[self.lang]
                 key = encounter_key(row)
             elif mode == 'Deployment':
-                identifier = (metadata.get('deployment.deploymentID') or metadata.get('deployment.deployment_id') or ['—'])[0]
-                project = (metadata.get('deployment.project_id') or [''])[0]
+                identifier = (metadata.get('deployments.deployment_id') or metadata.get('folder.stationPath') or metadata.get('deployment.deploymentID') or metadata.get('deployment.deployment_id') or ['—'])[0]
+                project = (metadata.get('deployments.project_id') or metadata.get('deployment.project_id') or [''])[0]
                 locality = row.get('locality') or (metadata.get('deployment.locationName') or metadata.get('deployment.placename') or [''])[0]
                 label = ' · '.join(str(value) for value in (project, identifier, locality) if value)
                 key = deployment

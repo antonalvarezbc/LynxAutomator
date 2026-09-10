@@ -28,7 +28,7 @@ class MetadataSourceBox(StableComboBox):
 
 class BulkEditor(WorkflowPanel):
     def __init__(self, owner, loader):
-        super().__init__(owner)
+        super().__init__(owner, force_window=True)
         self.root = owner.root
         self.lang = getattr(owner, 'lang', 'es')
         self.words = TEXT.get(self.lang, TEXT['es'])
@@ -48,15 +48,8 @@ class BulkEditor(WorkflowPanel):
         self.interval.pack(side='left', padx=4)
         self.interval.bind('<KeyRelease>', self.invalidate)
         ctk.CTkLabel(grouping, text={'es': 'segundos', 'pt': 'segundos', 'en': 'seconds'}[self.lang]).pack(side='left', padx=4)
-        ctk.CTkLabel(grouping, text={'es': 'Se respetan los eventos definidos en Camtrap DP.', 'pt': 'Respeitam-se os eventos definidos no Camtrap DP.', 'en': 'Defined Camtrap DP events are preserved.'}[self.lang]).pack(side='left', padx=12)
-        self.source_labels = dict(zip(['fixed', 'template', 'location_map'], {
-            'es': ['Valor fijo', 'Texto con metadatos', 'Ubicaciones asignadas'],
-            'pt': ['Valor fixo', 'Texto com metadados', 'Localizações atribuídas'],
-            'en': ['Fixed value', 'Text with metadata', 'Assigned locations']}[self.lang]))
-        self.source_labels.update(dict(zip(SOURCES, {
-            'es': ['Género', 'Epíteto específico', 'Latitud', 'Longitud', 'Localidad', 'Año', 'Mes', 'Día', 'Hora', 'Minutos', 'ID de evento', 'ID de individuo', 'Nombre científico'],
-            'pt': ['Género', 'Epíteto específico', 'Latitude', 'Longitude', 'Localidade', 'Ano', 'Mês', 'Dia', 'Hora', 'Minutos', 'ID de evento', 'ID de indivíduo', 'Nome científico'],
-            'en': ['Genus', 'Specific epithet', 'Latitude', 'Longitude', 'Locality', 'Year', 'Month', 'Day', 'Hour', 'Minutes', 'Event ID', 'Individual ID', 'Scientific name']}[self.lang])))
+        ctk.CTkLabel(grouping, text={'es': 'Se respetan los eventos del origen cuando existen.', 'pt': 'Respeitam-se os eventos de origem quando existem.', 'en': 'Existing source events are preserved.'}[self.lang]).pack(side='left', padx=12)
+        self.source_labels = {key: key for key in ['fixed', 'template', 'location_map'] + SOURCES}
         self.type_labels = dict(zip(['text', 'integer', 'decimal', 'boolean'], {
             'es': ['Texto', 'Entero', 'Decimal', 'Lógico'],
             'pt': ['Texto', 'Inteiro', 'Decimal', 'Lógico'],
@@ -90,7 +83,8 @@ class BulkEditor(WorkflowPanel):
         buttons = ctk.CTkFrame(self)
         buttons.pack(fill='x', padx=10, pady=8)
         for text, command in [(self.words[0], self.add), (self.words[1], lambda: self.render(default_fields())),
-                              (self.words[2], self.preview), (self.words[3], self.save)]:
+                              (self.words[2], self.preview), (self.words[3], self.save),
+                              ({'es': 'Cerrar', 'pt': 'Fechar', 'en': 'Close'}[self.lang], self.close)]:
             ctk.CTkButton(buttons, text=text, command=command).pack(side='left', padx=4)
         self.status = ctk.CTkLabel(self, text='', wraplength=1050)
         self.status.pack(fill='x', padx=10)
@@ -127,7 +121,7 @@ class BulkEditor(WorkflowPanel):
         foreground(window, self.winfo_toplevel())
 
     def refresh_sources(self, rows, group):
-        self.source_names = sorted(set(SOURCES) | {key for row in rows for key, values in row.get('metadata', {}).items() if values})
+        self.source_names = sorted({key for key in SOURCES if any(row.get(key) not in ('', None) for row in rows)} | {key for row in rows for key, values in row.get('metadata', {}).items() if values})
         self.sources_group = group
         for _, _, source, _, _ in self.rows:
             source.configure(values=self.source_choices())
@@ -195,7 +189,7 @@ class BulkEditor(WorkflowPanel):
         return next((key for key, label in labels.items() if label == value), value)
 
     def source_choices(self):
-        return list(self.source_labels.values()) + [name for name in self.source_names if name not in self.source_labels]
+        return ['fixed', 'template', 'location_map'] + self.source_names
 
     @staticmethod
     def field_grid(widget):

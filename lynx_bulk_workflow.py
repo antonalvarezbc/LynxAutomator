@@ -32,9 +32,9 @@ class BulkWorkflow(ctk.CTkFrame):
     @action
     def select(self, value):
         self.hide_pages()
-        if self.editor:
+        if self.editor and self.editor.winfo_exists():
             self.editor.destroy()
-            self.editor = None
+        self.editor = None
         if value not in self.pages:
             index = self.sources.index(value)
             if index < 2:
@@ -57,7 +57,6 @@ class BulkWorkflow(ctk.CTkFrame):
 
     def edit(self, loader):
         from lynx_bulk_ui import BulkEditor
-        self.hide_pages()
-        if self.editor:
+        if self.editor and self.editor.winfo_exists():
             self.editor.destroy()
         self.editor = BulkEditor(self, loader)

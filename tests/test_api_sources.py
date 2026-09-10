@@ -222,3 +222,35 @@ class APISourceTests(unittest.TestCase):
         for filters in ({'year': 'yesterday'}, {'latest': '0'}, {'year': '10000'}):
             with self.assertRaises(ValueError):
                 normalize_filters(filters)
+
+    def test_discover_agouti_then_exact_selection_reuses_descriptor_and_deployments(self):
+        from lynx_api_sources import discover_agouti
+        self.two_deployments()
+        with patch('lynx_api_sources.open_download', side_effect=self.filtered_agouti):
+            index = discover_agouti(self.task, 'https://api.agouti.eu', 'p')
+            self.assertEqual(len(self.calls), 2)
+            self.assertEqual(len(index['deployments']), 2)
+            package = fetch_api_package(self.task, 'Agouti API', 'https://api.agouti.eu', 'p', self.output,
+                                        filters={'deployment_ids': ['d2']}, index=index)
+        self.assertEqual(len(self.calls), 4)
+        self.assertEqual([row['deploymentID'] for row in package.deployments], ['d2'])
+        self.assertEqual(len(index['deployments']), 2)
+        self.assertTrue(all(parse_qs(urlsplit(url).query).get('deploymentID') == ['d2'] for url, _ in self.calls[2:]))
+
+    def test_multiselect_facets_intersect_and_cache_is_preserved(self):
+        from lynx_api_filters import deployment_facets, match_facets, filter_package
+        self.two_deployments()
+        package = read_package(self.task, self.source / 'datapackage.json')
+        facets = deployment_facets(package.deployments)
+        self.assertEqual(set(facets['deploymentStart.year']), {'2024', '2025'})
+        self.assertEqual(set(facets['locationName']), {'North', 'South'})
+        self.assertNotIn('cameraModel', facets)
+        self.assertEqual(match_facets(package.deployments, {'deploymentStart.year': {'2024', '2025'}, 'locationName': {'South'}}), [package.deployments[1]])
+        subset = filter_package(package, {'deployment_ids': ['d2']})
+        self.assertEqual(len(subset.deployments), 1)
+        self.assertEqual(len(package.deployments), 2)
+        self.assertTrue(all(row['deploymentID'] == 'd2' for row in subset.media + subset.observations))
+        self.assertEqual(match_facets(package.deployments, {'deploymentStart.year': set()}), package.deployments)
+        self.assertEqual(match_facets(package.deployments, {'locationName': {'unknown'}}), [])
+        with self.assertRaises(ValueError):
+            filter_package(package, {'deployment_ids': []})

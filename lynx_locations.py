@@ -82,7 +82,7 @@ def deployment_key(row):
             if metadata.get(key):
                 return metadata[key][0]
         return ''
-    return json.dumps([value('deployment.project_id'), value('deployment.deploymentID', 'deployment.deployment_id')], ensure_ascii=False)
+    return json.dumps([value('deployments.project_id', 'deployment.project_id', 'folder.root'), value('deployments.deployment_id', 'deployment.deploymentID', 'deployment.deployment_id', 'folder.stationPath')], ensure_ascii=False)
 
 
 def branch_url(branch):

@@ -104,6 +104,16 @@ def merge_metadata(target, row):
 def source_value(row, source):
     if source in SOURCES:
         return row.get(source, '')
+    if row.get('_source_kind') == 'wi' and source not in row.get('metadata', {}):
+        prefix, dot, column = source.partition('.')
+        source = {'media': 'images', 'deployment': 'deployments'}.get(prefix, prefix) + dot + column
+        if prefix == 'media' and source not in row.get('metadata', {}):
+            if column.endswith('_image'):
+                source = 'images.' + column[:-6]
+            elif column.endswith('_deployment'):
+                source = 'deployments.' + column[:-11]
+            elif 'deployments.' + column in row.get('metadata', {}):
+                source = 'deployments.' + column
     if source not in row.get('metadata', {}):
         raise ValueError('Metadato no disponible: ' + source)
     return ' | '.join(row['metadata'][source])
@@ -153,9 +163,13 @@ def camtrap_rows(task, package, records, batches, group=True, threshold=3):
             continue
         if isinstance(resource.get('data'), list):
             extras[name] = resource['data']
-        elif str(resource.get('path', '')).lower().endswith('.csv'):
+        elif str(resource.get('path', '')).lower().endswith(('.csv', '.csv.gz')):
             with package.open_local(resource['path']) as stream:
                 raw = stream.read(100 * 1024 * 1024 + 1)
+            if str(resource['path']).lower().endswith('.gz'):
+                import gzip
+                with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
+                    raw = stream.read(100 * 1024 * 1024 + 1)
             if len(raw) > 100 * 1024 * 1024:
                 raise ValueError('Tabla adicional demasiado grande: ' + name)
             extras[name] = pd.read_csv(io.BytesIO(raw), dtype=str).fillna('').to_dict('records')
@@ -250,10 +264,9 @@ def read_extra_tables(images_path, extra_paths=()):
     tables = {}
     def add(name, stream):
         name = re.sub(r'[^\w-]', '_', name)
-        if name in tables:
-            raise ValueError('Nombre de tabla adicional duplicado: ' + name)
+        name = re.sub(r'^(projects|cameras|sequences|organizations)_[\w-]+$', r'\1', name)
         table = pd.read_csv(stream, dtype=str).fillna('')
-        tables[name] = table.to_dict('records')
+        tables.setdefault(name, []).extend(table.to_dict('records'))
     if str(images_path).lower().endswith('.zip'):
         with zipfile.ZipFile(images_path) as archive:
             total = 0
@@ -277,7 +290,7 @@ def attach_extra_tables(row, tables, context):
     def ids(record):
         return {re.sub(r'[^a-z0-9]', '', key.lower()): str(value)
                 for key, value in record.items()
-                if value not in ('', None) and (key.endswith('_id') or key.endswith('ID'))}
+                if value not in ('', None) and (key.endswith('_id') or key.endswith('ID') or key.endswith('Id'))}
     known = {key: {value} for key, value in ids(context).items()}
     matched = {name: [] for name in tables}
     seen = set()
@@ -290,8 +303,11 @@ def attach_extra_tables(row, tables, context):
                 identifiers = ids(record)
                 common = identifiers.keys() & known.keys()
                 # Project is a scope, not proof that a camera/deployment belongs to this row.
-                useful = common - {'projectid', 'organizationid'}
-                scoped = common and not (identifiers.keys() - {'projectid', 'organizationid'})
+                useful = common - {'projectid', 'organizationid', 'countryid'}
+                if name.lower() in ('cameras', 'camera') and 'cameraid' in identifiers and not common.intersection({'cameraid', 'deploymentid', 'imageid', 'mediaid'}):
+                    continue
+                entity = {'projects': 'projectid', 'project': 'projectid', 'organizations': 'organizationid', 'organization': 'organizationid'}.get(name.lower())
+                scoped = (entity in common if entity else common and not (identifiers.keys() - {'projectid', 'organizationid'}))
                 global_row = not identifiers and len(records) == 1
                 if not global_row and not ((useful or scoped) and all(identifiers[k] in known[k] for k in common)):
                     continue
@@ -379,25 +395,32 @@ def wi_rows(task, images_path, deployments_path=None, group=False, threshold=3, 
             raise ValueError('Faltan columnas CSV: ' + ', '.join(sorted(absent)))
     if species is not None:
         images = images[images.apply(lambda row: wi_scientific_name(row) in species, axis=1)]
+    images = images.sort_values('timestamp')
+    image_records = images.to_dict('records')
+    images = images.copy()
+    images['_lynx_row_index'] = range(len(images))
     data = merge_deployments(images, deployments)
     deployment_lookup = {(r['project_id'], r['deployment_id']): r for r in deployments.to_dict('records')}
     rows, missing, groups = [], [], {}
-    data = data.sort_values('timestamp')
+    data = data.sort_values('_lynx_row_index')
     for _, item in data.iterrows():
         task.checkpoint()
-        name = Path(unquote(urlparse(item['location']).path)).name
+        raw_image = image_records[int(item['_lynx_row_index'])]
+        raw_deployment = deployment_lookup[(item['project_id'], item['deployment_id'])]
+        name = Path(unquote(urlparse(raw_image['location']).path)).name
         if not name:
             raise ValueError('Una fila de images.csv no tiene nombre de fotografía en location.')
-        species_name = wi_scientific_name(item)
-        stamp = pd.Timestamp(item['timestamp'])
-        event = str(item.get('image_id') or item['location'])
-        row = normalize(species_name, stamp, str(item['location']), item['deployment_id'], event,
-                        item['project_id'], latitude=item.get('latitude', ''),
-                        longitude=item.get('longitude', ''), locality=item.get('placename', ''), media_local=False)
-        attach_metadata(row, deployment=[deployment_lookup[(item['project_id'], item['deployment_id'])]], media=[item.to_dict()])
-        row['individualID'] = item.get('individual_id', '')
-        row['_multiple'] = float(item.get('number_of_objects') or 1) > 1
-        context = dict(deployment_lookup[(item['project_id'], item['deployment_id'])], **item.to_dict())
+        species_name = wi_scientific_name(raw_image)
+        stamp = pd.Timestamp(raw_image['timestamp'])
+        event = str(raw_image.get('image_id') or raw_image['location'])
+        row = normalize(species_name, stamp, str(raw_image['location']), item['deployment_id'], event,
+                        item['project_id'], latitude=raw_deployment.get('latitude') or raw_image.get('latitude', ''),
+                        longitude=raw_deployment.get('longitude') or raw_image.get('longitude', ''), locality=raw_deployment.get('placename') or raw_image.get('placename', ''), media_local=False)
+        row['_source_kind'] = 'wi'
+        attach_metadata(row, deployments=[raw_deployment], images=[raw_image])
+        row['individualID'] = raw_image.get('individual_id', '')
+        row['_multiple'] = float(raw_image.get('number_of_objects') or 1) > 1
+        context = dict(raw_deployment, **{key: value for key, value in raw_image.items() if value not in ('', None)})
         attach_extra_tables(row, extras, context)
         rows.append(row)
     return (group_rows(task, rows, threshold) if group else rows), missing

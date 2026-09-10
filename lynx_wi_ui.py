@@ -21,7 +21,7 @@ class WITab(MediaImportTab):
         self.gsutil = shutil.which('gsutil')
         if not self.gsutil:
             self.local.set(1)
-        self.heading.configure(text='Wildlife Insights · ZIP')
+
 
     def invalidate(self):
         super().invalidate()
@@ -64,7 +64,7 @@ class WITab(MediaImportTab):
             raise ValueError({'es': 'gsutil no está instalado. Selecciona la opción de fotografías locales.',
                               'pt': 'gsutil não está instalado. Selecione fotografias locais.',
                               'en': 'gsutil is not installed. Select the local photographs option.'}[self.lang])
-        directory = filedialog.askdirectory(parent=self)
+        directory = filedialog.askdirectory(parent=self, title=({'es': 'Carpeta con las fotografías locales', 'pt': 'Pasta com fotografias locais', 'en': 'Folder with local photographs'}[self.lang] if self.local.get() else {'es': 'Destino de las fotografías que se descargarán', 'pt': 'Destino das fotografias a descarregar', 'en': 'Destination for downloaded photographs'}[self.lang]))
         if directory:
             self.directory, self.executable = directory, executable
             sources = sources_for(self.records)

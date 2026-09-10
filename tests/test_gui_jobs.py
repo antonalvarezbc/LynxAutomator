@@ -38,7 +38,7 @@ class GuiJobsTests(unittest.TestCase):
             time.sleep(0.005)
         self.assertTrue(condition(), 'GUI callback did not finish')
 
-    def test_unified_bulk_sources_and_embedded_editor(self):
+    def test_unified_bulk_sources_and_popup_editor(self):
         from lynx_bulk_workflow import BulkWorkflow
         from lynx_bulk_ui import BulkEditor
         flow = BulkWorkflow(self.root, 'es')
@@ -54,38 +54,111 @@ class GuiJobsTests(unittest.TestCase):
             self.assertIs(page.winfo_toplevel(), self.root)
         flow.edit(lambda task, options: ([], []))
         self.assertIsInstance(flow.editor, BulkEditor)
-        self.assertIs(flow.editor.winfo_toplevel(), self.root)
+        self.assertIsNot(flow.editor.winfo_toplevel(), self.root)
+        self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
         flow.select(flow.choice.get())
         self.assertIsNone(flow.editor)
         self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
 
-    def test_api_filter_dialog_applies_without_download(self):
+    def test_api_filters_offer_actual_values_and_multiple_selection(self):
         from lynx_api_ui import APIImportTab
         page = APIImportTab(self.root, 'Agouti API', 'es')
+        page.project.insert(0, 'p')
         self.assertEqual(page.auth_button.cget('text'), 'Autorización')
         self.assertIs(page.auth_button.master, page.source_controls)
+        page.index = {'deployments': [dict(deploymentID='d1', deploymentStart='2024-01-01', locationName='North'),
+                                      dict(deploymentID='d2', deploymentStart='2025-01-01', locationName='South'),
+                                      dict(deploymentID='d3', deploymentStart='2025-01-02', locationName='North')]}
+        page.index_connection = page.connection()
         page.filter_dialog()
         window = page._filters_window
-        def descendants(widget):
-            for child in widget.winfo_children():
-                yield child
-                yield from descendants(child)
-        entries = [w for w in descendants(window) if isinstance(w, self.ctk.CTkEntry)]
-        entries[0].insert(0, '2025')
-        entries[1].insert(0, 'Doñana')
-        button = next(w for w in descendants(window) if isinstance(w, self.ctk.CTkButton) and w.cget('text') == 'Aplicar filtros')
-        with patch('lynx_api_ui.fetch_api_package') as request:
-            button.invoke()
-            request.assert_not_called()
-        self.assertEqual(page.filters['year'], '2025')
-        self.assertEqual(page.filters['site'], 'Doñana')
+        self.assertIn('locationName', window.facets)
+        self.assertNotIn('habitat', window.facets)
+        window.variable.set('deploymentID')
+        window.show_variable('deploymentID')
+        window.checks['d1'].select()
+        window.checks['d3'].select()
+        window.changed()
+        window.variable.set('locationName')
+        window.show_variable('locationName')
+        window.checks['North'].select()
+        window.changed()
+        self.assertIn('2 / 3', window.summary.cget('text'))
+        with patch.object(page, 'apply_selection') as apply:
+            window.apply_button.invoke()
+            apply.assert_called_once_with(['d1', 'd3'])
         self.assertFalse(window.winfo_exists())
-        self.assertIn('Año de inicio: 2025', page.filter_summary.cget('text'))
+
+    def test_folder_levels_station_coordinates_and_popup_export(self):
+        import tempfile
+        from PIL import Image
+        from lynx_bulk_workflow import BulkWorkflow
+        from lynx_bulk import build_table
+        from lynx_tasks import TaskContext
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Doñana' / 'Station A' / 'Individual A' / 'one.jpg'
+            path.parent.mkdir(parents=True)
+            Image.new('RGB', (3, 3)).save(path)
+            flow = BulkWorkflow(self.root, 'es')
+            for source in ('Crear desde carpeta', 'Catálogo'):
+                flow.choice.set(source)
+                flow.select(source)
+                page = flow.pages[source]
+                page.folder = directory
+                page.species.insert(0, 'Lynx pardinus')
+                if source == 'Crear desde carpeta':
+                    page.year.insert(0, '2024')
+                page.structured.select()
+                page.toggle_structure()
+                page.levels['station'].set('2')
+                page.levels['individual'].set('3')
+                page.review_stations()
+                self.wait_until(lambda: not self.root.jobs.busy)
+                window = page._station_window
+                for key, text in (('latitude', '37.1'), ('longitude', '-6.4')):
+                    page.station_entries['Doñana/Station A'][key].insert(0, text)
+                next(w for w in window.winfo_children() if isinstance(w, self.ctk.CTkButton)).invoke()
+                page.configure_bulk()
+                editor = flow.editor
+                self.assertIsNot(editor.winfo_toplevel(), self.root)
+                self.assertTrue(page.winfo_manager())
+                fields = editor.collect()
+                next(f for f in fields if f['name'] == 'Encounter.locationID')['value'] = 'Doñana'
+                next(f for f in fields if f['name'] == 'Encounter.submitterID')['value'] = 'observer'
+                editor.render(fields)
+                rows, missing = editor.loader(TaskContext(), (False, 3))
+                table = build_table(rows, editor.collect())
+                self.assertFalse(missing)
+                self.assertEqual(table[0]['Encounter.verbatimLocality'], 'Doñana')
+                self.assertEqual(table[0]['Encounter.decimalLatitude'], 37.1)
+                self.assertEqual(table[0]['Encounter.decimalLongitude'], -6.4)
+                self.assertEqual(table[0]['Encounter.submitterID'], 'observer')
+                editor.close()
+
+    def test_dp_zip_only_and_explicit_photo_download(self):
+        from lynx_camtrap_ui import CamtrapTab
+        from lynx_wi_ui import WITab
+        dp = CamtrapTab(self.root, 'es')
+        self.assertNotIn('JSON', dp.heading.cget('text'))
+        self.assertIn('ZIP', dp.load_button.cget('text'))
+        with patch('lynx_camtrap_ui.filedialog.askopenfilename', return_value='old.json') as dialog, patch('lynx_ui_jobs.messagebox.showerror') as error:
+            dp.load()
+            self.assertEqual(dialog.call_args.kwargs['filetypes'], [('Camtrap DP ZIP', '*.zip')])
+            error.assert_called_once()
+        for page in (dp, WITab(self.root, 'es')):
+            self.assertEqual(page.heading.cget('text'), '')
+            page.local.set(0)
+            page.acquisition_changed()
+            self.assertEqual(page.download.cget('text'), 'Descargar fotos seleccionadas')
+            self.assertIn('no descarga fotos', page.acquisition_hint.cget('text'))
+            page.local.set(1)
+            page.acquisition_changed()
+            self.assertEqual(page.download.cget('text'), 'Usar fotos locales')
 
     def test_metadata_sources_open_before_valid_preview(self):
         from types import SimpleNamespace
         from lynx_bulk_ui import BulkEditor
-        row = {'metadata': {'cameras.camera_model': ['Model X'], 'unmatched.name': []}}
+        row = {'_source_kind': 'wi', 'genus': 'Lynx', 'metadata': {'cameras.camera_model': ['Model X'], 'projects.project_name': ['Project'], 'images.scientific_name': ['Lynx pardinus'], 'unmatched.name': []}}
         editor = BulkEditor(SimpleNamespace(root=self.root, lang='es'), lambda task, options: ([row], []))
         self.assertFalse(next(f for f in editor.collect() if f['name'] == 'MarkedIndividual.individualID')['enabled'])
         source = editor.rows[0][2]
@@ -93,6 +166,11 @@ class GuiJobsTests(unittest.TestCase):
         self.wait_until(lambda: not self.root.jobs.busy)
         self.assertIn('cameras.camera_model', source.cget('values'))
         self.assertNotIn('unmatched.name', source.cget('values'))
+        self.assertIn('projects.project_name', source.cget('values'))
+        self.assertIn('images.scientific_name', source.cget('values'))
+        self.assertIn('genus', source.cget('values'))
+        self.assertNotIn('Género', source.cget('values'))
+        self.assertFalse(any(key.startswith(('deployment.', 'media.', 'observation.')) for key in source.cget('values')))
         self.assertIsNone(editor.snapshot)
         self.assertTrue(source._choice_popup.winfo_exists())
         source._choice_popup.destroy()
@@ -114,9 +192,14 @@ class GuiJobsTests(unittest.TestCase):
                     page.server.insert(0, 'https://trapper.example')
                 page.project.insert(0, '123')
                 self.assertIsNone(page.download_auth)
-                with patch('lynx_api_ui.dialogs.askdirectory', return_value=folder), patch('lynx_api_ui.fetch_api_package', return_value=package) as fetch:
+                with patch('lynx_api_ui.dialogs.askdirectory', return_value=folder), patch('lynx_api_ui.discover_agouti', return_value={'descriptor': package.descriptor, 'deployments': package.deployments}) as discover, patch('lynx_api_ui.fetch_api_package', return_value=package) as fetch:
                     page.load()
                     self.wait_until(lambda: not self.root.jobs.busy)
+                    self.assertFalse(page.checks)
+                    page._filters_window.apply_button.invoke()
+                    self.wait_until(lambda: not self.root.jobs.busy)
+                    self.assertEqual(fetch.call_count, 1)
+                    self.assertEqual(discover.call_count, int(provider == 'Agouti API'))
                 self.assertIsNone(fetch.call_args.args[5])
                 self.assertIn('Lynx pardinus', page.checks)
                 page.checks['Lynx pardinus'].select()
@@ -410,7 +493,8 @@ class GuiJobsTests(unittest.TestCase):
                 self.wait_until(lambda: not self.root.jobs.busy)
             self.assertEqual(page.export.cget('state'), 'normal')
             page.open_bulk_import()
-            self.assertIs(flow.editor.winfo_toplevel(), self.root)
+            self.assertIsNot(flow.editor.winfo_toplevel(), self.root)
+            self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
             rows, missing = flow.editor.loader(TaskContext(), (False, 3))
             self.assertEqual(len(rows), 1)
             self.assertFalse(missing)
