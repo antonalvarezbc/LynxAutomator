@@ -166,3 +166,9 @@ La publicación reúne los paquetes de esa ejecución, los tres manuales, las
 versiones de dependencias por sistema y sus sumas SHA256. Primero sube los archivos
 a un borrador y lo publica cuando termina; no sustituye la última versión estable.
 Si falla una compilación o falta un archivo, no se publica la pre-release.
+
+### Fotografías desde Camtrap DP
+
+La pestaña **Camtrap DP** abre paquetes locales JSON/ZIP, muestra especies mediante
+casillas y obtiene sus imágenes locales o remotas con progreso y cancelación.
+No requiere elegir un Wildbook. Véase el [recorrido y ejemplo sintético](docs/manual.md#camtrap-dp-seleccionar-especies-y-obtener-fotografías).

@@ -1,3 +1,4 @@
+from lynx_camtrap_ui import CamtrapTab
 from lynx_ui_jobs import (JobPanel, FolderJobs, CatalogJobs, WIJobs, LynxJobs, VideoJobs, DateJobs, RenamerJobs, DownloadJobs)
 import customtkinter as ctk
 import lynx_dialogs as filedialog
@@ -157,6 +158,9 @@ class BaseApp:
         self.main_tabs.add(self.wildlife_insights_wildbook_frame, text=tr["wi_wildbook"])
         self.main_tabs.add(self.iberian_lynx_frame, text=tr["iberian_lynx"])
         self.main_tabs.add(self.camtrap_frame, text=tr["functionalities"])
+        self.camtrap_dp_frame = ctk.CTkFrame(self.main_tabs)
+        self.main_tabs.add(self.camtrap_dp_frame, text="Camtrap DP")
+        self.camtrap_dp_app = CamtrapTab(self.camtrap_dp_frame, lang=lang)
         self.main_tabs.add(self.about_frame, text=tr["about"])
 
 

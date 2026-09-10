@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements-build.txt
       - name: Check source syntax
-        run: python -m compileall -q LynxAutomator_v001alpha.py "LynxAutomator_v001alpha mini.py" lynx_core.py lynx_tasks.py lynx_processing.py lynx_file_jobs.py lynx_ui_jobs.py lynx_dialogs.py lynx_video_dates.py scripts tests
+        run: python -m compileall -q LynxAutomator_v001alpha.py "LynxAutomator_v001alpha mini.py" lynx_core.py lynx_tasks.py lynx_processing.py lynx_file_jobs.py lynx_ui_jobs.py lynx_dialogs.py lynx_video_dates.py lynx_camtrap.py lynx_camtrap_ui.py scripts tests
       - name: Run regression tests
         run: python -m unittest discover -s tests -v
       - name: Check desktop startup (Linux)

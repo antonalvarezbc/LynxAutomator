@@ -295,3 +295,22 @@ concluídos, ignorados e falhados.
 Guarde antes de fechar ou mudar de idioma. Não existe um histórico universal de
 anulação. Criar o Excel não valida todas as regras do Wildbook nem a integridade
 do conjunto de dados. Consulte a [revisão de lógica](logic-review.md).
+
+## Fotografias Camtrap DP
+
+Abra **Camtrap DP**, carregue `datapackage.json` ou ZIP local (1.x, CSV/CSV.gz) e
+marque as espécies usando a pesquisa e as caixas de seleção. Não é necessário
+registar um Wildbook. Reveja o número de imagens únicas antes de escolher o destino.
+As imagens associadas por evento são opcionais, usam a instalação e o intervalo
+temporal e precisam de revisão. O modo local não acede à Internet.
+
+A pasta `camtrap-…` contém as imagens verificadas e `manifest.csv` com IDs, espécies,
+nomes e estados. Imagens privadas e vídeos são omitidos. URLs HTTP acessíveis são
+transferidos sem credenciais adicionais. Repetir falhadas cria um novo lote.
+Cancelar preserva os ficheiros completos e limpa os parciais; uma leitura HTTP em
+curso pode esperar até ao seu limite de 20 segundos.
+
+O exemplo sintético tem 366 observações de lince, 247 imagens diretamente
+associadas, 300 incluindo eventos e 10 JPEG locais. As fotos não mostram linces.
+A validação é estrutural básica, não completa. Esta aba ainda não exporta Excel
+Wildbook nem se liga diretamente à API de Agouti.

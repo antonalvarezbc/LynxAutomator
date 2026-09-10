@@ -1,6 +1,8 @@
 # Camtrap DP como posible entrada
 
-Estado: valoración y propuesta; no hay un importador Camtrap DP implementado.
+Estado: lector local Camtrap DP 1.x y obtención de fotografías implementados.
+La conexión API y la exportación Excel desde esta pestaña siguen pendientes.
+Véase el [manual de uso](manual.md#camtrap-dp-seleccionar-especies-y-obtener-fotografías).
 
 ## Valor para LynxAutomator
 
@@ -16,19 +18,11 @@ La importación y validación usarían el mismo progreso y cancelación.
 
 ## Alcance de especies y destinos
 
-La finalidad no es exportar cualquier especie del paquete. Sólo se podrán
-seleccionar taxones presentes en los datos que cumplan ambas condiciones:
-
-- Existe un Wildbook de destino que admite esa especie.
-- La especie puede registrarse mediante cámaras trampa.
-
-Mantener un catálogo explícito de destinos con URL, taxones admitidos, nombres
-científicos y sinónimos verificados, plantilla de importación y fecha de revisión.
-No deducir compatibilidad por nombre común ni por pertenecer al mismo género.
-Una especie sin correspondencia confirmada queda fuera de la selección, con motivo
-visible. Si tiene varios destinos, el usuario elige uno. Separar exportaciones por
-destino y validar sus campos obligatorios. No exigir identificación individual
-previa cuando el Wildbook permita encuentros de individuos desconocidos.
+La selección actual se genera con los nombres científicos de las observaciones
+animales del paquete: buscador y casillas múltiples, sin catálogo fijo ni
+confirmación de un Wildbook. El usuario decide qué especies necesita. Esta
+selección no certifica compatibilidad con una instancia de Wildbook.
+La futura exportación Excel utilizará la plantilla elegida.
 
 ## TRAPPER y Agouti como entradas prioritarias
 

@@ -261,3 +261,22 @@ excluded from recursive processing.
 Save before closing or changing language. There is no universal undo history.
 Generating a spreadsheet does not certify all Wildbook rules or dataset integrity.
 See the [logic review](logic-review.md) for remaining improvements.
+
+## Camtrap DP photographs
+
+Open **Camtrap DP**, load a local `datapackage.json` or ZIP (1.x, CSV/CSV.gz), then
+select species using the search box and checkboxes. No Wildbook registration is
+required. Review the unique image counts before choosing the output directory.
+Event-associated images are optional candidates from the same deployment/time
+interval and require review. Local-only mode avoids network access.
+
+A new `camtrap-…` directory holds validated images and `manifest.csv` linking IDs,
+species, filenames and status. Private media and videos are skipped. Accessible
+HTTP URLs are downloaded without additional credentials. Retry failed downloads
+creates a new batch. Cancellation preserves completed files and cleans partials;
+a pending HTTP read may take up to its 20-second timeout.
+
+The synthetic lynx fixture has 366 observations, 247 directly associated images,
+300 including events, and 10 local JPEGs. Its images are not actual lynxes.
+The reader performs basic structural checks, not full schema validation. Wildbook
+Excel export and direct Agouti API access are not yet available in this tab.

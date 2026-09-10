@@ -38,6 +38,28 @@ class GuiJobsTests(unittest.TestCase):
             time.sleep(0.005)
         self.assertTrue(condition(), 'GUI callback did not finish')
 
+    def test_camtrap_multiselect_preview_and_local_download(self):
+        from lynx_camtrap_ui import CamtrapTab
+        from lynx_camtrap import read_package
+        from lynx_tasks import TaskContext
+        import tempfile
+        tab = CamtrapTab(self.root, lang='es')
+        fixture = Path(__file__).parent / 'fixtures' / 'camtrap_dp_lynx_synthetic' / 'datapackage.json'
+        tab.receive(read_package(TaskContext(), fixture))
+        tab.checks['Lynx pardinus'].select()
+        tab.review()
+        self.wait_until(lambda: not self.root.jobs.busy)
+        self.assertEqual(len(tab.records), 247)
+        self.assertEqual(tab.download.cget('state'), 'normal')
+        tab.local.select()
+        with tempfile.TemporaryDirectory() as folder, patch('lynx_camtrap_ui.filedialog.askdirectory', return_value=folder):
+            tab.obtain()
+            self.wait_until(lambda: not self.root.jobs.busy)
+            self.assertEqual(len(list(Path(folder).rglob('*.jpg'))), 10)
+        tab.select_all(False)
+        self.assertIsNone(tab.records)
+        self.assertEqual(tab.download.cget('state'), 'disabled')
+
     def test_video_review_requires_explicit_confirmation(self):
         from types import SimpleNamespace
         from lynx_ui_jobs import review_video_dates
@@ -98,6 +120,17 @@ class GuiJobsTests(unittest.TestCase):
         self.assertEqual(self.button.cget('state'), 'normal')
 
     def test_full_and_mini_inputs_start_async_jobs(self):
+        # Pillow/Tk caches can retain the interpreter from a previous CTk root.
+        # Exercise application startup in a fresh process, as the smoke test does.
+        if os.environ.get('LYNX_ISOLATED_APP_TEST') != '1':
+            import subprocess
+            import sys
+            repo = Path(__file__).resolve().parents[1]
+            env = dict(os.environ, LYNX_ISOLATED_APP_TEST='1', PYTHONPATH=str(repo))
+            subprocess.run([sys.executable, '-m', 'unittest',
+                            'test_gui_jobs.GuiJobsTests.test_full_and_mini_inputs_start_async_jobs'],
+                           cwd=repo / 'tests', env=env, check=True, timeout=60)
+            return
         from lynx_processing import WIProcessor
         from lynx_ui_jobs import TEXT
         import pandas as pd
