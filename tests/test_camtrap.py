@@ -23,7 +23,7 @@ class CamtrapTests(unittest.TestCase):
         task = TaskContext()
         package = read_package(task, self.fixture / 'datapackage.json')
         self.assertEqual(package.species(), {'Lynx pardinus': 3, 'Vulpes vulpes': 1})
-        records, issues = select_media(task, package, {'Lynx pardinus'})
+        records, issues = select_media(task, package, {'Lynx pardinus'}, False)
         self.assertEqual(len(records), 2)
         self.assertEqual(len(issues), 1)
         events, issues = select_media(task, package, {'Lynx pardinus'}, True)
@@ -40,13 +40,28 @@ class CamtrapTests(unittest.TestCase):
             with (batch / 'manifest.csv').open() as stream:
                 self.assertEqual(len(list(csv.DictReader(stream))), 2)
 
+    def test_default_includes_events_and_manifest_preserves_provenance(self):
+        task = TaskContext()
+        package = read_package(task, self.fixture / 'datapackage.json')
+        records, issues = select_media(task, package, {'Lynx pardinus'})
+        self.assertEqual(len(records), 3)
+        self.assertFalse(issues)
+        with tempfile.TemporaryDirectory() as folder:
+            result = acquire_media(task, package, records, folder, local_only=True)
+            with (Path(result.output_directory) / 'manifest.csv').open() as stream:
+                rows = list(csv.DictReader(stream))
+            event = next(row for row in rows if row['mediaID'] == 'm3')
+            self.assertEqual(event['association'], 'event')
+            self.assertEqual(json.loads(event['eventIDs']), ['event1'])
+            self.assertEqual(json.loads(event['observationIDs']), ['o3'])
+
     def test_species_list_is_dynamic_and_multiselect_deduplicates(self):
         task = TaskContext()
         package = read_package(task, self.fixture / 'datapackage.json')
         row = next(r for r in package.observations if r['observationType'] == 'animal' and r['observationLevel'] == 'media')
         row['scientificName'] = 'New test species'
         self.assertIn('New test species', package.species())
-        records, _ = select_media(task, package, {'Lynx pardinus', 'New test species'})
+        records, _ = select_media(task, package, {'Lynx pardinus', 'New test species'}, False)
         self.assertEqual(len(records), 2)
         only_new, _ = select_media(task, package, {'New test species'})
         self.assertEqual(len(only_new), 1)
@@ -60,7 +75,7 @@ class CamtrapTests(unittest.TestCase):
                     if source.is_file():
                         output.write(source, 'package/' + source.relative_to(self.fixture).as_posix())
             package = read_package(TaskContext(), archive)
-            records, _ = select_media(TaskContext(), package, {'Lynx pardinus'})
+            records, _ = select_media(TaskContext(), package, {'Lynx pardinus'}, False)
             result = acquire_media(TaskContext(), package, records, folder, local_only=True)
             self.assertEqual(result.completed, 1)
             for name in ('../secret', '/tmp/secret', 'C:\\secret'):

@@ -267,8 +267,9 @@ See the [logic review](logic-review.md) for remaining improvements.
 Open **Camtrap DP**, load a local `datapackage.json` or ZIP (1.x, CSV/CSV.gz), then
 select species using the search box and checkboxes. No Wildbook registration is
 required. Review the unique image counts before choosing the output directory.
-Event-associated images are optional candidates from the same deployment/time
-interval and require review. Local-only mode avoids network access.
+Event-associated images are included by default from the same deployment/time
+interval, including empty frames for detection in Wildbook. This does not imply
+that all animals are the same individual. Local-only mode avoids network access.
 
 A new `camtrap-…` directory holds validated images and `manifest.csv` linking IDs,
 species, filenames and status. Private media and videos are skipped. Accessible

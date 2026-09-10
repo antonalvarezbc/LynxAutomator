@@ -136,7 +136,7 @@ def iso(value):
     return datetime.fromisoformat(value.replace('Z', '+00:00'))
 
 
-def select_media(task, package, species, include_events=False):
+def select_media(task, package, species, include_events=True):
     selected = {}
     by_id = {r['mediaID']: r for r in package.media}
     by_deployment = {}
@@ -167,6 +167,9 @@ def select_media(task, package, species, include_events=False):
             issues.append(f"{observation['observationID']}: no media")
         for media in candidates:
             record = selected.setdefault(media['mediaID'], {'media': media, 'species': set(), 'event': True})
+            record.setdefault('observation_ids', set()).add(observation['observationID'])
+            if observation.get('eventID'):
+                record.setdefault('event_ids', set()).add(observation['eventID'])
             record['species'].add(observation['scientificName'])
             record['event'] = record['event'] and event
     return list(selected.values()), issues
@@ -180,7 +183,7 @@ def acquire_media(task, package, records, destination, local_only=False):
     batch = Path(tempfile.mkdtemp(prefix='camtrap-', dir=destination))
     result.output_directory = str(batch)
     with (batch / 'manifest.csv').open('w', newline='', encoding='utf-8') as log:
-        writer = csv.DictWriter(log, fieldnames=['mediaID', 'species', 'file', 'status', 'event_review'])
+        writer = csv.DictWriter(log, fieldnames=['mediaID', 'species', 'file', 'status', 'association', 'eventIDs', 'observationIDs'])
         writer.writeheader()
         for index, record in enumerate(records):
             task.checkpoint()
@@ -224,7 +227,9 @@ def acquire_media(task, package, records, destination, local_only=False):
                     result.completed += 1
             except TaskCancelled:
                 writer.writerow(dict(mediaID=media['mediaID'], species=';'.join(sorted(record['species'])),
-                                     file='', status='cancelled', event_review=record['event']))
+                                     file='', status='cancelled', association='event' if record['event'] else 'media',
+                                     eventIDs=json.dumps(sorted(record.get('event_ids', []))),
+                                     observationIDs=json.dumps(sorted(record.get('observation_ids', [])))))
                 log.flush()
                 raise
             except Exception as exc:
@@ -232,7 +237,9 @@ def acquire_media(task, package, records, destination, local_only=False):
                 result.errors.append(f"{media['mediaID']}: {type(exc).__name__}")
                 result.failed_records.append(record)
             writer.writerow(dict(mediaID=media['mediaID'], species=';'.join(sorted(record['species'])),
-                                 file=filename if status == 'completed' else '', status=status, event_review=record['event']))
+                                 file=filename if status == 'completed' else '', status=status, association='event' if record['event'] else 'media',
+                                     eventIDs=json.dumps(sorted(record.get('event_ids', []))),
+                                     observationIDs=json.dumps(sorted(record.get('observation_ids', [])))))
             log.flush()
             task.report(f'{index + 1}/{len(records)} — {batch.name}', (index + 1) / max(1, len(records)))
     return result

@@ -17,3 +17,5 @@ tests/fixtures/camtrap_dp_lynx_synthetic/
 
 .venv-ubuntu/
 .local-python/
+
+.venv-ubuntu-native/

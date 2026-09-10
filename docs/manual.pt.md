@@ -301,8 +301,9 @@ do conjunto de dados. Consulte a [revisão de lógica](logic-review.md).
 Abra **Camtrap DP**, carregue `datapackage.json` ou ZIP local (1.x, CSV/CSV.gz) e
 marque as espécies usando a pesquisa e as caixas de seleção. Não é necessário
 registar um Wildbook. Reveja o número de imagens únicas antes de escolher o destino.
-As imagens associadas por evento são opcionais, usam a instalação e o intervalo
-temporal e precisam de revisão. O modo local não acede à Internet.
+As imagens associadas por evento são incluídas por predefinição, usando a instalação
+e o intervalo temporal, mesmo vazias, para deteção no Wildbook. Isso não significa
+que todos os animais sejam o mesmo indivíduo. O modo local não acede à Internet.
 
 A pasta `camtrap-…` contém as imagens verificadas e `manifest.csv` com IDs, espécies,
 nomes e estados. Imagens privadas e vídeos são omitidos. URLs HTTP acessíveis são

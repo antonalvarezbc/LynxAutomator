@@ -21,6 +21,7 @@ def make_package(folder):
                       ('m3', 'media/event.jpg', '2024-01-01T00:01:00Z'))],
         'observations': [dict(observationID=oid, deploymentID='d1', mediaID=mid,
                               observationType='animal', observationLevel=level, scientificName=species,
+                              eventID='event1' if level == 'event' else '',
                               eventStart='2024-01-01T00:01:00Z', eventEnd='2024-01-01T00:01:00Z')
                          for oid, mid, level, species in (
                              ('o1','m1','media','Lynx pardinus'), ('o2','m2','media','Lynx pardinus'),

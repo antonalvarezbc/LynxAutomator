@@ -338,14 +338,14 @@ filtro de todos los archivos. Mostrar un archivo no implica admitir su formato.
    Las especies proceden del paquete y no requieren registrar un Wildbook.
 3. Pulsa **Revisar selección**. Se muestran las fotografías únicas, locales,
    remotas y privadas. Las observaciones se cuentan por separado de las fotos.
-4. Opcionalmente incluye las imágenes **asociadas por evento**: son candidatas del
-   mismo despliegue e intervalo, no confirmaciones de especie por foto. Esta opción
-   está desactivada inicialmente. Los intervalos ambiguos se notifican.
+4. Se incluyen las imágenes **asociadas por evento**: son candidatas del
+   mismo despliegue e intervalo. Esta opción está activada inicialmente: se incluyen
+   fotos vacías y se deja la detección a Wildbook. Los intervalos ambiguos se notifican.
 5. Pulsa **Obtener fotografías seleccionadas** y elige una carpeta. **Sólo copiar
    imágenes locales** permite probar el flujo sin acceder a Internet.
 
 Se crea una subcarpeta `camtrap-…` con nombres estables basados en `mediaID` y un
-`manifest.csv` que relaciona fotos, especies, estado y necesidad de revisar eventos.
+`manifest.csv` que relaciona fotos, especies, estado y asociación por imagen/evento (`association`, `eventIDs`, `observationIDs`).
 Las imágenes privadas y los vídeos se omiten. Las URL accesibles se descargan sin
 credenciales adicionales; se conserva cualquier token ya incluido en el enlace.
 Los fallos pueden repetirse con **Reintentar fallidas**, que crea otro lote.
