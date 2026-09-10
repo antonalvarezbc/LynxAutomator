@@ -2,27 +2,28 @@
 import customtkinter as ctk
 import lynx_dialogs as dialogs
 from lynx_choices import StableOptionMenu
-from lynx_windows import foreground
+from lynx_windows import foreground, WorkflowPanel
 from lynx_ui_jobs import action
 from lynx_bulk_ui import BulkEditor
 from lynx_folder_bulk import folder_rows
 
 
-class FolderInput(ctk.CTkToplevel):
+class FolderInput(WorkflowPanel):
     def __init__(self, owner, catalog=False):
-        super().__init__(owner.root)
+        super().__init__(owner)
         self.root, self.lang = owner.root, owner.lang
+        self.catalog = catalog
         self.folder = getattr(owner, 'folder_path', '') or ''
         self.title('Wildbook Bulk Import · ' + ('Catalog' if catalog else 'Folder'))
         self.geometry('760x490')
         labels = {
-            'es': ['Seleccionar carpeta', 'Especie científica (ejemplo: Lynx pardinus)', 'Incluir subcarpetas',
+            'es': ['Seleccionar carpeta', 'Nombre científico (ejemplo: Lynx pardinus)', 'Incluir subcarpetas',
                    'Identidad (sólo si los nombres identifican animales)', 'Año para fotos sin fecha EXIF (opcional)',
                    'Configurar Bulk Import', 'Las fechas salen del EXIF. No se usa la fecha de copia del archivo. Sin EXIF ni año, la foto se informa como omitida.'],
-            'pt': ['Selecionar pasta', 'Espécie científica (exemplo: Lynx pardinus)', 'Incluir subpastas',
+            'pt': ['Selecionar pasta', 'Nome científico (exemplo: Lynx pardinus)', 'Incluir subpastas',
                    'Identidade (apenas se os nomes identificam animais)', 'Ano para fotos sem data EXIF (opcional)',
                    'Configurar Bulk Import', 'Datas obtidas do EXIF. A data de cópia não é utilizada. Sem EXIF nem ano, a foto é indicada como omitida.'],
-            'en': ['Choose folder', 'Scientific species (example: Lynx pardinus)', 'Include subfolders',
+            'en': ['Choose folder', 'Scientific name (example: Lynx pardinus)', 'Include subfolders',
                    'Identity (only if names identify animals)', 'Year for photos without EXIF date (optional)',
                    'Configure Bulk Import', 'Dates come from EXIF, never file copy time. Photos with neither EXIF nor a supplied year are reported as omitted.']}[self.lang]
         ctk.CTkButton(self, text=labels[0], command=self.choose).pack(pady=10)
@@ -41,7 +42,7 @@ class FolderInput(ctk.CTkToplevel):
         ctk.CTkLabel(self, text=labels[4]).pack()
         self.year = ctk.CTkEntry(self)
         self.year.pack()
-        ctk.CTkLabel(self, text=labels[6], wraplength=700).pack(pady=10)
+        ctk.CTkLabel(self, text=({'es': 'Catálogo: las fotos sin fecha se exportan con los campos temporales vacíos.', 'pt': 'Catálogo: fotos sem data são exportadas com campos temporais vazios.', 'en': 'Catalog: undated photos are exported with empty date and time fields.'}[self.lang] if catalog else labels[6]), wraplength=700).pack(pady=10)
         ctk.CTkButton(self, text=labels[5], command=self.configure_bulk).pack(pady=10)
         foreground(self, self.root)
 
@@ -64,5 +65,4 @@ class FolderInput(ctk.CTkToplevel):
             raise ValueError('Año inválido.')
         folder, recursive = self.folder, bool(self.recursive.get())
         identity = {'none': 'none', 'filename: first word': 'filename', 'folder name': 'folder'}[self.identity.get()]
-        BulkEditor(self, lambda task, options: folder_rows(task, folder, species, recursive, identity, year, options[0], options[1]))
-        self.destroy()
+        self.open_editor(lambda task, options: folder_rows(task, folder, species, recursive, identity, year, options[0], options[1], allow_undated=self.catalog))

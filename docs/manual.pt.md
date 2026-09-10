@@ -2,12 +2,12 @@
 
 [Español](manual.md) · [English](manual.en.md) · [Instalação e pacotes](../README.md#linux-macos-and-windows-builds)
 
-Este manual descreve a aplicação completa da branch `feature/cross-platform-builds`.
+Este manual descreve a aplicação da branch `feature/qt-migration`, ainda com interface Tk.
 Os executáveis antigos publicados em Releases podem ter um comportamento diferente.
 O [guia DOCX original](../WIP%20LynxAutomator%20GUIDE%20.docx) e as suas capturas são
 conservados como referência histórica; as instruções atuais são mantidas em Markdown.
 
-## 1. Preparação e versões
+## 1. Preparação
 
 O LynxAutomator prepara ficheiros Excel, descarrega imagens autorizadas do Wildlife
 Insights e disponibiliza ferramentas de armadilhagem fotográfica. Não envia
@@ -17,20 +17,11 @@ Pode escolher português, espanhol ou inglês na interface. Alguns nomes de sepa
 fases de processamento e mensagens de erro permanecem em inglês. Guarde os resultados
 antes de mudar o idioma, pois essa ação reconstrói os formulários.
 
-| Funcionalidade | Completa | Alpha mini |
-| --- | --- | --- |
-| BIWbE a partir de pasta e catálogo | Sim | Sim |
-| Descarga WI e conversão de CSV para Excel | Sim | Sim |
-| Folhas de acompanhamento do lince | Sim | Sim |
-| Extração de fotogramas | Sim | Sim |
-| Módulo de correção de datas dos originais | Sim | Não |
-| Módulo de renomeação dos originais | Sim | Não |
-
-A mini também cria ficheiros, executa o gsutil e ajusta as datas dos fotogramas
-extraídos. Não é uma versão de apenas leitura e o seu nome não implica assinatura
-digital. Nesta branch, as duas interfaces partilham os serviços de processamento;
-a mini não apresenta todas as opções da completa. O workflow empacota apenas a
-versão completa. Consulte a [avaliação das versões e da interface](architecture.md).
+Mantém-se uma única aplicação para Windows, Linux e macOS, com Bulk Import,
+descargas, acompanhamento do lince, vídeo, correção de datas e renomeação.
+A edição alpha mini foi retirada desta branch e permanece no histórico.
+A migração para Qt parte desta aplicação e dos seus serviços partilhados.
+Consulte o [plano da interface](interface-plan.md).
 
 Siga o README para obter e extrair o pacote do seu sistema. Os novos pacotes têm de
 passar pelas verificações de GitHub Actions. Ao corrigir datas ou renomear, comece
@@ -283,7 +274,7 @@ concluídos, ignorados e falhados.
 
 | Situação | O que verificar |
 | --- | --- |
-| Aviso de editor desconhecido ou bloqueio ao abrir | Origem do pacote e política do computador; a mini não substitui a assinatura. Não desative a proteção para experimentar ao acaso. |
+| Aviso de editor desconhecido ou bloqueio ao abrir | Origem do pacote e política do computador; Não desative a proteção para experimentar ao acaso. |
 | Falta Tkinter | Instalação de Python com Tk, conforme o README. |
 | Falta gsutil ou acesso negado | Google Cloud CLI, PATH, conta autorizada e guia incluído na exportação WI. |
 | CSV rejeitado | Colunas, identificadores, instalações duplicadas/não correspondentes e datas. |
@@ -318,7 +309,7 @@ Wildbook nem se liga diretamente à API de Agouti.
 
 ## Bulk Import comum: Wildlife Insights e Camtrap DP
 
-No Wildlife Insights, clique em **Bulk Import a partir de ZIP ou CSV**. Selecione um ZIP com `images.csv` ou `images_<projeto>.csv`, e um único `deployments.csv` (incluindo subpastas) ou os dois CSV separados. Não precisa de fotografias locais nem de modelo Excel. Os nomes e extensões das fotografias vêm de `location`; envie as fotos posteriormente com o Excel para o Wildbook. Nomes ambíguos são rejeitados.
+Em **Bulk Import → Wildlife Insights**, carregue apenas o ZIP exportado, com `images.csv` ou `images_<projeto>.csv` e um único `deployments.csv` na mesma pasta do ZIP. As espécies são lidas automaticamente. Selecione as espécies e clique em **Rever seleção**, depois em **Obter fotografias selecionadas**. Pode descarregar referências `gs://` com gsutil instalado ou ativar **Usar fotografias de uma pasta local**, que também pesquisa subpastas. Sem gsutil, a opção local está inicialmente selecionada. Os nomes devem corresponder a `location`; nomes ambíguos e imagens inválidas são indicados como falhas. As descargas usam uma nova pasta com `manifest.csv`, preservando os ficheiros existentes. Pode repetir as falhas. **Configurar Excel** fica disponível quando existem fotos verificadas; a pré-visualização informa as pendentes e exporta apenas as disponíveis. Não é necessário um modelo Excel.
 
 O modelo Excel antigo continua nas opções avançadas, por compatibilidade. Excel é o formato de saída. No Camtrap DP, selecione espécies e obtenha as fotos antes de abrir Bulk Import; os lotes e novas tentativas são reunidos durante a sessão.
 
@@ -352,7 +343,7 @@ Perfis novos usam `Encounter.sightingID` para ligar o avistamento; `Encounter.si
 
 WI e Camtrap DP partilham editor, validação, perfis, agrupamento e Excel. Defina o intervalo máximo em segundos no editor ao ativar o agrupamento. Eventos explícitos de Camtrap são preservados; séries sem evento usam o intervalo. Alterações exigem nova pré-visualização.
 
-Em WI pode adicionar `projects.csv` ou outros CSV; os CSV adicionais do ZIP são lidos automaticamente. São associados por identificadores de projeto, câmara, instalação ou imagem. Uma tabela global de uma linha sem identificadores pode fornecer valores comuns. A pré-visualização avisa quando não há correspondência. PDFs não são convertidos em campos. Camtrap também disponibiliza `package.*` e recursos CSV adicionais declarados. Use os campos em comentários, por exemplo `{projects.project_name}` ou `{cameras.camera_model}`.
+Os CSV adicionais do ZIP, como `projects.csv`, são lidos automaticamente. São associados por identificadores de projeto, câmara, instalação ou imagem. Uma tabela global de uma linha sem identificadores pode fornecer valores comuns. A pré-visualização avisa quando não há correspondência. PDFs não são convertidos em campos. Camtrap também disponibiliza `package.*` e recursos CSV adicionais declarados. Use os campos em comentários, por exemplo `{projects.project_name}` ou `{cameras.camera_model}`.
 
 ### Wildbook e seleção múltipla
 
@@ -364,8 +355,11 @@ Selecione várias instalações ou encontros com **Ctrl/Shift** e aplique a mesm
 
 As listas de seleção permanecem abertas e incluem pesquisa; escolha uma linha ou feche com Escape. No Linux, Zenity é utilizado para abrir, guardar e escolher pastas. Instale `zenity` se necessário.
 
-Em WI: carregar ZIP/CSV, **Ler espécies**, selecionar espécies e configurar Bulk Import, tal como a seleção múltipla em Camtrap DP.
+Em WI: **carregar ZIP → selecionar espécies → rever seleção → obter fotografias → configurar Excel**. WI e DP partilham os controlos de seleção, aquisição e acesso ao editor, com adaptadores específicos para cada formato.
 
 O seletor locationID começa por localidades de origem; também permite coordenadas e campos de país/localização disponíveis. Selecione várias com Ctrl/Shift. Ao aplicar, mostra uma marca e o número de linhas afetadas. Ramos avançados ficam no fundo.
 
 Pasta e catálogo usam o editor comum. Indique espécie, subpastas e método de identidade explícito (nenhum, primeira palavra do ficheiro ou nome da pasta). Datas vêm do EXIF; pode indicar apenas um ano quando falta a data, sem inventar mês/dia nem agrupar essas fotos por tempo. Sem EXIF nem ano, as fotos omitidas são indicadas. Complete a localização no editor. O modelo anterior continua nas opções de compatibilidade.
+
+
+Bulk Import reúne Pasta, Catálogo, Wildlife Insights e Camtrap DP numa única janela. Selecione a origem, prepare os dados e configure os campos, a pré-visualização e o Excel. Voltar à origem permite rever os dados; mudar de origem descarta o editor atual. Catálogo aceita fotos sem data, com campos temporais vazios e sem agrupamento temporal. Lince Ibérico está em Funcionalidades.

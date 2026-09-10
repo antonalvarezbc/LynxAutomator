@@ -430,6 +430,8 @@ def build_table(rows, fields, task=None):
             names[path.name] = identity
             out[f'Encounter.mediaAsset{n}'] = path.name
         warnings = required_warnings(out)
+        if row.get('_allow_undated'):
+            warnings = [warning for warning in warnings if warning != 'Falta Encounter.year']
         if warnings:
             raise ValueError(f'Fila {index}: ' + '\n'.join(warnings))
         for key, low, high in [('Encounter.decimalLatitude', -90, 90), ('Encounter.decimalLongitude', -180, 180),

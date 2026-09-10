@@ -253,3 +253,25 @@ class BulkTests(unittest.TestCase):
         self.assertEqual(rows[0]['individualID'], '')
         rows, _ = folder_rows(self.task, self.root, 'Lynx pardinus', fallback_year=2020, identity='filename')
         self.assertEqual(rows[0]['individualID'], 'Animal1')
+
+    def test_catalog_without_dates_exports_blank_time(self):
+        from lynx_folder_bulk import folder_rows
+        from PIL import Image
+        for name in ('one.jpg', 'two.jpg'):
+            Image.new('RGB', (2, 2)).save(self.root / name)
+        rows, missing = folder_rows(self.task, self.root, 'Lynx pardinus',
+                                    allow_undated=True, group=True)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(missing, [])
+        for row in rows:
+            row['locality'] = 'Catalog'
+            self.assertEqual(row['timestamp'], '')
+        table = build_table(rows, default_fields())
+        path = self.root / 'catalog.xlsx'
+        write_excel(self.task, table, path)
+        book = load_workbook(path)
+        headers = [cell.value for cell in book.active[1]]
+        for name in ('year', 'month', 'day', 'hour', 'minutes'):
+            column = headers.index('Encounter.' + name) + 1
+            self.assertIsNone(book.active.cell(2, column).value)
+        book.close()

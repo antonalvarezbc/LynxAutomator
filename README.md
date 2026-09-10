@@ -53,16 +53,15 @@ If security software flags a downloaded build, verify its source and review the 
 - [Manual actualizado en español](docs/manual.md)
 - [Updated English manual](docs/manual.en.md)
 - [Manual em português](docs/manual.pt.md)
-- [Alpha mini, signing and UI architecture review (Spanish)](docs/architecture.md)
+- [Single-application architecture and Qt migration (Spanish)](docs/architecture.md)
 - [Original DOCX guide (historical)](WIP%20LynxAutomator%20GUIDE%20.docx)
 
-The Markdown manuals describe the changes on `feature/cross-platform-builds`;
+The Markdown manuals describe the single application on `feature/qt-migration`;
 older release executables may behave differently.
 
 ## Linux, macOS and Windows builds
 
-GitHub Actions is configured in `.github/workflows/build.yml`. On pushes, pull
-requests and manual runs it tests and builds the **full** application for:
+GitHub Actions is configured in `.github/workflows/build.yml`. On manual runs it tests and builds the application for:
 
 | Runner | Package |
 | --- | --- |
@@ -135,8 +134,10 @@ python scripts/smoke_test.py --packaged
 
 On Linux without a display, run the smoke tests using `xvfb-run -a`. Packaging must
 run on the target OS. The build script includes the logo and CustomTkinter assets.
-The historical `mini` script shares compatibility fixes but is not distributed by
-this workflow; the full application is the supported CI entry point.
+The supported entry point is `LynxAutomator_v001alpha.py`. Alpha mini has been
+removed on `feature/qt-migration`; it remains available in Git history. The goal
+is one stable application for all three platforms. The current interface still
+uses Tk while migration to PySide6 is prepared; see the [migration plan](docs/interface-plan.md).
 
 
 ## Responsive background tasks
@@ -153,7 +154,7 @@ outputs remain; original-file changes are not rolled back. New frames, copies an
 Excel exports use temporary output to avoid publishing incomplete files.
 
 `python scripts/smoke_test.py` now also runs real Tk responsiveness/cancellation
-and full/mini integration tests. On headless Linux use `xvfb-run -a`. Pure processing
+and application integration tests. On headless Linux use `xvfb-run -a`. Pure processing
 and task tests remain runnable without Tk via `python -m unittest discover -s tests -v`.
 
 ### Compilación manual

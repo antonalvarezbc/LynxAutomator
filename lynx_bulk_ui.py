@@ -4,10 +4,10 @@ import customtkinter as ctk
 from tkinter import ttk, messagebox
 import lynx_dialogs as dialogs
 from lynx_bulk import (SOURCES, load_profile, save_profile, read_profiles, default_fields, build_table,
-                       write_excel, wi_rows, camtrap_rows, wi_species)
+                       write_excel, camtrap_rows)
 from lynx_ui_jobs import action, start
 from lynx_wildbook_fields import FIELDS
-from lynx_windows import foreground
+from lynx_windows import foreground, WorkflowPanel
 
 TEXT = {
 'es': ['Añadir campo', 'Restablecer campos', 'Vista previa / validar', 'Guardar Excel',
@@ -21,9 +21,9 @@ TEXT = {
        'Rows: {}. Omitted photos: {}.', 'Select the Wildlife Insights photographs folder']}
 
 
-class BulkEditor(ctk.CTkToplevel):
+class BulkEditor(WorkflowPanel):
     def __init__(self, owner, loader):
-        super().__init__(owner.root)
+        super().__init__(owner)
         self.root = owner.root
         self.lang = getattr(owner, 'lang', 'es')
         self.words = TEXT.get(self.lang, TEXT['es'])
@@ -74,7 +74,7 @@ class BulkEditor(ctk.CTkToplevel):
             ctk.CTkButton(buttons, text=text, command=command).pack(side='left', padx=4)
         self.status = ctk.CTkLabel(self, text='', wraplength=1050)
         self.status.pack(fill='x', padx=10)
-        ctk.CTkLabel(self, text={'es': 'Obligatorios: ubicación · año · foto (automática) · género y especie. template: texto con {deployment.cameraID}.', 'pt': 'Obrigatórios: localização · ano · foto (automática) · género e espécie. template: texto com {deployment.cameraID}.', 'en': 'Required: location · year · photo (automatic) · genus and species. template: text with {deployment.cameraID}.'}[self.lang], wraplength=1050).pack(fill='x')
+        ctk.CTkLabel(self, text={'es': 'Obligatorios: ubicación · año (opcional en catálogo) · foto (automática) · género y especie. template: texto con {deployment.cameraID}.', 'pt': 'Obrigatórios: localização · ano (opcional no catálogo) · foto (automática) · género e espécie. template: texto com {deployment.cameraID}.', 'en': 'Required: location · year (optional for catalog) · photo (automatic) · genus and species. template: text with {deployment.cameraID}.'}[self.lang], wraplength=1050).pack(fill='x')
         frame = ctk.CTkFrame(self)
         frame.pack(fill='both', expand=True, padx=10, pady=8)
         self.tree = ttk.Treeview(frame, show='headings', height=7)
@@ -267,101 +267,18 @@ class BulkEditor(ctk.CTkToplevel):
                   lambda _: messagebox.showinfo('Bulk Import', path, parent=self))
 
 
-class WIInput(ctk.CTkToplevel):
-    """CSV/ZIP input independent of the legacy template form."""
+class WIInput(WorkflowPanel):
+    """Standalone wrapper for the same WI page used by Bulk Import."""
     def __init__(self, owner):
-        super().__init__(owner.root)
+        super().__init__(owner)
         self.root, self.lang = owner.root, owner.lang
-        self.images = getattr(owner, 'images_csv_path', '')
-        self.deployments = getattr(owner, 'deployments_csv_path', '')
-        self.archive = ''
-        self.extra_paths = []
         self.title('Wildlife Insights → Bulk Import')
-        self.geometry('800x680')
-        self.checks = {}
-        words = {
-            'es': ['Carga el ZIP de Wildlife Insights o sus dos CSV. No necesitas plantilla Excel ni fotos locales.',
-                   'Cargar ZIP', 'Seleccionar images*.csv', 'Seleccionar deployments.csv', 'Configurar Bulk Import', 'Intervalo de agrupación (segundos)'],
-            'pt': ['Carregue o ZIP do Wildlife Insights ou os dois CSV. Não precisa de modelo Excel nem fotos locais.',
-                   'Carregar ZIP', 'Selecionar images*.csv', 'Selecionar deployments.csv', 'Configurar Bulk Import', 'Intervalo de agrupamento (segundos)'],
-            'en': ['Load the Wildlife Insights ZIP or its two CSVs. No Excel template or local photos are needed.',
-                   'Load ZIP', 'Select images*.csv', 'Select deployments.csv', 'Configure Bulk Import', 'Grouping interval (seconds)']}[self.lang]
-        ctk.CTkLabel(self, text=words[0], wraplength=700).pack(padx=12, pady=10)
-        for label, kind in zip(words[1:4], ['archive', 'images', 'deployments']):
-            ctk.CTkButton(self, text=label, command=lambda k=kind: self.choose(k)).pack(pady=4)
-        self.selection = ctk.CTkLabel(self, text='', wraplength=700)
-        self.selection.pack(padx=10, pady=6)
-        ctk.CTkButton(self, text={'es': 'Añadir projects.csv / otro CSV', 'pt': 'Adicionar projects.csv / outro CSV', 'en': 'Add projects.csv / other CSV'}[self.lang], command=self.add_extra).pack(pady=4)
-        ctk.CTkButton(self, text={'es': 'Leer especies', 'pt': 'Ler espécies', 'en': 'Read species'}[self.lang], command=self.load_species).pack(pady=5)
-        self.species_search = ctk.CTkEntry(self, placeholder_text={'es': 'Buscar especie', 'pt': 'Pesquisar espécie', 'en': 'Search species'}[self.lang])
-        self.species_search.pack(fill='x', padx=10)
-        self.species_search.bind('<KeyRelease>', lambda _: self.filter_species())
-        self.species_list = ctk.CTkScrollableFrame(self, height=150)
-        self.species_list.pack(fill='both', expand=True, padx=10)
-        ctk.CTkButton(self, text={'es': 'Seleccionar visibles', 'pt': 'Selecionar visíveis', 'en': 'Select visible'}[self.lang], command=self.select_species).pack(pady=4)
-        ctk.CTkButton(self, text=words[4], command=self.configure_bulk).pack(pady=10)
-        self.show_selection()
+        self.geometry('1000x720')
+        from lynx_wi_ui import WITab
+        self.page = WITab(self, self.lang)
+        self.page.root = self.root
+        self.page.workflow = self.workflow
         foreground(self, self.root)
-
-    def show_selection(self):
-        self.selection.configure(text=(self.archive or '\n'.join(str(p or '—') for p in (self.images, self.deployments))) + '\n' + ', '.join(self.extra_paths))
-
-    @action
-    def choose(self, kind):
-        path = dialogs.askopenfilename(parent=self, filetypes=[('ZIP', '*.zip')] if kind == 'archive' else [('CSV', '*.csv')])
-        if path:
-            setattr(self, kind, path)
-            for check in self.checks.values():
-                check.destroy()
-            self.checks = {}
-            if kind != 'archive':
-                self.archive = ''
-            self.show_selection()
-
-    @action
-    def load_species(self):
-        images, deployments = (self.archive, None) if self.archive else (self.images, self.deployments)
-        if not images:
-            raise ValueError('Selecciona un ZIP o los CSV.')
-        def receive(counts):
-            for check in self.checks.values():
-                check.destroy()
-            self.checks = {}
-            for species, count in sorted(counts.items()):
-                check = ctk.CTkCheckBox(self.species_list, text=f'{species} — {count}')
-                self.checks[species] = check
-            self.filter_species()
-        start(self, 'Wildlife Insights: species', lambda task: wi_species(task, images, deployments), receive)
-
-    def filter_species(self):
-        for name, check in self.checks.items():
-            check.pack_forget()
-            if self.species_search.get().casefold() in name.casefold():
-                check.pack(anchor='w', padx=6, pady=3)
-
-    def select_species(self):
-        for name, check in self.checks.items():
-            if self.species_search.get().casefold() in name.casefold():
-                check.select()
-
-    @action
-    def add_extra(self):
-        path = dialogs.askopenfilename(parent=self, filetypes=[('CSV', '*.csv')])
-        if path and path not in self.extra_paths:
-            self.extra_paths.append(path)
-            self.show_selection()
-
-    @action
-    def configure_bulk(self):
-        images, deployments = (self.archive, None) if self.archive else (self.images, self.deployments)
-        if not images or (not self.archive and not deployments):
-            raise ValueError('Selecciona images.csv y deployments.csv, o un ZIP con ambos.')
-        species = {name for name, check in self.checks.items() if check.get()}
-        if not species:
-            raise ValueError('Pulsa Leer especies y selecciona al menos una especie.')
-        extra_paths = tuple(self.extra_paths)
-        BulkEditor(self, lambda task, options: wi_rows(task, images, deployments, group=options[0], threshold=options[1], extra_paths=extra_paths, species=species))
-        self.destroy()
 
 
 def open_wi(owner):
@@ -372,4 +289,8 @@ def open_camtrap(owner):
     if not owner.records or not owner.batches:
         raise ValueError('Obtén primero las fotografías de la selección actual.')
     package, records, batches = owner.package, list(owner.records), list(owner.batches)
-    BulkEditor(owner, lambda task, options: camtrap_rows(task, package, records, batches, options[0], options[1]))
+    loader = lambda task, options: camtrap_rows(task, package, records, batches, options[0], options[1])
+    if getattr(owner, 'workflow', None):
+        owner.workflow.edit(loader)
+    else:
+        BulkEditor(owner, loader)

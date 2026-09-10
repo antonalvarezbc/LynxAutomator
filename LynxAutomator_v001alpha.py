@@ -154,14 +154,12 @@ class BaseApp:
         self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.main_tabs, width=600, height=400)  # Nueva pestaña
 
         # Agregar pestañas al notebook principal
-        self.main_tabs.add(self.wildbook_frame, text=tr["wildbook"])
+        from lynx_bulk_workflow import BulkWorkflow
+        self.bulk_frame = ctk.CTkFrame(self.main_tabs)
+        self.main_tabs.add(self.bulk_frame, text="Bulk Import")
+        self.bulk_app = BulkWorkflow(self.bulk_frame, lang)
         self.main_tabs.add(self.wildlife_insights_frame, text=tr["wildlife_insights"])
-        self.main_tabs.add(self.wildlife_insights_wildbook_frame, text=tr["wi_wildbook"])
-        self.main_tabs.add(self.iberian_lynx_frame, text=tr["iberian_lynx"])
         self.main_tabs.add(self.camtrap_frame, text=tr["functionalities"])
-        self.camtrap_dp_frame = ctk.CTkFrame(self.main_tabs)
-        self.main_tabs.add(self.camtrap_dp_frame, text="Camtrap DP")
-        self.camtrap_dp_app = CamtrapTab(self.camtrap_dp_frame, lang=lang)
         self.main_tabs.add(self.about_frame, text=tr["about"])
 
 
@@ -188,6 +186,15 @@ class BaseApp:
         self.video_frame_extractor_tab = self.camtrap_tabs.add(tr["video_frame_extractor"])
         self.images_renamer_tab = self.camtrap_tabs.add(tr["images_renamer"])
 
+        legacy_label = {'es': 'Plantillas anteriores', 'pt': 'Modelos anteriores', 'en': 'Legacy templates'}[lang]
+        self.legacy_tab = self.camtrap_tabs.add(legacy_label)
+        self.legacy_tabs = ttk.Notebook(self.legacy_tab)
+        self.legacy_tabs.pack(fill='both', expand=True)
+        self.wildbook_frame = ctk.CTkFrame(self.legacy_tabs)
+        self.wildlife_insights_wildbook_frame = ctk.CTkFrame(self.legacy_tabs)
+        self.legacy_tabs.add(self.wildbook_frame, text=tr['wildbook'])
+        self.legacy_tabs.add(self.wildlife_insights_wildbook_frame, text=tr['wi_wildbook'])
+
         # Wildbook TabView
         self.wildbook_tabs = ctk.CTkTabview(self.wildbook_frame, width=600, height=400)
         self.wildbook_tabs.pack(pady=20, padx=20, fill='both', expand=True)
@@ -200,6 +207,8 @@ class BaseApp:
         self.wildlife_insights_tabs.pack(pady=20, padx=20, fill='both', expand=True)
         
         self.wi_downloader_tab = self.wildlife_insights_tabs.add(tr["wi_downloader"])
+
+        self.iberian_lynx_frame = self.camtrap_tabs.add(tr["iberian_lynx"])
 
         # Iberian Lynx TabView
         self.iberian_lynx_tabs = ctk.CTkTabview(self.iberian_lynx_frame, width=600, height=400)
@@ -251,19 +260,19 @@ class Presentation(ctk.CTkFrame):
                 "title": "LynxAutomator",
                 "description": "LynxAutomator ha sido desarrollada por WWF España\n"
                                "en el ámbito del proyecto LIFE LynxConnect 19NAT/ES/001055\n"
-                               "en la acción A8 Nuevas técnicas complementarias para el seguimiento de las poblaciones de lince"
+                               "en la acción A8 Nuevas técnicas complementarias para el seguimiento de las poblaciones de lince\n\nTras finalizar el proyecto, el desarrollo ha sido continuado por\nAntón Álvarez Bermúdez (aalvarezbermudez@pm.me)"
             },
             "pt": {
                 "title": "LynxAutomator",
                 "description": "LynxAutomator foi desenvolvida pela WWF Espanha\n"
                                "no âmbito do projeto LIFE LynxConnect 19NAT/ES/001055\n"
-                               "na ação A8 Novas técnicas complementares para o monitoramento das populações de lince"
+                               "na ação A8 Novas técnicas complementares para o monitoramento das populações de lince\n\nApós o término do projeto, o desenvolvimento foi continuado por\nAntón Álvarez Bermúdez (aalvarezbermudez@pm.me)"
             },
             "en": {
                 "title": "LynxAutomator",
                 "description": "LynxAutomator has been developed by WWF Spain\n"
                                "within the framework of the LIFE LynxConnect project 19NAT/ES/001055\n"
-                               "under Action A8 New complementary techniques for monitoring lynx populations"
+                               "under Action A8 New complementary techniques for monitoring lynx populations\n\nAfter the project ended, development has been continued by\nAntón Álvarez Bermúdez (aalvarezbermudez@pm.me)"
             }
         }
 
@@ -997,9 +1006,9 @@ class ExcelCombinerApp(WIJobs):
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        labels = {'es': ['Bulk Import desde ZIP o CSV', 'Opciones avanzadas: plantilla Excel anterior'],
-                  'pt': ['Bulk Import a partir de ZIP ou CSV', 'Opções avançadas: modelo Excel anterior'],
-                  'en': ['Bulk Import from ZIP or CSV', 'Advanced: previous Excel template']}[self.lang]
+        labels = {'es': ['Bulk Import desde ZIP', 'Opciones avanzadas: plantilla Excel anterior'],
+                  'pt': ['Bulk Import a partir de ZIP', 'Opções avançadas: modelo Excel anterior'],
+                  'en': ['Bulk Import from ZIP', 'Advanced: previous Excel template']}[self.lang]
         ctk.CTkButton(self.main_frame, text=labels[0], command=self.open_bulk_import).pack(pady=12)
         container = self.main_frame
         advanced = ctk.CTkFrame(container)

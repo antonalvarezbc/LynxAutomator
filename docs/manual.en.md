@@ -2,12 +2,12 @@
 
 [Español](manual.md) · [Português](manual.pt.md) · [Installation and packages](../README.md#linux-macos-and-windows-builds)
 
-This revised manual describes the full application on `feature/cross-platform-builds`.
+This manual describes the application on `feature/qt-migration`, currently using Tk.
 Older release executables may behave differently. The original
 [DOCX guide](../WIP%20LynxAutomator%20GUIDE%20.docx) is retained as a historical
 reference, including its screenshots; current instructions are maintained in Markdown.
 
-## 1. Getting started and editions
+## 1. Getting started
 
 LynxAutomator prepares spreadsheets, downloads authorized Wildlife Insights images
 and provides camera-trap utilities. It does not automatically upload spreadsheets
@@ -15,18 +15,10 @@ or photos to Wildbook. Select Spanish, Portuguese or English in the interface;
 some messages remain in English. Save results before changing language: doing so
 rebuilds the forms. Language changes are blocked during any active task.
 
-| Feature | Full | Historical alpha mini |
-| --- | --- | --- |
-| Wildbook folder import and catalog | Yes | Yes |
-| WI download and CSV conversion | Yes | Yes, with fewer UI options |
-| Iberian lynx spreadsheets | Yes | Yes |
-| Video frame extraction | Yes | Yes |
-| Dedicated original-file date correction | Yes | No |
-| Bulk original-file renaming | Yes | No |
-
-Mini still creates files, invokes gsutil and changes timestamps on extracted
-frames. It is not read-only and is not signed simply because it is smaller. The
-current CI workflow builds the full app only. See the [architecture review](architecture.md).
+One application is maintained for Windows, Linux and macOS, covering Bulk Import,
+downloads, lynx workflows, video, date correction and renaming. Alpha mini has
+been removed from this branch and remains in Git history. Qt migration builds
+on this application and its shared services. See the [interface plan](interface-plan.md).
 
 Follow the README to download and extract the package for your OS. Builds from
 this branch still need successful CI runs on their target systems. Use copies of
@@ -35,7 +27,7 @@ original media when testing date correction or renaming.
 ### Long tasks, progress and cancellation
 
 Video extraction, spreadsheet reads/processing/saves, catalogs, lynx data, date
-scanning/correction, renaming and downloads run in the background in both editions.
+scanning/correction, renaming and downloads run in the background.
 The bottom panel shows the task, stage/current file and **Cancel**. An activity
 indicator is used when a reliable completion percentage is unavailable.
 
@@ -248,7 +240,7 @@ excluded from recursive processing.
 ## 11. Troubleshooting and limits
 
 - Unknown-publisher/security warning: verify the package source and the computer's
-  policy. Mini does not replace signing; do not disable protection just to try it.
+  policy. Do not disable protection just to try it.
 - Missing Tkinter: use Python with Tk support as described in the README.
 - Missing gsutil/access denied: check CLI availability, the launching process's PATH,
   authorized account and the instructions accompanying your WI export.
@@ -284,7 +276,7 @@ Excel export and direct Agouti API access are not yet available in this tab.
 
 ## Shared Bulk Import: Wildlife Insights and Camtrap DP
 
-For Wildlife Insights, click **Bulk Import from ZIP or CSV**. Choose a ZIP containing `images.csv` or `images_<project>.csv`, and exactly one `deployments.csv` (subfolders supported), or choose both CSVs separately. No local photographs or Excel template are required. Metadata and photo filenames, including extensions, come from the CSVs (`location`). Supply the photos later when uploading the output Excel to Wildbook. Ambiguous duplicate filenames are rejected.
+In **Bulk Import → Wildlife Insights**, load the export ZIP containing `images.csv` or `images_<project>.csv` and exactly one `deployments.csv` in the same ZIP folder. Species load automatically. Select species and click **Review selection**, then **Get selected photographs**. Download `gs://` references with installed gsutil, or enable **Use photographs from a local folder** to find existing photos recursively. Local mode is selected initially when gsutil is unavailable. Filenames must match `location`; ambiguous names and invalid images are reported as failures. Downloads use a fresh batch directory with `manifest.csv`, preserving existing files. Failed photos can be retried. **Configure Excel** becomes available once photos have been verified; preview reports missing photos and exports only available ones. No Excel template is required.
 
 The previous Excel template workflow remains under Advanced for compatibility. Excel is the output format. For Camtrap DP, select species and obtain photographs before opening Bulk Import; successful batches and retries are combined during the session.
 
@@ -318,7 +310,7 @@ New profiles use `Encounter.sightingID` to link sightings. `Encounter.sightingRe
 
 WI and Camtrap DP share the editor, validation, profiles, grouping engine and Excel writer. Set the maximum gap in seconds inside the editor when enabling grouping. Explicit Camtrap events are preserved; sequences without an event use the interval. Changes require a fresh preview.
 
-WI accepts additional CSVs such as `projects.csv` and automatically reads extra CSVs from ZIP exports. Rows are linked by project, camera, deployment or image identifiers. A single global row without identifiers can provide common metadata. Preview warns about unmatched tables. PDFs are not converted into fields. Camtrap also exposes `package.*` and additional declared CSV resources. Use these in comments or columns, for example `{projects.project_name}` or `{cameras.camera_model}`.
+Additional CSVs inside the ZIP, such as `projects.csv`, are read automatically. Rows are linked by project, camera, deployment or image identifiers. A single global row without identifiers can provide common metadata. Preview warns about unmatched tables. PDFs are not converted into fields. Camtrap also exposes `package.*` and additional declared CSV resources. Use these in comments or columns, for example `{projects.project_name}` or `{cameras.camera_model}`.
 
 ### Wildbook and multiple location assignments
 
@@ -330,8 +322,11 @@ Select several deployments or encounters with **Ctrl/Shift** and apply one locat
 
 Selection lists stay open and include search; choose a row or close with Escape. Linux uses Zenity for opening, saving and choosing folders; install `zenity` if unavailable.
 
-WI now follows: load ZIP/CSV, **Read species**, select species, then configure Bulk Import, matching the Camtrap DP multiselect workflow.
+WI follows: **load ZIP → select species → review selection → obtain photographs → configure Excel**. WI and DP share selection, acquisition and editor controls, with separate format adapters.
 
 locationID starts with source localities; coordinates and available country/site/location fields are also offered. Select several with Ctrl/Shift. Applying shows a check mark and affected row count. Advanced branch options are at the bottom.
 
 Folder and catalog inputs use the common editor. Choose species, recursion and an explicit identity convention (none, filename first word, or folder name). Dates come from EXIF; an optional fallback year leaves month/day blank and prevents temporal grouping of undated photos. Photos lacking both EXIF dates and a supplied year are reported as omitted. Complete location in the editor. The previous template workflow remains under compatibility options.
+
+
+Bulk Import brings Folder, Catalog, Wildlife Insights and Camtrap DP together in one window. Select a source, prepare the data, then configure fields, preview and export Excel. Back to source lets you revise inputs; changing source discards the current editor. Catalog accepts undated photos, leaving date and time fields empty and keeping them out of temporal groups. Iberian Lynx is under Functionalities.

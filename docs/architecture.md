@@ -1,87 +1,35 @@
-# Ediciones, firma e interfaz
+# Una aplicación multiplataforma
 
-## Alpha mini: propósito y límites
+## Alcance actual
 
-La mini nació como alternativa para equipos donde la aplicación completa daba
-problemas al abrirse. Es un motivo válido para mantener una edición reducida, pero
-el código por sí solo no permite atribuir aquellos problemas a la ausencia de firma
-ni a una función concreta. Harían falta el mensaje exacto, sistema operativo,
-versión/huella del ejecutable y, si hubo una detección, el producto y su diagnóstico.
+En `feature/qt-migration` se mantiene una sola aplicación para Windows, Linux y
+macOS. Alpha mini se ha retirado del código, compilación y pruebas de esta rama;
+se conserva en el historial y en `feature/camtrap-dp`. No se desarrolla una edición
+Lite paralela.
 
-La mini elimina los módulos dedicados `DateChangerApp` e `ImagesRenamer`, pero
-conserva OpenCV, extracción de fotogramas, ejecución de gsutil y escritura de fechas
-de los fotogramas. Además, antes de esta rama importaba `win32file` y `pywintypes`
-incondicionalmente, igual que la completa. Escribir en archivos elegidos por el
-usuario tampoco equivale a modificar configuración protegida del sistema.
+La entrada actual es `LynxAutomator_v001alpha.py`. Conserva las funciones de Bulk
+Import desde Wildlife Insights, Camtrap DP, carpeta y catálogo, además de las
+herramientas de descarga, vídeo, fechas, renombrado y seguimiento de lince.
 
-Microsoft distingue la reputación del archivo y de su firma; una firma no garantiza
-que una versión nueva carezca de avisos. Apple comprueba identificación del
-desarrollador y notarización. Reducir funciones o sustituir el toolkit no aporta por
-sí mismo esos mecanismos de confianza. Estas conclusiones se apoyan en la
-[documentación de SmartScreen](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
-y la [documentación de Apple](https://support.apple.com/en-gb/102445).
+## Migración a Qt
 
-Recomendación: conservar temporalmente la mini como referencia funcional y probar
-los casos que funcionaban en ella. Para el futuro, definir una edición Lite con
-funciones explícitas sobre un núcleo compartido. Por ejemplo, una Lite centrada en
-generar Excel podría excluir herramientas que reescriben originales, vídeo y
-clientes externos; esa sería una nueva decisión de producto, no una descripción
-de la mini actual. Ocultar pestañas no basta para retirar dependencias del paquete:
-se necesitaría un punto de entrada y una configuración de empaquetado específicos.
+El [plan de interfaz](interface-plan.md) establece la migración progresiva a
+PySide6. La interfaz actual sigue en Tk mientras se implementa y verifica su
+sustitución. Los motores de datos, perfiles, metadatos, archivos y tareas
+cancelables se reutilizan; la interfaz Qt no debe duplicar esas reglas.
 
-En esta rama no se ha eliminado la mini ni ampliado la matriz de builds para ella.
-El workflow distribuye la completa; los cambios de compatibilidad, descarga y
-agrupación compartidos se han aplicado a ambas donde corresponde.
+Las operaciones largas permanecen fuera del hilo de interfaz. Se deben conservar
+la respuesta de la ventana, cancelación, recuperación ante errores y cierre seguro.
 
-## ¿Sustituir Tkinter/CustomTkinter?
+## Verificación y distribución
 
-Mantenerlo durante la estabilización multiplataforma reduce cambios simultáneos.
-La aplicación ya ofrece los formularios necesarios y una migración obligaría a
-reescribir sus controles, diálogos, traducciones y conexiones con la lógica.
+Se comprueba una única aplicación: pruebas de procesamiento, integración gráfica,
+arranque desde código y arranque del paquete. El workflow es manual y conserva
+los destinos Windows, Ubuntu y macOS (Intel y Apple Silicon). Cada paquete debe
+verificarse en su sistema; una prueba local de Linux no certifica los otros.
 
-El bloqueo de la ventana procede de ejecutar trabajo largo en el hilo de la
-interfaz. Cambiar a Qt sin separar esas tareas conservaría el problema. Esta rama
-ya extrae los servicios de fechas, archivos, vídeo y transformación de datos y
-usa trabajadores con progreso/cancelación en ambas versiones. Los trabajadores
-no acceden a Tk; los controles y resultados se gestionan desde el hilo principal.
+La firma y notarización son trabajo de distribución independiente de la migración
+de interfaz. La estabilidad debe verificarse antes de anunciar una versión estable.
 
-Si el siguiente objetivo es una aplicación con tablas editables, filtros, vistas
-previas y navegación más elaborada, evaluaría **PySide6/Qt**. Ofrece una arquitectura
-modelo/vista para tablas, documentada en
-[QTableView](https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QTableView.html).
-El coste incluye la reescritura de la interfaz, dependencias Qt y una nueva ronda
-de pruebas de distribución. Su modelo de licencias se describe en
-[Qt for Python](https://doc.qt.io/qtforpython-6/commercial/index.html).
-
-Próximos pasos (la separación del procesamiento ya está implementada):
-
-1. Completar los builds y pruebas reales de Windows, Linux y macOS.
-2. Unificar también la construcción de formularios de completa/mini.
-3. Definir qué funciones incluye Lite y cuáles requieren escritura sobre originales.
-4. Si hacen falta las nuevas vistas, prototipar una pantalla en PySide6 antes de
-   comprometer una migración completa.
-5. Tratar firma de Windows y firma/notarización de macOS como trabajo de distribución
-   independiente del toolkit elegido.
-
-## Contraste del manual
-
-Se conserva el DOCX original y sus capturas como histórico. Los manuales Markdown
-en español, inglés y portugués sustituyen sus instrucciones para esta rama. Cambios principales:
-
-- “Multiespecies” se sustituye por agrupación de varias imágenes por encuentro.
-  `number_of_objects > 1` separa imágenes con varios objetos; no clasifica especies.
-- Se distinguen EXIF, fechas del archivo y diferencias por sistema operativo.
-- Se explicita que los fotogramas reciben la fecha base del archivo de vídeo, no
-  una fecha de grabación leída de sus metadatos ni un tiempo diferente por fotograma.
-- Se documentan columnas CSV, validaciones, cancelación y dependencias de descarga.
-- Se detallan recorridos recursivos, convenciones de nombres y opciones de copia.
-- Al verificar la estructura `Finca/Estación/Revisión/Linces/Individuo`, se detectó
-  un desfase de una carpeta en la versión completa. La mini ya usaba los índices
-  correctos. Se corrigió la completa y se probaron las cuatro combinaciones de
-  carpetas opcionales.
-
-
-## Posible entrada Camtrap DP
-
-Se ha documentado una [propuesta de importación Camtrap DP](camtrap-dp.md). Es una
-valoración para una futura entrada; no se ha añadido ese formato al programa.
+Los manuales Markdown ES/PT/EN son la documentación vigente. El DOCX y la
+[revisión de lógica](logic-review.md) conservan contexto histórico.

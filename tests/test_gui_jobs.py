@@ -38,6 +38,23 @@ class GuiJobsTests(unittest.TestCase):
             time.sleep(0.005)
         self.assertTrue(condition(), 'GUI callback did not finish')
 
+    def test_unified_bulk_sources_and_embedded_editor(self):
+        from lynx_bulk_workflow import BulkWorkflow
+        from lynx_bulk_ui import BulkEditor
+        flow = BulkWorkflow(self.root, 'es')
+        for source in flow.sources:
+            flow.choice.set(source)
+            flow.select(source)
+            self.root.update()
+            page = flow.pages[source]
+            self.assertIs(page.winfo_toplevel(), self.root)
+        flow.edit(lambda task, options: ([], []))
+        self.assertIsInstance(flow.editor, BulkEditor)
+        self.assertIs(flow.editor.winfo_toplevel(), self.root)
+        flow.back()
+        self.assertIsNone(flow.editor)
+        self.assertTrue(flow.pages[flow.choice.get()].winfo_manager())
+
     def test_camtrap_multiselect_preview_and_local_download(self):
         from lynx_camtrap_ui import CamtrapTab
         from lynx_camtrap import read_package
@@ -91,18 +108,35 @@ class GuiJobsTests(unittest.TestCase):
                     error.assert_called_once()
                 editor.destroy()
 
-    def test_wi_zip_input_never_requests_photo_folder(self):
+    def test_wi_zip_loads_species_then_requires_acquisition(self):
         from types import SimpleNamespace
         from lynx_bulk_ui import WIInput
-        owner = SimpleNamespace(root=self.root, lang='es', time_threshold_entry=SimpleNamespace(get=lambda: '3'))
-        window = WIInput(owner)
-        with patch('lynx_bulk_ui.dialogs.askopenfilename', return_value='/tmp/export.zip'), patch('lynx_bulk_ui.dialogs.askdirectory') as folder:
-            window.choose('archive')
-            window.checks = {'Lynx pardinus': SimpleNamespace(get=lambda: True)}
-            with patch('lynx_bulk_ui.BulkEditor') as editor:
-                window.configure_bulk()
-                editor.assert_called_once()
-            folder.assert_not_called()
+        from wi_factory import make_wi_zip
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            archive = make_wi_zip(folder)
+            with patch('lynx_wi_ui.shutil.which', return_value=None):
+                window = WIInput(SimpleNamespace(root=self.root, lang='es'))
+            page = window.page
+            self.assertTrue(page.local.get())
+            with patch('lynx_wi_ui.filedialog.askopenfilename', return_value=str(archive)) as dialog:
+                page.load()
+                self.wait_until(lambda: not self.root.jobs.busy)
+            self.assertEqual(dialog.call_args.kwargs['filetypes'], [('Wildlife Insights ZIP', '*.zip')])
+            self.assertEqual(set(page.checks), {'Lynx pardinus', 'Vulpes vulpes'})
+            self.assertEqual(page.export.cget('state'), 'disabled')
+            with patch('lynx_ui_jobs.messagebox.showerror') as error, patch('lynx_bulk_ui.BulkEditor') as editor:
+                page.open_bulk_import()
+                error.assert_called_once()
+                editor.assert_not_called()
+            page.checks['Lynx pardinus'].select()
+            page.review()
+            self.wait_until(lambda: not self.root.jobs.busy)
+            page.local.deselect()
+            with patch('lynx_wi_ui.shutil.which', return_value=None), patch('lynx_ui_jobs.messagebox.showerror') as error, patch('lynx_wi_ui.filedialog.askdirectory') as folder:
+                page.obtain()
+                error.assert_called_once()
+                folder.assert_not_called()
 
     def test_bulk_profiles_only_save_explicitly(self):
         import tempfile
@@ -163,7 +197,7 @@ class GuiJobsTests(unittest.TestCase):
         other = dict(eventID='other', media=['other.jpg'])
         attach_metadata(other, deployment=[{'deploymentID': 'd2'}])
         picker = LocationPicker(editor, [row, other])
-        self.assertEqual(str(picker.transient()), str(editor))
+        self.assertEqual(str(picker.transient()), str(editor.winfo_toplevel()))
         self.assertFalse(picker.url.winfo_manager())
         picker.receive({'source': CATALOGS['Lynx'], 'updated': 'test', 'catalog': {'locationID': [{'id': 'parent', 'name': 'Region', 'locationID': [{'id': 'Exact-á', 'name': 'Site'}]}]}})
         picker.tree.selection_set('1')
@@ -209,25 +243,41 @@ class GuiJobsTests(unittest.TestCase):
         self.assertEqual(choice.get(), 'Deer')
         dialog.destroy()
 
-    def test_wi_species_selection_filters_before_editor(self):
+    def test_wi_shared_flow_local_photos_and_selection_invalidation(self):
         import tempfile
-        from types import SimpleNamespace
-        import pandas as pd
-        from lynx_bulk_ui import WIInput
+        from PIL import Image
+        from wi_factory import make_wi_zip
+        from lynx_bulk_workflow import BulkWorkflow
+        from lynx_tasks import TaskContext
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            pd.DataFrame([{'genus': 'Lynx', 'species': 'pardinus'}, {'genus': 'Vulpes', 'species': 'vulpes'}]).to_csv(root / 'images.csv', index=False)
-            pd.DataFrame([{'deployment_id': 'd'}]).to_csv(root / 'deployments.csv', index=False)
-            owner = SimpleNamespace(root=self.root, lang='es', images_csv_path=str(root / 'images.csv'), deployments_csv_path=str(root / 'deployments.csv'))
-            window = WIInput(owner)
-            window.load_species()
+            archive = make_wi_zip(folder)
+            Image.new('RGB', (4, 4)).save(Path(folder) / 'lynx.jpg')
+            flow = BulkWorkflow(self.root, 'es')
+            flow.choice.set('Wildlife Insights')
+            flow.select('Wildlife Insights')
+            page = flow.pages['Wildlife Insights']
+            page.local.select()
+            with patch('lynx_wi_ui.filedialog.askopenfilename', return_value=str(archive)):
+                page.load()
+                self.wait_until(lambda: not self.root.jobs.busy)
+            page.checks['Lynx pardinus'].select()
+            page.review()
             self.wait_until(lambda: not self.root.jobs.busy)
-            self.assertEqual(set(window.checks), {'Lynx pardinus', 'Vulpes vulpes'})
-            self.assertFalse(window.checks['Lynx pardinus'].get())
-            window.checks['Lynx pardinus'].select()
-            with patch('lynx_bulk_ui.BulkEditor') as editor:
-                window.configure_bulk()
-                editor.assert_called_once()
+            self.assertEqual(len(page.records), 1)
+            with patch('lynx_wi_ui.filedialog.askdirectory', return_value=folder):
+                page.obtain()
+                self.wait_until(lambda: not self.root.jobs.busy)
+            self.assertEqual(page.export.cget('state'), 'normal')
+            page.open_bulk_import()
+            self.assertIs(flow.editor.winfo_toplevel(), self.root)
+            rows, missing = flow.editor.loader(TaskContext(), (False, 3))
+            self.assertEqual(len(rows), 1)
+            self.assertFalse(missing)
+            self.assertTrue(rows[0]['media_local'])
+            flow.back()
+            page.select_all(False)
+            self.assertEqual(page.available, {})
+            self.assertEqual(page.export.cget('state'), 'disabled')
 
     def test_video_review_requires_explicit_confirmation(self):
         from types import SimpleNamespace
@@ -288,7 +338,7 @@ class GuiJobsTests(unittest.TestCase):
         self.assertEqual(received, [get_ident()])
         self.assertEqual(self.button.cget('state'), 'normal')
 
-    def test_full_and_mini_inputs_start_async_jobs(self):
+    def test_application_inputs_start_async_jobs(self):
         # Pillow/Tk caches can retain the interpreter from a previous CTk root.
         # Exercise application startup in a fresh process, as the smoke test does.
         if os.environ.get('LYNX_ISOLATED_APP_TEST') != '1':
@@ -297,56 +347,54 @@ class GuiJobsTests(unittest.TestCase):
             repo = Path(__file__).resolve().parents[1]
             env = dict(os.environ, LYNX_ISOLATED_APP_TEST='1', PYTHONPATH=str(repo))
             subprocess.run([sys.executable, '-m', 'unittest',
-                            'test_gui_jobs.GuiJobsTests.test_full_and_mini_inputs_start_async_jobs'],
+                            'test_gui_jobs.GuiJobsTests.test_application_inputs_start_async_jobs'],
                            cwd=repo / 'tests', env=env, check=True, timeout=60)
             return
         from lynx_processing import WIProcessor
         from lynx_ui_jobs import TEXT
         import pandas as pd
         repo = Path(__file__).resolve().parents[1]
-        for filename in ('LynxAutomator_v001alpha.py', 'LynxAutomator_v001alpha mini.py'):
-            with self.subTest(filename=filename):
-                spec = importlib.util.spec_from_file_location('desktop', repo / filename)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                for widget in self.root.winfo_children():
-                    widget.destroy()
-                desktop = self.root
-                app = module.BaseApp(desktop)
-                desktop.update()
-                try:
-                    combiner = app.excel_combiner_app
-                    combiner.initial_excel_path = 'template.xlsx'
-                    combiner.images_csv_path = 'images.csv'
-                    combiner.deployments_csv_path = 'deployments.csv'
-                    result = pd.DataFrame({'test': [1]})
-                    with patch.object(WIProcessor, 'run', return_value=result):
-                        combiner.process_files()
-                        deadline = time.monotonic() + 5
-                        while desktop.jobs.busy and time.monotonic() < deadline:
-                            desktop.update()
-                            time.sleep(0.005)
-                    self.assertFalse(desktop.jobs.busy)
-                    self.assertIs(combiner._result, result)
-                    self.assertEqual(combiner.download_btn.cget('state'), 'normal')
-                    combiner.multiple_images_var.set(True)
-                    combiner.time_threshold_entry.delete(0, 'end')
-                    combiner.time_threshold_entry.insert(0, '-1')
-                    with patch('lynx_ui_jobs.messagebox.showerror') as error:
-                        combiner.process_files()
-                        error.assert_called_once()
-                    self.assertIsNone(combiner._result)
-                    self.assertEqual(combiner.download_btn.cget('state'), 'disabled')
-
-                    app.language.set('Português')
-                    app.change_language()
+        filename = 'LynxAutomator_v001alpha.py'
+        spec = importlib.util.spec_from_file_location('desktop', repo / filename)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        desktop = self.root
+        app = module.BaseApp(desktop)
+        desktop.update()
+        try:
+            combiner = app.excel_combiner_app
+            combiner.initial_excel_path = 'template.xlsx'
+            combiner.images_csv_path = 'images.csv'
+            combiner.deployments_csv_path = 'deployments.csv'
+            result = pd.DataFrame({'test': [1]})
+            with patch.object(WIProcessor, 'run', return_value=result):
+                combiner.process_files()
+                deadline = time.monotonic() + 5
+                while desktop.jobs.busy and time.monotonic() < deadline:
                     desktop.update()
-                    self.assertEqual(desktop.jobs.text, TEXT['pt'])
-                finally:
-                    if desktop.jobs.busy:
-                        desktop.jobs.cancel()
-                        self.wait_until(lambda: not desktop.jobs.busy)
+                    time.sleep(0.005)
+            self.assertFalse(desktop.jobs.busy)
+            self.assertIs(combiner._result, result)
+            self.assertEqual(combiner.download_btn.cget('state'), 'normal')
+            combiner.multiple_images_var.set(True)
+            combiner.time_threshold_entry.delete(0, 'end')
+            combiner.time_threshold_entry.insert(0, '-1')
+            with patch('lynx_ui_jobs.messagebox.showerror') as error:
+                combiner.process_files()
+                error.assert_called_once()
+            self.assertIsNone(combiner._result)
+            self.assertEqual(combiner.download_btn.cget('state'), 'disabled')
 
+            app.language.set('Português')
+            app.change_language()
+            desktop.update()
+            self.assertEqual(desktop.jobs.text, TEXT['pt'])
+        finally:
+            if desktop.jobs.busy:
+                desktop.jobs.cancel()
+                self.wait_until(lambda: not desktop.jobs.busy)
 
     def test_close_waits_for_current_write_without_blocking_events(self):
         entered, finish_write, closed = Event(), Event(), Event()

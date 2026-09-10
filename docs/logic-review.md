@@ -1,5 +1,9 @@
 # Revisión de lógica y compatibilidad
 
+> Registro histórico de revisiones anteriores. Las referencias a completa/mini
+> describen las pruebas de aquel momento. En `feature/qt-migration` mini está
+> retirada; la arquitectura vigente es [una única aplicación](architecture.md).
+
 ## Correcciones incluidas
 
 - Arranque: eliminados los imports de Windows en ambos scripts; las llamadas
