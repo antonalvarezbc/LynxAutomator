@@ -130,3 +130,35 @@ por evento ambiguas. La descarga HTTP necesitará progreso, cancelación, reinte
 validación del contenido y un registro `mediaID → archivo local`; el descargador
 actual basado en `gsutil` no cubre este flujo. No registrar tokens de descarga ni
 reenviar credenciales de una plataforma a otro servidor.
+
+## API de Agouti: revisión del 10 de septiembre de 2026
+
+Se revisó el esquema OpenAPI servido por
+[Swagger](https://api.agouti.eu/docs/) en `docs/swagger-ui-init.js`, no sólo los
+ ejemplos de la guía. El servidor declarado es `/v1` y publica:
+
+| GET | Uso en la pasarela |
+| --- | --- |
+| `/v1/me/projects` | Seleccionar un proyecto autorizado |
+| `/v1/projects/{projectId}/datapackage.json` | Obtener el descriptor Camtrap DP |
+| `/v1/projects/{projectId}/deployments.csv` | Obtener los despliegues |
+| `/v1/projects/{projectId}/media.csv` | Obtener los metadatos de medios |
+| `/v1/projects/{projectId}/observations.csv` | Obtener las observaciones |
+| `/v1/projects/{projectId}/species-counts` | Consultar conteos por especie |
+
+Los endpoints de exportación aceptan `X-API-KEY` o `Authorization: Bearer …`.
+La [guía de acceso](https://docs.agouti.eu/api/general.html) indica consultar con
+Agouti para obtener una clave y conocer límites de uso. No se han hecho peticiones
+a proyectos privados ni probado credenciales.
+
+Esto permite ofrecer dos entradas al mismo lector: paquete local y conexión a
+Agouti. El adaptador API obtendría el descriptor y sus tablas y los normalizaría
+para el mismo flujo de selección de especies/Wildbook, revisión y exportación.
+El endpoint `media.csv` devuelve metadatos, no las fotografías: la descarga de
+`media.filePath` mantiene su propio control de acceso. No reenviar automáticamente
+la clave de API a los servidores de imágenes.
+
+Antes de declarar compatible el conector hay que probar un proyecto autorizado,
+comprobar la consistencia de las tablas descargadas, tratar respuestas vacías
+(204), validar referencias y verificar el acceso a los medios. Los endpoints
+permiten diseñar la integración; no implican que esté implementada.
