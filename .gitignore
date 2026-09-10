@@ -19,3 +19,9 @@ tests/fixtures/camtrap_dp_lynx_synthetic/
 .local-python/
 
 .venv-ubuntu-native/
+
+# Local reusable Bulk Import fields
+.local-settings/
+
+# User-supplied Wildlife Insights examples (local only)
+tests/fixtures/Wildlife Insights/

@@ -63,6 +63,128 @@ class GuiJobsTests(unittest.TestCase):
         self.assertIsNone(tab.records)
         self.assertEqual(tab.download.cget('state'), 'disabled')
 
+    def test_bulk_editor_preview_save_and_invalidation(self):
+        import tempfile
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        from lynx_bulk import default_fields, normalize
+        with tempfile.TemporaryDirectory() as folder:
+            photo = Path(folder) / 'photo.png'
+            photo.write_bytes(b'test')
+            row = normalize('Lynx pardinus', '2024-01-01', photo, 'd', 'e', 'p', locality='test')
+            with patch('lynx_bulk_ui.load_profile', return_value=default_fields()), patch('lynx_bulk_ui.save_profile') as profile:
+                editor = BulkEditor(SimpleNamespace(root=self.root, lang='pt'), lambda task, group: ([row], []))
+                editor.preview()
+                self.wait_until(lambda: not self.root.jobs.busy)
+                self.assertIsNotNone(editor.snapshot)
+                self.assertEqual(len(editor.tree.get_children()), 1)
+                profile.assert_not_called()
+                destination = Path(folder) / 'bulk.xlsx'
+                with patch('lynx_bulk_ui.dialogs.asksaveasfilename', return_value=str(destination)), patch('lynx_bulk_ui.messagebox.showinfo'):
+                    editor.save()
+                    self.wait_until(lambda: not self.root.jobs.busy)
+                self.assertTrue(destination.is_file())
+                editor.interval.delete(0, 'end')
+                editor.interval.insert(0, '10')
+                with patch('lynx_ui_jobs.messagebox.showerror') as error:
+                    editor.save()
+                    error.assert_called_once()
+                editor.destroy()
+
+    def test_wi_zip_input_never_requests_photo_folder(self):
+        from types import SimpleNamespace
+        from lynx_bulk_ui import WIInput
+        owner = SimpleNamespace(root=self.root, lang='es', time_threshold_entry=SimpleNamespace(get=lambda: '3'))
+        window = WIInput(owner)
+        with patch('lynx_bulk_ui.dialogs.askopenfilename', return_value='/tmp/export.zip'), patch('lynx_bulk_ui.dialogs.askdirectory') as folder:
+            window.choose('archive')
+            with patch('lynx_bulk_ui.BulkEditor') as editor:
+                window.configure_bulk()
+                editor.assert_called_once()
+            folder.assert_not_called()
+
+    def test_bulk_profiles_only_save_explicitly(self):
+        import tempfile
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        from lynx_bulk import read_profiles, save_profile, load_profile
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'profiles.json'
+            with patch('lynx_bulk_ui.read_profiles', side_effect=lambda: read_profiles(path)), patch(
+                    'lynx_bulk_ui.save_profile', side_effect=lambda fields, name: save_profile(fields, path, name)), patch(
+                    'lynx_bulk_ui.load_profile', side_effect=lambda name: load_profile(path, name)), patch('lynx_bulk_ui.messagebox.showinfo'):
+                editor = BulkEditor(SimpleNamespace(root=self.root, lang='es'), lambda task, group: ([], []))
+                self.assertFalse(path.exists())
+                editor.profile_name.insert(0, 'Doñana')
+                editor.rows[-1][3].insert(0, 'submitter')
+                editor.store_profile()
+                editor.rows[-1][3].delete(0, 'end')
+                editor.use_profile()
+                self.assertEqual(editor.rows[-1][3].get(), 'submitter')
+                self.assertEqual(list(read_profiles(path)), ['Doñana'])
+                editor.destroy()
+
+    def test_metadata_comments_picker_and_catalog(self):
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        from lynx_wildbook_fields import FIELDS
+        from lynx_bulk import normalize, attach_metadata, build_table
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            photo = Path(folder) / 'photo.jpg'
+            photo.write_bytes(b'test')
+            row = normalize('Lynx pardinus', '2024-01-01', photo, 'd', 'e', 'p', locality='test')
+            attach_metadata(row, deployment=[{'setupBy': 'Alice', 'cameraID': 'C1', 'cameraModel': 'Model X'}])
+            editor = BulkEditor(SimpleNamespace(root=self.root, lang='es'), lambda task, group: ([row], []))
+            self.assertIn('Sighting.comments', editor.rows[0][1].cget('values'))
+            self.assertIn('Encounter.project0.researchProjectName', FIELDS)
+            editor.render([f for f in editor.collect() if f['name'] != 'Encounter.sightingID'])
+            editor.metadata_comments()
+            self.wait_until(lambda: not self.root.jobs.busy)
+            picker = next(w for w in editor.winfo_children() if isinstance(w, self.ctk.CTkToplevel))
+            apply = next(w for w in picker.winfo_children() if isinstance(w, self.ctk.CTkButton))
+            apply.invoke()
+            table = build_table([row], editor.collect())
+            self.assertIn('Encounter.sightingID', table[0])
+            self.assertIn('deployment.cameraID: C1', table[0]['Sighting.comments'])
+            self.assertIn('deployment.setupBy: Alice', table[0]['Sighting.comments'])
+            editor.destroy()
+
+    def test_location_picker_applies_exact_ids_and_keeps_profile_metadata(self):
+        from types import SimpleNamespace
+        from lynx_bulk_ui import BulkEditor
+        from lynx_locations_ui import LocationPicker
+        from lynx_locations import CATALOGS, deployment_key, encounter_key
+        from lynx_bulk import attach_metadata
+        row = {}
+        attach_metadata(row, deployment=[{'deploymentID': 'd1'}])
+        editor = BulkEditor(SimpleNamespace(root=self.root, lang='es'), lambda task, group: ([row], []))
+        other = dict(eventID='other', media=['other.jpg'])
+        attach_metadata(other, deployment=[{'deploymentID': 'd2'}])
+        picker = LocationPicker(editor, [row, other])
+        self.assertEqual(str(picker.transient()), str(editor))
+        self.assertFalse(picker.url.winfo_manager())
+        picker.receive({'source': CATALOGS['Lynx'], 'updated': 'test', 'catalog': {'locationID': [{'id': 'parent', 'name': 'Region', 'locationID': [{'id': 'Exact-á', 'name': 'Site'}]}]}})
+        picker.tree.selection_set('1')
+        picker.apply()
+        field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
+        self.assertEqual(field['value'], 'Exact-á')
+        self.assertEqual(field['catalog_name'], 'Lynx')
+        picker.scope.selection_set(next(iid for iid, key in picker.scope_items.items() if key == deployment_key(row)))
+        picker.tree.selection_set('0')
+        picker.apply()
+        field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
+        self.assertEqual(field['locations'][deployment_key(row)], 'parent')
+        self.assertEqual(field['value'], 'Exact-á')
+        picker.scope.selection_set('e0', 'e1')
+        picker.tree.selection_set('1')
+        picker.apply()
+        field = next(f for f in editor.collect() if f['name'] == 'Encounter.locationID')
+        self.assertEqual(field['locations'][encounter_key(row)], 'Exact-á')
+        self.assertEqual(field['locations'][encounter_key(other)], 'Exact-á')
+        picker.destroy()
+        editor.destroy()
+
     def test_video_review_requires_explicit_confirmation(self):
         from types import SimpleNamespace
         from lynx_ui_jobs import review_video_dates
@@ -116,7 +238,7 @@ class GuiJobsTests(unittest.TestCase):
         received = []
         def fail(task):
             raise ValueError('bad input')
-        with patch('lynx_ui_jobs.messagebox.showerror', side_effect=lambda *args: received.append(get_ident())):
+        with patch('lynx_ui_jobs.messagebox.showerror', side_effect=lambda *args, **kwargs: received.append(get_ident())):
             self.root.jobs.start('Excel', fail)
             self.wait_until(lambda: not self.root.jobs.busy)
         self.assertEqual(received, [get_ident()])

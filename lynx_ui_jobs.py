@@ -55,7 +55,7 @@ class JobPanel(ctk.CTkFrame):
         for widget in parent.winfo_children():
             if widget is self:
                 continue
-            if isinstance(widget, (ctk.CTkButton, ctk.CTkEntry, ctk.CTkOptionMenu,
+            if isinstance(widget, (ctk.CTkButton, ctk.CTkEntry, ctk.CTkOptionMenu, ctk.CTkComboBox,
                                    ctk.CTkCheckBox, ctk.CTkRadioButton, ctk.CTkSwitch)):
                 state = widget.cget('state')
                 self.disabled.append((widget, state))
@@ -63,9 +63,10 @@ class JobPanel(ctk.CTkFrame):
             else:
                 self._lock_controls(widget)
 
-    def start(self, title, work, on_success=None, on_finished=None):
+    def start(self, title, work, on_success=None, on_finished=None, dialog_parent=None):
         if self.busy:
             raise ValueError(self.text['busy'])
+        self.dialog_parent = dialog_parent or self.root
         self.title = title
         self.on_success = on_success
         self.on_finished = on_finished
@@ -124,7 +125,7 @@ class JobPanel(ctk.CTkFrame):
             self.status.configure(text=self.text['cancelled'])
         elif kind == 'error':
             self.status.configure(text=self.text['failed'])
-            messagebox.showerror(self.text['failed'], str(value))
+            messagebox.showerror(self.text['failed'], str(value), parent=self.dialog_parent)
         else:
             self.bar.set(1)
             self.status.configure(text=self.text['done'])
@@ -133,7 +134,7 @@ class JobPanel(ctk.CTkFrame):
                 self.status.configure(text=summary)
                 if value.errors:
                     # One summary, not a blocking dialog per file.
-                    messagebox.showwarning(self.text['failed'], summary + '\n\n' + '\n'.join(value.errors[:20]))
+                    messagebox.showwarning(self.text['failed'], summary + '\n\n' + '\n'.join(value.errors[:20]), parent=self.dialog_parent)
             if on_success:
                 on_success(value)
         if on_finished:
@@ -148,12 +149,12 @@ def action(method):
                 raise ValueError(TEXT[self.lang]['busy'])
             return method(self, *args, **kwargs)
         except (ValueError, TypeError, OSError, KeyError, TclError) as exc:
-            messagebox.showerror('Error', str(exc))
+            messagebox.showerror('Error', str(exc), parent=self.winfo_toplevel() if hasattr(self, 'winfo_toplevel') else self.root.winfo_toplevel())
     return wrapped
 
 
 def start(owner, title, work, callback=None, on_finished=None):
-    owner.root.winfo_toplevel().jobs.start(title, work, callback, on_finished)
+    owner.root.winfo_toplevel().jobs.start(title, work, callback, on_finished, dialog_parent=owner.winfo_toplevel() if hasattr(owner, 'winfo_toplevel') else owner.root.winfo_toplevel())
 
 
 def integer(value):
@@ -216,6 +217,11 @@ class CatalogJobs(SpreadsheetJobs):
 
 
 class WIJobs(SpreadsheetJobs):
+    @action
+    def open_bulk_import(self):
+        from lynx_bulk_ui import open_wi
+        open_wi(self)
+
     @action
     def process_files(self):
         self._clear_result(self.download_btn)

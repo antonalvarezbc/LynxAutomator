@@ -281,3 +281,47 @@ The optional local synthetic lynx fixture (excluded from Git) has 366 observatio
 300 including events, and 10 local JPEGs. Its images are not actual lynxes.
 The reader performs basic structural checks, not full schema validation. Wildbook
 Excel export and direct Agouti API access are not yet available in this tab.
+
+## Shared Bulk Import: Wildlife Insights and Camtrap DP
+
+For Wildlife Insights, click **Bulk Import from ZIP or CSV**. Choose a ZIP containing `images.csv` or `images_<project>.csv`, and exactly one `deployments.csv` (subfolders supported), or choose both CSVs separately. No local photographs or Excel template are required. Metadata and photo filenames, including extensions, come from the CSVs (`location`). Supply the photos later when uploading the output Excel to Wildbook. Ambiguous duplicate filenames are rejected.
+
+The previous Excel template workflow remains under Advanced for compatibility. Excel is the output format. For Camtrap DP, select species and obtain photographs before opening Bulk Import; successful batches and retries are combined during the session.
+
+Edit, add, disable, delete and reorder fields with ↑. `fixed` uses a constant; other sources use record metadata. Use field names supported by your Wildbook. Optional grouping uses event/species/individual in Camtrap, or interval/project/deployment/species in WI. Multi-animal photographs remain separate. Click **Preview / validate**, then **Save Excel**. Nothing is uploaded automatically.
+
+### Optional locality profiles
+
+Enter a name, such as “Doñana”, and click **Save profile**. Use **Load profile** to reuse location, country, submitter and custom fields. Saving the same name updates that profile. Working without saving is supported: no locality is loaded automatically, and preview/export never overwrite profiles.
+
+Profiles are shared across sources in `.local-settings/bulk-import.json`, excluded from Git. The previous profile appears as `Default`. Packaged apps use `LynxAutomator` under `LOCALAPPDATA` or `XDG_CONFIG_HOME`/`~/.config`.
+
+Validation is local and does not check server configuration. Dates preserve source clock time. Grouping events does not establish individual identity.
+
+### Field catalog and metadata comments
+
+Wildlife Insights ZIP input accepts `images.csv` and `images_<project>.csv`, combining image fragments in the same folder with one `deployments.csv`. Separate export folders are rejected to avoid mixing datasets.
+
+Column names have an editable dropdown based on the [Wildbook documentation](https://wildbook.docs.wildme.org/data/bulk-import-beta.html), covering encounters, sightings, projects and other documented categories. Custom names and indexed families remain editable. Photo columns are automatic; subfields such as `.keywords` can be configured. Server support may vary.
+
+Use **Metadata comments** to search and select several source fields, then choose `Sighting.comments`, `Encounter.sightingRemarks` or `Encounter.researcherComments`. Existing configured text is preserved. Example using the `template` source:
+
+```text
+Camera: {deployment.cameraID}; Model: {deployment.cameraModel}; Setup: {deployment.setupBy}
+```
+
+Available metadata uses `deployment.`, `media.` and `observation.` prefixes. Distinct values are retained when grouping, separated by ` | `. Unknown fields produce an explicit error; blank values stay blank. Templates persist in local profiles. Selected metadata is preserved as notes; keep the original CSVs to preserve their full structure and relationships.
+
+New profiles use `Encounter.sightingID` to link sightings. `Encounter.sightingRemarks` is suitable for comments that persist on cloned encounters. Validation names missing required fields: genus, epithet, year, first photo and location (text, locationID or both coordinates). Comments over Excel's 32767-character limit are rejected instead of silently truncated.
+
+### Shared configuration and additional metadata
+
+WI and Camtrap DP share the editor, validation, profiles, grouping engine and Excel writer. Set the maximum gap in seconds inside the editor when enabling grouping. Explicit Camtrap events are preserved; sequences without an event use the interval. Changes require a fresh preview.
+
+WI accepts additional CSVs such as `projects.csv` and automatically reads extra CSVs from ZIP exports. Rows are linked by project, camera, deployment or image identifiers. A single global row without identifiers can provide common metadata. Preview warns about unmatched tables. PDFs are not converted into fields. Camtrap also exposes `package.*` and additional declared CSV resources. Use these in comments or columns, for example `{projects.project_name}` or `{cameras.camera_model}`.
+
+### Wildbook and multiple location assignments
+
+The normal picker shows only Wildbook names. **Advanced options → Fetch GitHub branches** retrieves the current WildMeOrg/Wildbook branches for selection by name, with URLs kept internal. Local JSON is available only in advanced options. Lists and catalogs are cached; development branches may lack a valid catalog.
+
+Select several deployments or encounters with **Ctrl/Shift** and apply one location. Encounter overrides deployment, then common value; `*` applies to all rows and removes overrides. Save assignments in a profile. Review encounter assignments after changing grouping. Camera coordinates are preserved; GitHub may differ from the deployed server. Dialogs are attached to their owning window to appear in front.

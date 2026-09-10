@@ -360,3 +360,64 @@ incluyendo eventos. **Sólo copiar imágenes locales** obtiene 10 JPEG. Son dato
 sintéticos: las fotografías originales no muestran linces.
 
 Esta pestaña aún no genera Excel Wildbook ni conecta con la API de Agouti.
+
+## Bulk Import común: Wildlife Insights y Camtrap DP
+
+En Wildlife Insights, pulsa **Bulk Import desde ZIP o CSV**. Carga un ZIP que contenga `images.csv` o `images_<proyecto>.csv`, y un único `deployments.csv` (también pueden estar en una subcarpeta), o selecciona ambos CSV por separado. No necesita fotos locales ni plantilla Excel: extrae metadatos y nombres de fotografías desde los CSV. El Excel resultante referencia los nombres de `location`, conservando las extensiones. Las fotografías se aportarán después al cargar el resultado en Wildbook. Nombres repetidos para archivos distintos deben resolverse antes de exportar.
+
+El flujo antiguo con plantilla está oculto bajo **Opciones avanzadas: plantilla Excel anterior**, para compatibilidad. Excel es el formato de salida; no es obligatorio como entrada.
+
+En Camtrap DP selecciona especies, revisa y obtén las fotos; después abre **Bulk Import**. Se reúnen las descargas y reintentos de la sesión y se comprueba que los archivos sigan existiendo.
+
+Edita columnas y valores: `fixed` usa un valor constante; los demás orígenes toman datos de cada registro. Puedes añadir, renombrar, desactivar, eliminar y ordenar columnas con ↑. Los nombres deben ser compatibles con tu Wildbook. Las columnas de fotos se generan automáticamente. Opcionalmente agrupa por evento/especie/individuo en Camtrap o por intervalo/proyecto/despliegue/especie en WI. Las fotos con varios animales se mantienen separadas.
+
+Pulsa **Vista previa / validar** y después **Guardar Excel**. La vista muestra hasta 100 filas. Cambiar campos requiere validar otra vez. No se sube nada automáticamente.
+
+### Perfiles opcionales por localidad
+
+- Escribe un nombre, por ejemplo «Doñana», y pulsa **Guardar perfil**. Guarda los campos configurados, incluyendo ubicación/población (`Encounter.locationID`), país, remitente y columnas adicionales.
+- Elige otro perfil y pulsa **Cargar perfil** para reutilizarlo. Guardar con el mismo nombre actualiza ese perfil.
+- Puedes trabajar sin guardar. No se carga ninguna localidad automáticamente y previsualizar o exportar no sobrescribe perfiles.
+- Se comparten entre WI y Camtrap, en `.local-settings/bulk-import.json`, ignorado por Git. El perfil antiguo aparece como `Default`. En versiones empaquetadas se usa `LynxAutomator` en `LOCALAPPDATA` o `XDG_CONFIG_HOME`/`~/.config`.
+
+La validación es local, no verifica la configuración del servidor. Agrupar eventos no demuestra identidad individual. Las fechas conservan la hora del origen.
+
+### Catálogo de campos y comentarios con metadatos
+
+El lector ZIP de Wildlife Insights admite `images.csv` e `images_<proyecto>.csv` (por ejemplo `images_2001260.csv`). Combina los fragmentos de imágenes de una misma carpeta y requiere un único `deployments.csv`. Si hay conjuntos en carpetas diferentes, crea un ZIP por conjunto para evitar mezclar exportaciones. Los ejemplos personales de `tests/fixtures/Wildlife Insights/` están ignorados por Git.
+
+El nombre de cada columna tiene un desplegable con los campos de la [documentación oficial de Wildbook](https://wildbook.docs.wildme.org/data/bulk-import-beta.html). Puedes escribir nombres personalizados y cambiar índices en familias como `Encounter.project0.*`. Las columnas `Encounter.mediaAsset0`, `1`, etc. se crean automáticamente; sus subcampos, como `.keywords`, sí pueden configurarse. El catálogo no garantiza que cada campo esté habilitado en tu servidor.
+
+**Comentarios con metadatos** lee los campos disponibles en tus datos y abre un buscador con selección múltiple. Elige destino (`Sighting.comments`, `Encounter.sightingRemarks` o `Encounter.researcherComments`), marca los metadatos y pulsa **Añadir a comentarios**. Se conserva el texto que ya habías configurado en ese campo.
+
+Por ejemplo, para Camtrap DP puedes elegir `deployment.setupBy`, `deployment.cameraID` y `deployment.cameraModel`, si existen. El editor crea una plantilla de texto y puedes ajustarla:
+
+```text
+Cámara: {deployment.cameraID}; Modelo: {deployment.cameraModel}; Instalación: {deployment.setupBy}
+```
+
+El origen `template` sustituye los marcadores por datos de cada registro, sin ejecutar código. Los prefijos `deployment.`, `media.` y `observation.` identifican la tabla de origen; también aparecen en el desplegable de origen tras cargar metadatos o previsualizar. Los valores distintos se conservan al agrupar y se separan con ` | `. Un campo inexistente genera un error que señala su nombre; los valores vacíos permanecen vacíos. Las plantillas se guardan dentro de los perfiles locales. Esto conserva los valores seleccionados como notas, no sustituye un archivo de los CSV originales ni conserva sus relaciones como una base de datos.
+
+Los perfiles nuevos enlazan el avistamiento con `Encounter.sightingID`; así `Sighting.comments` corresponde a ese avistamiento. `Encounter.sightingRemarks` es la alternativa para comentarios que persistan en encuentros clonados.
+
+La validación indica por nombre qué falta: género, epíteto específico, año, primera fotografía o ubicación. Basta una localidad textual, un locationID o **ambas** coordenadas; cero es una coordenada válida. Se bloquea la exportación hasta corregir esos mínimos. Si un comentario agrupado supera el límite de texto de Excel, se avisa en vez de truncarlo: reduce los metadatos o desagrupa.
+
+### Configuración común de WI y Camtrap DP
+
+Ambas fuentes utilizan el mismo editor, validación, perfiles, agrupación y escritura de Excel. Los pasos de entrada siguen adaptados a cada formato. El flujo antiguo con plantilla se conserva sólo como compatibilidad.
+
+Activa **Agrupar fotografías** y escribe el intervalo máximo entre fotos, en segundos, dentro del editor. Se aplica a series sin evento explícito; los eventos de Camtrap DP se conservan. No se mezclan despliegues, especies ni individuos conocidos. Cambiar el intervalo exige previsualizar de nuevo.
+
+En WI puedes añadir `projects.csv` u otros CSV con **Añadir projects.csv / otro CSV**. Los CSV adicionales del ZIP se leen automáticamente, incluyendo proyectos y cámaras. Se relacionan por identificadores compartidos (`project_id`, `camera_id`, `deployment_id`, `image_id` y equivalentes Camtrap). Una tabla global de una sola fila sin identificadores se puede usar como información común; no se asignan arbitrariamente tablas sin relación. La vista previa avisa si alguna tabla no encuentra correspondencia. Los documentos PDF del ZIP no se convierten automáticamente en campos.
+
+En Camtrap también están disponibles el descriptor `package.*` y los recursos CSV adicionales declarados en el paquete. Selecciona estos campos en **Comentarios con metadatos**, por ejemplo `{projects.project_name}` o `{cameras.camera_model}` si existen, o añádelos como columnas. Se conservan los valores distintos al agrupar.
+
+### Wildbook y ubicación para varias filas
+
+**Wildbook / locationID** muestra los nombres de los siete Wildbooks conocidos, sin URLs ni JSON en el flujo normal. Elige uno y carga o actualiza su catálogo. La caché permite usarlo sin conexión.
+
+En **Opciones avanzadas → Consultar ramas GitHub** se descargan las ramas actuales de WildMeOrg/Wildbook. Selecciona la rama por su nombre y carga el catálogo; la dirección se construye internamente. Una rama de desarrollo puede no contener un catálogo válido. La lista queda en caché. El JSON local sigue disponible únicamente en opciones avanzadas.
+
+Selecciona varios despliegues o encuentros con **Ctrl/Shift**, busca la ubicación y pulsa **Aplicar ubicación**. Una asignación por encuentro prevalece sobre la de su despliegue y sobre el valor común. `*` aplica a todas las filas y elimina excepciones. Guarda el perfil para conservar las asignaciones. Las excepciones por encuentro corresponden a las fotos agrupadas con la configuración actual: si cambias la agrupación, revísalas antes de exportar.
+
+Las coordenadas de las cámaras se conservan. El catálogo de GitHub puede diferir del servidor desplegado. Al aplicar otro catálogo se borran asignaciones anteriores. Las ventanas del editor, selectores, errores y archivos se vinculan a su ventana de origen para aparecer delante.

@@ -25,6 +25,8 @@ def _select(kind, **options):
     if executable and kind != 'asksaveasfilename':
         command = [executable, '--file-selection', '--width=900', '--height=650',
                    '--filename=' + str(Path(options['initialdir'])) + os.sep]
+        if options.get('parent') is not None:
+            command.append('--attach=' + str(options['parent'].winfo_toplevel().winfo_id()))
         if kind == 'askdirectory':
             command.append('--directory')
         if options.get('title'):

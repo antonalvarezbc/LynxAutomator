@@ -984,6 +984,17 @@ class ExcelCombinerApp(WIJobs):
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
+        labels = {'es': ['Bulk Import desde ZIP o CSV', 'Opciones avanzadas: plantilla Excel anterior'],
+                  'pt': ['Bulk Import a partir de ZIP ou CSV', 'Opções avançadas: modelo Excel anterior'],
+                  'en': ['Bulk Import from ZIP or CSV', 'Advanced: previous Excel template']}[self.lang]
+        ctk.CTkButton(self.main_frame, text=labels[0], command=self.open_bulk_import).pack(pady=12)
+        container = self.main_frame
+        advanced = ctk.CTkFrame(container)
+        toggle = ctk.CTkCheckBox(container, text=labels[1], command=lambda:
+                               advanced.pack(fill='both', expand=True) if toggle.get() else advanced.pack_forget())
+        toggle.pack(anchor='w', padx=10, pady=6)
+        self.main_frame = advanced
+
         # Sección para la selección del archivo Excel inicial
         self.label1 = ctk.CTkLabel(self.main_frame, text=tr["select_initial_excel"], anchor="w")
         self.label1.pack(pady=10, fill="x")

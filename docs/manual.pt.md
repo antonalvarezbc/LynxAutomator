@@ -315,3 +315,47 @@ O exemplo sintético local opcional (excluído do Git) tem 366 observações de 
 associadas, 300 incluindo eventos e 10 JPEG locais. As fotos não mostram linces.
 A validação é estrutural básica, não completa. Esta aba ainda não exporta Excel
 Wildbook nem se liga diretamente à API de Agouti.
+
+## Bulk Import comum: Wildlife Insights e Camtrap DP
+
+No Wildlife Insights, clique em **Bulk Import a partir de ZIP ou CSV**. Selecione um ZIP com `images.csv` ou `images_<projeto>.csv`, e um único `deployments.csv` (incluindo subpastas) ou os dois CSV separados. Não precisa de fotografias locais nem de modelo Excel. Os nomes e extensões das fotografias vêm de `location`; envie as fotos posteriormente com o Excel para o Wildbook. Nomes ambíguos são rejeitados.
+
+O modelo Excel antigo continua nas opções avançadas, por compatibilidade. Excel é o formato de saída. No Camtrap DP, selecione espécies e obtenha as fotos antes de abrir Bulk Import; os lotes e novas tentativas são reunidos durante a sessão.
+
+Edite, adicione, desative, remova e ordene campos com ↑. `fixed` usa um valor constante; os outros campos usam dados do registo. Use nomes aceites pelo Wildbook. Pode agrupar por evento/espécie/indivíduo em Camtrap ou por intervalo/projeto/instalação/espécie em WI. Fotos com vários animais ficam separadas. Clique em **Pré-visualizar / validar** e **Guardar Excel**. Não há envio automático.
+
+### Perfis opcionais por localidade
+
+Escreva um nome, como «Doñana», e clique em **Guardar perfil**. Use **Carregar perfil** para reutilizar localização, país, remetente e campos adicionais. Guardar o mesmo nome atualiza esse perfil. Pode trabalhar sem guardar; nenhum perfil é carregado automaticamente e a pré-visualização não guarda alterações.
+
+Os perfis são partilhados entre as fontes e ficam em `.local-settings/bulk-import.json`, ignorado pelo Git. O perfil anterior aparece como `Default`. Na aplicação empacotada ficam em `LynxAutomator` dentro de `LOCALAPPDATA` ou `XDG_CONFIG_HOME`/`~/.config`.
+
+A validação é local, não verifica o servidor. As datas mantêm a hora da origem. Agrupar eventos não demonstra identidade individual.
+
+### Catálogo e comentários com metadados
+
+O ZIP de Wildlife Insights aceita `images.csv` e `images_<projeto>.csv`, combinando fragmentos da mesma pasta com um único `deployments.csv`. Conjuntos em pastas diferentes são rejeitados para evitar misturas.
+
+Os nomes das colunas têm uma lista editável baseada na [documentação do Wildbook](https://wildbook.docs.wildme.org/data/bulk-import-beta.html), incluindo campos de encontros, avistamentos, projetos e outros. Pode escrever nomes personalizados ou alterar índices; os campos de fotografias são automáticos, mas subcampos como `.keywords` são configuráveis. A disponibilidade depende do servidor.
+
+Use **Comentários com metadados** para pesquisar e marcar vários campos dos dados. Escolha `Sighting.comments`, `Encounter.sightingRemarks` ou `Encounter.researcherComments` e adicione-os aos comentários. O texto anterior é preservado. Exemplo de origem `template`:
+
+```text
+Câmara: {deployment.cameraID}; Modelo: {deployment.cameraModel}; Instalação: {deployment.setupBy}
+```
+
+Os campos disponíveis usam os prefixos `deployment.`, `media.` e `observation.`. Valores distintos são preservados ao agrupar, separados por ` | `. Campos inexistentes produzem um erro explícito. As configurações ficam nos perfis locais. As notas não substituem a conservação dos CSV originais.
+
+Perfis novos usam `Encounter.sightingID` para ligar o avistamento; `Encounter.sightingRemarks` preserva comentários em encontros clonados. A validação identifica campos obrigatórios ausentes: género, espécie, ano, foto e localização (texto, locationID ou ambas as coordenadas). Comentários maiores que o limite Excel de 32767 caracteres são rejeitados, nunca truncados silenciosamente.
+
+### Configuração comum e metadados adicionais
+
+WI e Camtrap DP partilham editor, validação, perfis, agrupamento e Excel. Defina o intervalo máximo em segundos no editor ao ativar o agrupamento. Eventos explícitos de Camtrap são preservados; séries sem evento usam o intervalo. Alterações exigem nova pré-visualização.
+
+Em WI pode adicionar `projects.csv` ou outros CSV; os CSV adicionais do ZIP são lidos automaticamente. São associados por identificadores de projeto, câmara, instalação ou imagem. Uma tabela global de uma linha sem identificadores pode fornecer valores comuns. A pré-visualização avisa quando não há correspondência. PDFs não são convertidos em campos. Camtrap também disponibiliza `package.*` e recursos CSV adicionais declarados. Use os campos em comentários, por exemplo `{projects.project_name}` ou `{cameras.camera_model}`.
+
+### Wildbook e seleção múltipla
+
+O seletor normal mostra apenas nomes de Wildbooks. **Opções avançadas → Consultar ramos GitHub** obtém a lista atual de ramos para selecionar pelo nome, sem mostrar URLs. O JSON local fica nas opções avançadas; listas e catálogos são guardados em cache. Um ramo de desenvolvimento pode não conter catálogo válido.
+
+Selecione várias instalações ou encontros com **Ctrl/Shift** e aplique a mesma localização. Encontro tem prioridade sobre instalação e valor comum; `*` aplica a todas as linhas e elimina exceções. Guarde no perfil. Ao mudar o agrupamento, reveja atribuições por encontro. As coordenadas são preservadas; GitHub pode diferir do servidor. As janelas ficam associadas à janela de origem para aparecer à frente.

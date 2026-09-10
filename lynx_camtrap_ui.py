@@ -32,6 +32,7 @@ class CamtrapTab(ctk.CTkFrame):
         self.root, self.lang = root, lang
         self.text = LABELS[lang]
         self.package = None
+        self.batches = []
         self.checks = {}
         self.records = None
         self.failed = []
@@ -64,6 +65,12 @@ class CamtrapTab(ctk.CTkFrame):
         retry_label = {'es': 'Reintentar fallidas', 'pt': 'Repetir falhadas', 'en': 'Retry failed'}[lang]
         self.retry = ctk.CTkButton(buttons, text=retry_label, command=self.retry_failed, state='disabled')
         self.retry.pack(side='left', padx=5)
+        ctk.CTkButton(buttons, text='Bulk Import', command=self.open_bulk_import).pack(side='left', padx=5)
+
+    @action
+    def open_bulk_import(self):
+        from lynx_bulk_ui import open_camtrap
+        open_camtrap(self)
 
     def invalidate(self):
         self.failed = []
@@ -91,6 +98,7 @@ class CamtrapTab(ctk.CTkFrame):
             start(self, 'Camtrap DP', lambda task: read_package(task, path), self.receive)
 
     def receive(self, package):
+        self.batches = []
         self.package = package
         title = str(package.descriptor.get('title', package.path.name))
         if 'synthetic' in str(package.descriptor.get('keywords', [])).lower() or 'synthetic' in title.lower():
@@ -144,6 +152,7 @@ class CamtrapTab(ctk.CTkFrame):
             start(self, 'Camtrap DP', lambda task: acquire_media(task, package, records, destination, local), self.receive_download)
 
     def receive_download(self, result):
+        self.batches.append(result.output_directory)
         self.failed = result.failed_records
         self.retry.configure(state='normal' if self.failed else 'disabled')
         self.show(result.output_directory + '\nmanifest.csv\n' +
