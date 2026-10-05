@@ -1,6 +1,5 @@
 <div align="center">
 
-<img src="logo.png" alt="LynxAutomator logo" width="320">
 
 # LynxAutomator
 
