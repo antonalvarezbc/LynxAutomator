@@ -13,6 +13,7 @@
 [![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![GUI](https://img.shields.io/badge/GUI-CustomTkinter-1F6AA5)](https://github.com/TomSchimansky/CustomTkinter)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#-download--install)
+[![Cross-platform beta](https://img.shields.io/badge/macOS%20%7C%20Linux-beta-yellow)](#-cross-platform-beta)
 [![Languages](https://img.shields.io/badge/UI-ES%20%7C%20PT%20%7C%20EN-orange)](#-languages)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
@@ -28,6 +29,7 @@
 - [Modules](#-modules)
 - [How it fits in the workflow](#-how-it-fits-in-the-workflow)
 - [Download & install](#-download--install)
+- [Cross-platform beta](#-cross-platform-beta)
 - [Run from source](#-run-from-source)
 - [Build the executable](#-build-the-executable)
 - [Languages](#-languages)
@@ -88,12 +90,22 @@ Grab the files from the **[Releases](https://github.com/antonalvarezbc/LynxAutom
 |---|---|---|
 | **v0.0.2.alpha** (latest) | `LynxAutomator-Setup.exe`, `LynxAutomator_v002alpha.exe`, `LynxAutomator_Portable.zip` | Windows |
 | v0.0.1.alpha | `LynxAutomator-Setup.exe`, `LynxAutomator_v001alpha.exe` | Windows |
-| *Pre-release* | Windows, macOS (Intel / Apple Silicon) and Linux builds, with `SHA256SUMS.txt` | 🧪 Experimental cross-platform builds |
+| *Pre-release* (**beta**) | Windows, macOS (Intel / Apple Silicon) and Linux builds, with `SHA256SUMS.txt` | 🧪 Experimental cross-platform version, see below |
 
 **Two ways to run it on Windows:**
 
 - **Portable** (`LynxAutomator_v00Xalpha.exe` or the `_Portable.zip`): no installation, just double-click.
 - **Installer** (`LynxAutomator-Setup.exe`): same app, installed in *Program Files* with Start-menu and optional desktop shortcuts.
+
+### 🧪 Cross-platform beta
+
+An **experimental cross-platform version** is in **beta**, published as a [pre-release](https://github.com/antonalvarezbc/LynxAutomator/releases). It ships builds for:
+
+- 🪟 Windows (`LynxAutomator-Windows-AMD64.zip`)
+- 🍎 macOS Apple Silicon (`LynxAutomator-Darwin-arm64.zip`) and Intel (`LynxAutomator-Darwin-x86_64.zip`)
+- 🐧 Linux (`LynxAutomator-Linux-x86_64.tar.gz`)
+
+Each build comes with a user manual (ES / EN / PT) and `SHA256SUMS.txt` to verify the download. Being a beta, expect rough edges; for day-to-day work on Windows, the latest stable release is still recommended.
 
 > [!WARNING]
 > Some antivirus programs flag PyInstaller executables as suspicious. If that happens, add LynxAutomator as an exception, or pause real-time protection during installation and turn it back on afterwards.
