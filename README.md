@@ -1,54 +1,174 @@
-# LynxAutomator - Modular Application
+<div align="center">
 
-## Description
+<img src="logo.png" alt="LynxAutomator logo" width="320">
 
-This application has been developed to automate and facilitate various processes in wildlife monitoring, specifically for the Iberian lynx, but it can also be used for other species. The application is modular and consists of modules offering specific data management and analysis functionalities.
+# LynxAutomator
 
-## Modules
+### Desktop toolkit to automate camera-trap data workflows for Iberian lynx monitoring
 
-### 1. Wildbook
+**From raw camera-trap folders and Wildlife Insights exports to Wildbook-ready bulk-import Excel files, without hand-editing spreadsheets**
 
-This module includes features that facilitate the generation of the **bulk import** file for Wildbook, a platform used for identifying and tracking individuals through photographs.
+[![Release](https://img.shields.io/github/v/release/antonalvarezbc/LynxAutomator?include_prereleases&label=release&color=2E7D32)](https://github.com/antonalvarezbc/LynxAutomator/releases)
+[![Downloads](https://img.shields.io/github/downloads/antonalvarezbc/LynxAutomator/total?color=2E7D32)](https://github.com/antonalvarezbc/LynxAutomator/releases)
+[![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![GUI](https://img.shields.io/badge/GUI-CustomTkinter-1F6AA5)](https://github.com/TomSchimansky/CustomTkinter)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#-download--install)
+[![Cross-platform beta](https://img.shields.io/badge/macOS%20%7C%20Linux-beta-yellow)](#-cross-platform-beta)
+[![Languages](https://img.shields.io/badge/UI-ES%20%7C%20PT%20%7C%20EN-orange)](#-languages)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
-### 2. Wildlife Insights
+### ⬇️ [Download the latest release](https://github.com/antonalvarezbc/LynxAutomator/releases) · 🌐 [Try the WI → Wildbook module online](https://lynxautomator-wi-wb.streamlit.app/)
 
-This module helps you to download images from the **Wildlife Insights** platform.
+</div>
 
-### 3. Wildlife Insights-Wildbook
+---
 
-This module automatically generates an Excel file for **bulk import** into Wildbook using the data and images obtained from Wildlife Insights, efficiently integrating both systems.
-This module is also available online at [lynxautomator-wi-wb.streamlit.app](https://lynxautomator-wi-wb.streamlit.app/).
+## 📖 Table of contents
 
-### 4. Iberian Lynx
+- [Why LynxAutomator](#-why-lynxautomator)
+- [Modules](#-modules)
+- [How it fits in the workflow](#-how-it-fits-in-the-workflow)
+- [Download & install](#-download--install)
+- [Cross-platform beta](#-cross-platform-beta)
+- [Run from source](#-run-from-source)
+- [Build the executable](#-build-the-executable)
+- [Languages](#-languages)
+- [User guide](#-user-guide)
+- [License](#-license)
 
-This module is designed to facilitate the generation of Excel files necessary for tracking the Iberian lynx, allowing for more efficient organization and analysis of the data.
+---
 
-### 5. Functionalities
+## 🌍 Why LynxAutomator
 
-This module contains several useful tools for managing and correcting data related to camera traps:
+Iberian lynx monitoring produces thousands of camera-trap photos and videos every season. Before they can be used for individual identification in **[Wildbook](https://lynx.wildbook.org)**, someone has to group the photos into events, extract dates from EXIF data, fix cameras that were set with the wrong clock, rename files and fill in Wildbook's bulk-import spreadsheet column by column.
 
-- **Date adjustment:** If a camera trap was set up with an incorrect date, this feature allows you to adjust the capture dates of the images.
-- **Frame extraction:** Enables you to extract specific frames from videos while retaining the original capture date.
-- **Image renaming:** A tool for bulk renaming images according to specific patterns.
+**LynxAutomator bundles all those chores into one desktop app.** Field technicians pick a folder or a CSV, set a couple of options and get the output file. No Python or spreadsheet formulas required. It was built for the Iberian lynx, but most tools work for any species.
 
+## 🧰 Modules
 
-## Download 
+The app is organised in tabs, one per module:
 
-To download the application, follow these steps:
+| | Module | Tool | What it does |
+|---|---|---|---|
+| 🐾 | **Wildbook** | Folder → bulk import | Reads image dates from EXIF (`DateTimeOriginal`), groups photos taken within a configurable **time threshold** into one encounter (`Encounter.mediaAsset0…N`) and fills date columns in a Wildbook bulk-import Excel |
+| | | Catalogue → bulk import | Builds a bulk-import Excel from a catalogue folder, one row per individual (`MarkedIndividual.individualID`) with all its images as media assets |
+| ☁️ | **Wildlife Insights** | Image downloader | Takes a Wildlife Insights CSV export and downloads the images with `gsutil`, organised into one folder per deployment |
+| 🔗 | **Wildlife Insights → Wildbook** | CSV combiner | Merges Wildlife Insights CSVs into a Wildbook bulk-import Excel, grouping images into events by time threshold and generating `Occurrence.occurrenceID`. Also available [online](https://lynxautomator-wi-wb.streamlit.app/) |
+| 🐆 | **Iberian Lynx** | LynxOne | Scans a revision folder tree (with optional *Lince/Linces* and *Revisión* sub-folders), groups images by minutes and generates the monitoring Excel, optionally joined with *Stations* and *Individuals* files |
+| 🛠️ | **Functionalities** | Date changer | Shifts the capture date of every image in a folder when a camera trap was set up with the wrong date/time |
+| | | Video frame extractor | Extracts frames from videos at a chosen interval (seconds) and writes the original capture date into each frame's EXIF |
+| | | Image renamer | Bulk-renames images using the folder name, optionally keeping the original file name |
+| ℹ️ | **About** | | Presentation, credits and logo |
 
-1. Visit the [Releases](https://github.com/antonalvarezbc/LynxAutomator/releases/) page of the repository on GitHub.
-2. Look for the latest version or the one you want to download.
-3. Click on the selected version to access the download files.
+## 🔄 How it fits in the workflow
 
-## Installation
+```mermaid
+flowchart LR
+    subgraph Field
+        A[📷 Camera traps<br/>photos + videos]
+    end
+    subgraph LynxAutomator
+        B[🛠️ Fix dates · extract frames<br/>rename images]
+        C[🐾 Wildbook module<br/>EXIF → events → Excel]
+        D[☁️ WI downloader]
+        E[🔗 WI → Wildbook combiner]
+        F[🐆 LynxOne<br/>monitoring Excel]
+    end
+    A --> B --> C
+    A --> F
+    W[(Wildlife Insights)] --> D
+    W --> E
+    C --> X[(🐆 lynx.wildbook.org<br/>bulk import)]
+    E --> X
+```
 
-This application has two options:
-- LynxAutomator.exe does not need to be installed
-- LynxAutomator-Setup.exe is the installer (the same app, just with an installer).
+## ⬇️ Download & install
 
-Some users have reported issues with antivirus software. In this case, you can either add the application as an exception in your antivirus or temporarily disable antivirus monitoring during installation and then re-enable monitoring afterwards.
+Grab the files from the **[Releases](https://github.com/antonalvarezbc/LynxAutomator/releases)** page.
 
-## [User guide](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx) 
+| Release | Files | Notes |
+|---|---|---|
+| **v0.0.2.alpha** (latest) | `LynxAutomator-Setup.exe`, `LynxAutomator_v002alpha.exe`, `LynxAutomator_Portable.zip` | Windows |
+| v0.0.1.alpha | `LynxAutomator-Setup.exe`, `LynxAutomator_v001alpha.exe` | Windows |
+| *Pre-release* (**beta**) | Windows, macOS (Intel / Apple Silicon) and Linux builds, with `SHA256SUMS.txt` | 🧪 Experimental cross-platform version, see below |
 
-[WIP](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx)
+**Two ways to run it on Windows:**
 
+- **Portable** (`LynxAutomator_v00Xalpha.exe` or the `_Portable.zip`): no installation, just double-click.
+- **Installer** (`LynxAutomator-Setup.exe`): same app, installed in *Program Files* with Start-menu and optional desktop shortcuts.
+
+### 🧪 Cross-platform beta
+
+An **experimental cross-platform version** is in **beta**, published as a [pre-release](https://github.com/antonalvarezbc/LynxAutomator/releases). It ships builds for:
+
+- 🪟 Windows (`LynxAutomator-Windows-AMD64.zip`)
+- 🍎 macOS Apple Silicon (`LynxAutomator-Darwin-arm64.zip`) and Intel (`LynxAutomator-Darwin-x86_64.zip`)
+- 🐧 Linux (`LynxAutomator-Linux-x86_64.tar.gz`)
+
+Each build comes with a user manual (ES / EN / PT) and `SHA256SUMS.txt` to verify the download. Being a beta, expect rough edges; for day-to-day work on Windows, the latest stable release is still recommended.
+
+> [!WARNING]
+> Some antivirus programs flag PyInstaller executables as suspicious. If that happens, add LynxAutomator as an exception, or pause real-time protection during installation and turn it back on afterwards.
+
+## 🐍 Run from source
+
+The main branch targets **Windows** (it uses `pywin32` to set file creation dates).
+
+```bash
+git clone https://github.com/antonalvarezbc/LynxAutomator.git
+cd LynxAutomator
+
+pip install customtkinter pandas openpyxl pillow opencv-python piexif pywin32
+python LynxAutomator_v001alpha.py
+```
+
+The **Wildlife Insights downloader** also needs the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gsutil`) installed and on your `PATH`.
+
+## 📦 Build the executable
+
+```bash
+# 1. Single-file executable with PyInstaller (full command in "PyInstaller Code.txt")
+pyinstaller --clean --onefile --windowed --icon=favicon.ico \
+  --hidden-import=customtkinter --hidden-import=cv2 --hidden-import=piexif \
+  --hidden-import=win32file --hidden-import=pywintypes \
+  LynxAutomator_v001alpha.py
+
+# 2. Windows installer with Inno Setup
+#    Open LynxAutomator.iss and update the Source path to your dist/ folder
+iscc LynxAutomator.iss
+```
+
+### Repository contents
+
+```text
+LynxAutomator/
+├── LynxAutomator_v001alpha.py        # Main app (all modules)
+├── LynxAutomator_v001alpha mini.py   # Earlier, lighter version of the app
+├── PyInstaller Code.txt              # Full PyInstaller build command
+├── LynxAutomator.iss                 # Inno Setup installer script
+├── WIP LynxAutomator GUIDE .docx     # User guide (work in progress)
+├── logo.png, favicon.ico
+└── LICENSE                           # GPL-3.0
+```
+
+**Stack:** `customtkinter` · `tkinter` · `pandas` · `Pillow` · `piexif` · `opencv-python` · `pywin32` · `gsutil`
+
+## 🌐 Languages
+
+The interface is available in **Español** (default), **Português** and **English**, and can be switched from inside the app.
+
+## 📘 User guide
+
+A step-by-step guide is available as a Word document: **[LynxAutomator GUIDE (WIP)](https://github.com/antonalvarezbc/LynxAutomator/blob/main/WIP%20LynxAutomator%20GUIDE%20.docx)**.
+
+## 📜 License
+
+Released under the **[GNU General Public License v3.0](LICENSE)**.
+
+---
+
+<div align="center">
+
+Made by **[Antón Álvarez](https://github.com/antonalvarezbc)** for Iberian lynx conservation 🐆
+
+</div>
